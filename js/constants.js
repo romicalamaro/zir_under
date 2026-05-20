@@ -39,6 +39,12 @@ var CIRCLE_DENSITY_MIN = 10;
 var CIRCLE_DENSITY_MAX = 40;
 var CIRCLE_DENSITY_DEFAULT = 25;
 
+/** Random solid fill on inner diamonds (% of all diamonds on canvas) */
+var DIAMOND_FILL_PERCENT = 5;
+
+/** Default fill for randomly filled diamonds — #FF3C3C */
+var DIAMOND_FILL_COLOR_DEFAULT = "#ff3c3c";
+
 /** Gradient background: 3 bands — 40%, 40%, 20% of canvas (along division axis) */
 var BG_SECTION_RATIOS = [0.4, 0.4, 0.2];
 var BG_DIRECTION_DEFAULT = "vertical";

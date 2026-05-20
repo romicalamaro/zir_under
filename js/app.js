@@ -6,6 +6,8 @@
   var lastOctagonsN = OCTAGONS_N_DEFAULT;
   var lastTileSize = CANVAS_W / (OCTAGONS_N_DEFAULT + 1);
   var cachedAllSegments = [];
+  var cachedVerticalGridLines = [];
+  var lastVerticalGridLayoutSignature = "";
 
   var interactionMode = "view";
   var removedEdges = new Set();
@@ -14,8 +16,10 @@
 
   var circleSelectedIds = new Set();
   var lastCircleLayoutSignature = "";
+  var diamondFilledIds = new Set();
+  var lastDiamondLayoutSignature = "";
   var bgDirection = BG_DIRECTION_DEFAULT;
-  var bgGradientEnabled = true;
+  var bgGradientEnabled = false;
 
   var GRADIENT_OFFSETS = ["0%", "25%", "50%", "75%", "100%"];
 
@@ -106,6 +110,10 @@
       input ? input.value : null,
       PATTERN_STROKE_COLOR_DEFAULT
     );
+  }
+
+  function getDiamondFillColor() {
+    return DIAMOND_FILL_COLOR_DEFAULT;
   }
 
   function normalizeHexColor(value, fallback) {
@@ -395,6 +403,27 @@
     );
   }
 
+  function getDiamondCatalog() {
+    return TopkapiGeometry.buildDiamondCatalog(
+      lastOctagonsN,
+      CANVAS_W,
+      CANVAS_H,
+      getInnerScale()
+    );
+  }
+
+  function buildDiamondLayoutSignature() {
+    return (
+      lastOctagonsN +
+      "|" +
+      getInnerScale() +
+      "|" +
+      CANVAS_W +
+      "|" +
+      CANVAS_H
+    );
+  }
+
   /**
    * @param {{ id: string }[]} catalog
    * @param {number} count
@@ -441,6 +470,72 @@
         circleSelectedIds.add(picked[p]);
       }
     }
+  }
+
+  /**
+   * @param {boolean} forceReshuffle
+   */
+  function syncDiamondFill(forceReshuffle) {
+    var catalog = getDiamondCatalog();
+    var validIds = new Set();
+    for (var i = 0; i < catalog.length; i++) {
+      validIds.add(catalog[i].id);
+    }
+
+    if (!forceReshuffle) {
+      diamondFilledIds.forEach(function (id) {
+        if (!validIds.has(id)) diamondFilledIds.delete(id);
+      });
+    }
+
+    var target = Math.round((catalog.length * DIAMOND_FILL_PERCENT) / 100);
+    if (target < 0) target = 0;
+    if (target > catalog.length) target = catalog.length;
+
+    if (forceReshuffle || diamondFilledIds.size !== target) {
+      diamondFilledIds.clear();
+      var picked = shufflePickIds(catalog, target);
+      for (var p = 0; p < picked.length; p++) {
+        diamondFilledIds.add(picked[p]);
+      }
+    }
+  }
+
+  /**
+   * @returns {{ id: string, points: { x: number, y: number }[] }[]}
+   */
+  function getFilledDiamonds() {
+    var catalog = getDiamondCatalog();
+    var filled = [];
+    for (var i = 0; i < catalog.length; i++) {
+      var dm = catalog[i];
+      if (diamondFilledIds.has(dm.id)) filled.push(dm);
+    }
+    return filled;
+  }
+
+  /**
+   * @param {{ id: string, points: { x: number, y: number }[] }[]} diamonds
+   * @returns {SVGElement}
+   */
+  function diamondsToGroup(diamonds) {
+    var g = elSvg("g");
+    var fillColor = getDiamondFillColor();
+    for (var i = 0; i < diamonds.length; i++) {
+      var dm = diamonds[i];
+      var pts = dm.points;
+      var pointsAttr = "";
+      for (var p = 0; p < pts.length; p++) {
+        if (p) pointsAttr += " ";
+        pointsAttr += pts[p].x + "," + pts[p].y;
+      }
+      var poly = elSvg("polygon");
+      poly.setAttribute("points", pointsAttr);
+      poly.setAttribute("fill", fillColor);
+      poly.setAttribute("stroke", "none");
+      g.appendChild(poly);
+    }
+    return g;
   }
 
   /**
@@ -555,6 +650,186 @@
     );
   }
 
+  function getVerticalGridStrokeWidth() {
+    return getGridStrokeWidth() * 2;
+  }
+
+  function buildVerticalGridLayoutSignature() {
+    var removedKeys = [];
+    removedEdges.forEach(function (key) {
+      removedKeys.push(key);
+    });
+    removedKeys.sort();
+    return (
+      lastOctagonsN +
+      "|" +
+      getInnerScale() +
+      "|" +
+      CANVAS_W +
+      "|" +
+      CANVAS_H +
+      "|" +
+      removedKeys.join(",")
+    );
+  }
+
+  function pickVerticalShortenMode() {
+    var r = Math.random();
+    if (r < 0.2) return "full";
+    if (r < 0.45) return "top";
+    if (r < 0.7) return "bottom";
+    return "both";
+  }
+
+  function randomVerticalTrimAmount() {
+    return CANVAS_H * (0.05 + Math.random() * 0.35);
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} yTop
+   * @param {number} yBottom
+   * @returns {{ x: number, y1: number, y2: number } | null}
+   */
+  function buildRandomizedVerticalLine(x, yTop, yBottom) {
+    var mode = pickVerticalShortenMode();
+    var y1 = yTop;
+    var y2 = yBottom;
+
+    if (mode === "top" || mode === "both") {
+      y1 = yTop + randomVerticalTrimAmount();
+    }
+    if (mode === "bottom" || mode === "both") {
+      y2 = yBottom - randomVerticalTrimAmount();
+    }
+
+    y1 = Math.max(yTop, Math.min(y1, yBottom));
+    y2 = Math.max(yTop, Math.min(y2, yBottom));
+    if (y2 <= y1) return null;
+
+    return { x: x, y1: y1, y2: y2 };
+  }
+
+  /**
+   * Left third of the grid content area (inner frame), inclusive.
+   * @param {number} x
+   * @param {{ x: number, width: number }} bounds
+   * @returns {boolean}
+   */
+  function isVerticalLineXInLeftThird(x, bounds) {
+    var left = bounds.x;
+    var right = bounds.x + bounds.width / 3;
+    return x >= left && x <= right;
+  }
+
+  /** Half octagon side: ((√2 - 1) × tileSize) / 2 — follows octagons-per-row slider. */
+  function getVerticalLineMinDistance() {
+    return ((Math.SQRT2 - 1) * lastTileSize) / 2;
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} otherX
+   * @param {number} minDist
+   * @returns {boolean}
+   */
+  function isVerticalLineTooClose(x, otherX, minDist) {
+    return Math.abs(x - otherX) < minDist;
+  }
+
+  /**
+   * @param {boolean} force
+   */
+  function syncVerticalGridLines(force) {
+    var sig = buildVerticalGridLayoutSignature();
+    if (!force && sig === lastVerticalGridLayoutSignature) return;
+    lastVerticalGridLayoutSignature = sig;
+
+    var visible = getVisibleSegments(cachedAllSegments);
+    var xs = TopkapiGeometry.collectUniqueGridXCoords(visible);
+    var bounds = getGridContentBounds();
+    var yTop = bounds.y;
+    var yBottom = bounds.y + bounds.height;
+    var minDist = getVerticalLineMinDistance();
+    var lines = [];
+    var lastPlacedX = null;
+    var i;
+    var line;
+
+    for (i = 0; i < xs.length; i++) {
+      if (!isVerticalLineXInLeftThird(xs[i], bounds)) continue;
+      if (
+        lastPlacedX !== null &&
+        isVerticalLineTooClose(xs[i], lastPlacedX, minDist)
+      ) {
+        continue;
+      }
+      line = buildRandomizedVerticalLine(xs[i], yTop, yBottom);
+      if (line) {
+        lines.push(line);
+        lastPlacedX = xs[i];
+      }
+    }
+
+    cachedVerticalGridLines = lines;
+  }
+
+  function renderVerticalGridLayer() {
+    if (!designSvg) return;
+    var layer = designSvg.querySelector("#layer-vertical-grid");
+    if (!layer) return;
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+    layer.setAttribute("fill", "none");
+    layer.setAttribute("stroke", getPatternStrokeColor());
+    layer.setAttribute("stroke-width", String(getVerticalGridStrokeWidth()));
+    for (var i = 0; i < cachedVerticalGridLines.length; i++) {
+      var vl = cachedVerticalGridLines[i];
+      var line = elSvg("line");
+      line.setAttribute("x1", String(vl.x));
+      line.setAttribute("y1", String(vl.y1));
+      line.setAttribute("x2", String(vl.x));
+      line.setAttribute("y2", String(vl.y2));
+      layer.appendChild(line);
+    }
+  }
+
+  /**
+   * @param {string[]} lines
+   */
+  function pushVerticalGridExportLines(lines) {
+    if (!cachedVerticalGridLines.length) return;
+    lines.push('<g clip-path="url(#inner-content-clip)">');
+    lines.push(
+      '<g id="layer-vertical-grid" fill="none" stroke="' +
+        getPatternStrokeColor() +
+        '" stroke-width="' +
+        getVerticalGridStrokeWidth() +
+        '">'
+    );
+    for (var i = 0; i < cachedVerticalGridLines.length; i++) {
+      var vl = cachedVerticalGridLines[i];
+      lines.push(
+        '<line x1="' +
+          vl.x +
+          '" y1="' +
+          vl.y1 +
+          '" x2="' +
+          vl.x +
+          '" y2="' +
+          vl.y2 +
+          '"/>'
+      );
+    }
+    lines.push("</g>");
+    lines.push("</g>");
+  }
+
+  function renderPatternAndVerticalLayers() {
+    syncVerticalGridLines(false);
+    renderVerticalGridLayer();
+    renderPatternLayer();
+  }
+
   function applyGridBoundaryAttrs(rect, bounds) {
     rect.setAttribute("x", String(bounds.x));
     rect.setAttribute("y", String(bounds.y));
@@ -603,7 +878,6 @@
     );
   }
 
-  var BORDER_DIVISION_STROKE = "#000000";
   var BORDER_DIVISION_STROKE_WIDTH = 1;
   var BORDER_LEFT_RIGHT_SEGMENTS = 12;
   var BORDER_TOP_BOTTOM_SEGMENTS = 8;
@@ -624,7 +898,7 @@
   }
 
   /**
-   * 1px black dividers in the white margin strips only (corners stay blank).
+   * 1px dividers in the white margin strips only (corners stay blank).
    * Top/bottom vertical ticks extend to the grid-boundary separating line.
    * @param {SVGElement} container
    * @param {number} x1
@@ -639,6 +913,45 @@
     line.setAttribute("x2", String(x2));
     line.setAttribute("y2", String(y2));
     container.appendChild(line);
+  }
+
+  /**
+   * Y of horizontal dividers in left/right strips (between corners, not at corners).
+   * Diagonal cells lie only between consecutive entries.
+   * @returns {number[]}
+   */
+  function getLeftRightBorderCellYBounds() {
+    var b = getCanvasBorderPx();
+    var bounds = [];
+    var i;
+    var y;
+    for (i = 1; i < BORDER_LEFT_RIGHT_SEGMENTS; i++) {
+      y = (CANVAS_H * i) / BORDER_LEFT_RIGHT_SEGMENTS;
+      if (y > b && y < CANVAS_H - b) bounds.push(y);
+    }
+    return bounds;
+  }
+
+  /**
+   * Corner-to-corner X in each left/right strip cell between horizontal dividers.
+   * @param {SVGElement} g
+   */
+  function appendLeftRightBorderCellDiagonalsToGroup(g) {
+    var b = getCanvasBorderPx();
+    var yBounds = getLeftRightBorderCellYBounds();
+    var j;
+    var yTop;
+    var yBottom;
+    var rightX = CANVAS_W - b;
+
+    for (j = 0; j < yBounds.length - 1; j++) {
+      yTop = yBounds[j];
+      yBottom = yBounds[j + 1];
+      appendBorderDivisionLine(g, 0, yTop, b, yBottom);
+      appendBorderDivisionLine(g, b, yTop, 0, yBottom);
+      appendBorderDivisionLine(g, rightX, yTop, CANVAS_W, yBottom);
+      appendBorderDivisionLine(g, CANVAS_W, yTop, rightX, yBottom);
+    }
   }
 
   /**
@@ -666,13 +979,22 @@
     }
   }
 
+  /**
+   * Margin division ticks + X diagonals (pattern color) on #layer-border-divisions.
+   * @param {SVGElement} g
+   */
+  function appendBorderDivisionLayersToGroup(g) {
+    g.setAttribute("fill", "none");
+    g.setAttribute("stroke", getPatternStrokeColor());
+    g.setAttribute("stroke-width", String(BORDER_DIVISION_STROKE_WIDTH));
+    appendBorderDivisionLinesToGroup(g);
+    appendLeftRightBorderCellDiagonalsToGroup(g);
+  }
+
   function createBorderDivisionLinesGroup() {
     var g = elSvg("g");
     g.setAttribute("id", "layer-border-divisions");
-    g.setAttribute("fill", "none");
-    g.setAttribute("stroke", BORDER_DIVISION_STROKE);
-    g.setAttribute("stroke-width", String(BORDER_DIVISION_STROKE_WIDTH));
-    appendBorderDivisionLinesToGroup(g);
+    appendBorderDivisionLayersToGroup(g);
     return g;
   }
 
@@ -681,7 +1003,7 @@
     var g = designSvg.querySelector("#layer-border-divisions");
     if (!g) return;
     while (g.firstChild) g.removeChild(g.firstChild);
-    appendBorderDivisionLinesToGroup(g);
+    appendBorderDivisionLayersToGroup(g);
   }
 
   /**
@@ -696,7 +1018,7 @@
 
     lines.push(
       '<g id="layer-border-divisions" fill="none" stroke="' +
-        BORDER_DIVISION_STROKE +
+        getPatternStrokeColor() +
         '" stroke-width="' +
         BORDER_DIVISION_STROKE_WIDTH +
         '">'
@@ -748,6 +1070,56 @@
           x +
           '" y2="' +
           CANVAS_H +
+          '"/>'
+      );
+    }
+
+    var yBounds = getLeftRightBorderCellYBounds();
+    var j;
+    var yTop;
+    var yBottom;
+    var rightX = CANVAS_W - b;
+    for (j = 0; j < yBounds.length - 1; j++) {
+      yTop = yBounds[j];
+      yBottom = yBounds[j + 1];
+      lines.push(
+        '<line x1="0" y1="' +
+          yTop +
+          '" x2="' +
+          b +
+          '" y2="' +
+          yBottom +
+          '"/>'
+      );
+      lines.push(
+        '<line x1="' +
+          b +
+          '" y1="' +
+          yTop +
+          '" x2="0" y2="' +
+          yBottom +
+          '"/>'
+      );
+      lines.push(
+        '<line x1="' +
+          rightX +
+          '" y1="' +
+          yTop +
+          '" x2="' +
+          CANVAS_W +
+          '" y2="' +
+          yBottom +
+          '"/>'
+      );
+      lines.push(
+        '<line x1="' +
+          CANVAS_W +
+          '" y1="' +
+          yTop +
+          '" x2="' +
+          rightX +
+          '" y2="' +
+          yBottom +
           '"/>'
       );
     }
@@ -814,6 +1186,20 @@
     clippedBackground.appendChild(background);
     innerContent.appendChild(clippedBackground);
 
+    var clippedVertical = createInnerContentClipGroup("inner-clipped-vertical-grid");
+    var verticalLayer = elSvg("g");
+    verticalLayer.setAttribute("id", "layer-vertical-grid");
+    verticalLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedVertical.appendChild(verticalLayer);
+    innerContent.appendChild(clippedVertical);
+
+    var clippedDiamonds = createInnerContentClipGroup("inner-clipped-diamond-fills");
+    var diamondLayer = elSvg("g");
+    diamondLayer.setAttribute("id", "layer-diamond-fills");
+    diamondLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedDiamonds.appendChild(diamondLayer);
+    innerContent.appendChild(clippedDiamonds);
+
     innerContent.appendChild(createGridBoundaryRect());
 
     var clippedPattern = createInnerContentClipGroup("inner-clipped-pattern");
@@ -830,11 +1216,17 @@
 
   function renderPatternLayer() {
     if (!designSvg) return;
-    var layer = designSvg.querySelector("#layer-pattern");
-    if (!layer) return;
-    while (layer.firstChild) layer.removeChild(layer.firstChild);
-    layer.appendChild(segmentsToGroup(getVisibleSegments(cachedAllSegments)));
-    layer.appendChild(circlesToGroup(getActiveCircles()));
+    var diamondLayer = designSvg.querySelector("#layer-diamond-fills");
+    var patternLayer = designSvg.querySelector("#layer-pattern");
+    if (!diamondLayer || !patternLayer) return;
+
+    while (diamondLayer.firstChild) diamondLayer.removeChild(diamondLayer.firstChild);
+    while (patternLayer.firstChild) patternLayer.removeChild(patternLayer.firstChild);
+
+    var filled = getFilledDiamonds();
+    if (filled.length) diamondLayer.appendChild(diamondsToGroup(filled));
+    patternLayer.appendChild(segmentsToGroup(getVisibleSegments(cachedAllSegments)));
+    patternLayer.appendChild(circlesToGroup(getActiveCircles()));
   }
 
   function render() {
@@ -878,6 +1270,12 @@
       syncCircleSelection(true);
     }
 
+    var diamondSig = buildDiamondLayoutSignature();
+    if (diamondSig !== lastDiamondLayoutSignature) {
+      lastDiamondLayoutSignature = diamondSig;
+      syncDiamondFill(true);
+    }
+
     var densityOut = document.getElementById("circle-density-out");
     if (densityOut) densityOut.textContent = String(getCircleDensity()) + "%";
 
@@ -885,6 +1283,8 @@
     if (strokeOut) strokeOut.textContent = String(getGridStrokeWidth()) + " px";
 
     renderBackgroundLayer();
+    syncVerticalGridLines(false);
+    renderVerticalGridLayer();
     updateGridBoundaryRect();
     updateBorderDivisionLines();
     renderPatternLayer();
@@ -914,7 +1314,7 @@
    * @param {{ cx: number, cy: number, r: number }[]} circles
    * @returns {string}
    */
-  function buildExportSvgString(segments, circles) {
+  function buildExportSvgString(segments, circles, diamonds) {
     var lines = [];
     var gridBounds = getGridContentBounds();
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
@@ -950,10 +1350,38 @@
     lines.push('<g clip-path="url(#inner-content-clip)">');
     pushBackgroundExportLines(lines);
     lines.push("</g>");
+
+    pushVerticalGridExportLines(lines);
+
+    if (diamonds.length) {
+      var fillColor = getDiamondFillColor();
+      lines.push('<g clip-path="url(#inner-content-clip)">');
+      lines.push('<g id="layer-diamond-fills">');
+      for (var d = 0; d < diamonds.length; d++) {
+        var dm = diamonds[d];
+        var pts = dm.points;
+        var pointsAttr = "";
+        for (var p = 0; p < pts.length; p++) {
+          if (p) pointsAttr += " ";
+          pointsAttr += pts[p].x + "," + pts[p].y;
+        }
+        lines.push(
+          '<polygon points="' +
+            pointsAttr +
+            '" fill="' +
+            fillColor +
+            '" stroke="none"/>'
+        );
+      }
+      lines.push("</g>");
+      lines.push("</g>");
+    }
+
     pushGridBoundaryExportLine(lines, gridBounds);
     var gridStroke = getGridStrokeWidth();
     var circleStroke = getCircleStrokeWidth();
     lines.push('<g clip-path="url(#inner-content-clip)">');
+
     lines.push(
       '<g fill="none" stroke="' +
         getPatternStrokeColor() +
@@ -1023,8 +1451,13 @@
     if (btn) btn.disabled = true;
 
     try {
+      syncVerticalGridLines(false);
       var segments = getVisibleSegments(cachedAllSegments);
-      var markup = buildExportSvgString(segments, getActiveCircles());
+      var markup = buildExportSvgString(
+        segments,
+        getActiveCircles(),
+        getFilledDiamonds()
+      );
       var blob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
       downloadBlob(blob, "topkapi-export-70x180cm.svg");
     } catch (e) {
@@ -1112,7 +1545,7 @@
     if (applyDanglingPrune()) changed = true;
 
     if (changed) {
-      renderPatternLayer();
+      renderPatternAndVerticalLayers();
       updateResetButton();
     }
   }
@@ -1132,7 +1565,7 @@
     }
 
     if (changed) {
-      renderPatternLayer();
+      renderPatternAndVerticalLayers();
       updateResetButton();
     }
   }
@@ -1273,7 +1706,7 @@
 
   function onResetGrid() {
     clearMergeState();
-    renderPatternLayer();
+    renderPatternAndVerticalLayers();
   }
 
   function init() {
@@ -1298,7 +1731,13 @@
       patternColorInput.value = PATTERN_STROKE_COLOR_DEFAULT;
       patternColorInput.addEventListener("input", function () {
         updateGridBoundaryRect();
+        renderVerticalGridLayer();
         renderPatternLayer();
+        var borderDivisions =
+          designSvg && designSvg.querySelector("#layer-border-divisions");
+        if (borderDivisions) {
+          borderDivisions.setAttribute("stroke", getPatternStrokeColor());
+        }
       });
     }
 
@@ -1310,6 +1749,7 @@
       gridStrokeSlider.addEventListener("input", function () {
         var strokeOut = document.getElementById("grid-stroke-width-out");
         if (strokeOut) strokeOut.textContent = String(getGridStrokeWidth()) + " px";
+        renderVerticalGridLayer();
         renderPatternLayer();
       });
     }
@@ -1331,6 +1771,7 @@
     if (randomizeCirclesBtn) {
       randomizeCirclesBtn.addEventListener("click", function () {
         syncCircleSelection(true);
+        syncDiamondFill(true);
         renderPatternLayer();
       });
     }
@@ -1392,6 +1833,7 @@
 
     window.addEventListener("resize", layoutStage);
     lastCircleLayoutSignature = "";
+    lastDiamondLayoutSignature = "";
     updateBgDirectionUi();
     updateBgWhiteToggleUi();
     render();

@@ -902,6 +902,44 @@
   }
 
   /**
+   * Rotated square inside each upright square at a junction (corners N/S/E/W on
+   * the upright square’s side midpoints — not the axis-aligned square itself).
+   * @param {number} octagonsN
+   * @param {number} canvasW
+   * @param {number} canvasH
+   * @param {number} innerScale shrinks diamond from junction center (matches grid)
+   * @returns {{ id: string, points: { x: number, y: number }[] }[]}
+   */
+  function buildDiamondCatalog(octagonsN, canvasW, canvasH, innerScale) {
+    if (typeof innerScale !== "number") {
+      innerScale = 1;
+    }
+    var layout = computeLayout(octagonsN, canvasW, canvasH);
+    var T = layout.tileSize;
+    var cut = T * CUT;
+    var h = cut * innerScale;
+    var catalog = [];
+
+    for (var row = 0; row <= layout.rows; row++) {
+      for (var col = 0; col <= layout.cols; col++) {
+        var cx = col * T;
+        var cy = layout.offsetY + row * T;
+        catalog.push({
+          id: "dm-" + col + "-" + row,
+          points: [
+            { x: cx, y: cy - h },
+            { x: cx + h, y: cy },
+            { x: cx, y: cy + h },
+            { x: cx - h, y: cy },
+          ],
+        });
+      }
+    }
+
+    return catalog;
+  }
+
+  /**
    * Inner diamonds at cell junctions (upright square midpoints between octagons).
    * @param {number} octagonsN
    * @param {number} canvasW
@@ -928,6 +966,31 @@
     return catalog;
   }
 
+  var VERTICAL_SEGMENT_X_EPS = 1e-6;
+
+  /**
+   * Unique X from vertical grid segments only (aligned with existing upright edges).
+   * @param {{x1:number,y1:number,x2:number,y2:number}[]} segments
+   * @returns {number[]}
+   */
+  function collectUniqueGridXCoords(segments) {
+    var xs = {};
+    for (var i = 0; i < segments.length; i++) {
+      var s = segments[i];
+      if (Math.abs(s.x1 - s.x2) > VERTICAL_SEGMENT_X_EPS) continue;
+      var key = roundCoord(s.x1);
+      if (!xs[key]) xs[key] = s.x1;
+    }
+    var out = [];
+    for (var k in xs) {
+      if (Object.prototype.hasOwnProperty.call(xs, k)) out.push(xs[k]);
+    }
+    out.sort(function (a, b) {
+      return a - b;
+    });
+    return out;
+  }
+
   global.TopkapiGeometry = {
     buildPatternSegments: buildPatternSegments,
     addUnitCellSegments: addUnitCellSegments,
@@ -943,7 +1006,9 @@
     findRestoreCandidateKeys: findRestoreCandidateKeys,
     filterValidRestoreKeys: filterValidRestoreKeys,
     buildVertexIncidence: buildVertexIncidence,
+    buildDiamondCatalog: buildDiamondCatalog,
     buildUprightSquareCatalog: buildUprightSquareCatalog,
     uprightSquareInscribedRadius: uprightSquareInscribedRadius,
+    collectUniqueGridXCoords: collectUniqueGridXCoords,
   };
 })(typeof window !== "undefined" ? window : this);
