@@ -2,6 +2,7 @@
   "use strict";
 
   /**
+   * LEGACY — not loaded by any HTML page. Active palette system: js/sheetPalettes.js
    * Canvas color roles — each gets one of the 5 active palette colors.
    * Rules for pairings/constraints can be added here later.
    */
@@ -26,7 +27,6 @@
     "borderSideBeige",
     "autoMergeOutline",
     "autoMergeShadow",
-    "canvasEdgeSerial",
   ];
 
   var ROLE_TO_INPUT_ID = {
@@ -59,7 +59,6 @@
     borderSideBeige: "BORDER_SIDE_CELL_COLOR_BEIGE",
     autoMergeOutline: "AUTO_MERGE_OUTLINE_COLOR",
     autoMergeShadow: "AUTO_MERGE_SHADOW_COLOR",
-    canvasEdgeSerial: "CANVAS_EDGE_SERIAL_FILL",
   };
 
   var activePick = [];

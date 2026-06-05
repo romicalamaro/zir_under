@@ -155,70 +155,43 @@
                 </div>
               </div>
               <div class="sidebar__identity-field">
-                <span class="sidebar__identity-heading">Lost</span>
-                <div class="sidebar__identity-slot" id="identity-lost-slot">
+                <span
+                  class="sidebar__identity-heading sidebar__identity-heading--wrap"
+                  >where do you feel most &quot;at home&quot; today?</span
+                >
+                <div class="sidebar__identity-slot" id="identity-home-at-slot">
                   <div
-                    class="sidebar__identity-regime"
-                    id="identity-lost-control"
+                    class="sidebar__toggle sidebar__identity-home-toggle"
+                    role="radiogroup"
+                    aria-label='where do you feel most "at home" today?'
                   >
-                    <div class="sidebar__identity-regime-slider-wrap">
-                      <div
-                        class="sidebar__identity-regime-segments"
-                        aria-hidden="true"
-                      >
-                        <span
-                          class="sidebar__identity-regime-segment is-active"
-                          data-segment="1"
-                        ></span>
-                        <span
-                          class="sidebar__identity-regime-segment"
-                          data-segment="2"
-                        ></span>
-                        <span
-                          class="sidebar__identity-regime-segment"
-                          data-segment="3"
-                        ></span>
-                      </div>
-                      <input
-                        id="identity-lost-slider"
-                        class="sidebar__identity-regime-slider"
-                        type="range"
-                        min="1"
-                        max="3"
-                        value="1"
-                        step="1"
-                        aria-valuemin="1"
-                        aria-valuemax="3"
-                        aria-valuenow="1"
-                        aria-valuetext="Inner Circle"
-                      />
-                    </div>
-                    <div
-                      class="sidebar__identity-regime-labels"
-                      role="group"
-                      aria-label="Lost"
+                    <button
+                      type="button"
+                      id="identity-home-at-in-iran-btn"
+                      class="sidebar__toggle-btn is-active"
+                      data-home-at="inIran"
+                      aria-pressed="true"
                     >
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label is-active"
-                        data-lost="1"
-                      >
-                        Inner Circle
-                      </button>
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label"
-                        data-lost="2"
-                        aria-label="Middle"
-                      ></button>
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label"
-                        data-lost="3"
-                      >
-                        Distant Circle
-                      </button>
-                    </div>
+                      In Iran
+                    </button>
+                    <button
+                      type="button"
+                      id="identity-home-at-where-i-live-btn"
+                      class="sidebar__toggle-btn"
+                      data-home-at="whereILive"
+                      aria-pressed="false"
+                    >
+                      Outside Iran / where I live now
+                    </button>
+                    <button
+                      type="button"
+                      id="identity-home-at-nowhere-btn"
+                      class="sidebar__toggle-btn"
+                      data-home-at="nowhere"
+                      aria-pressed="false"
+                    >
+                      Nowhere / in between
+                    </button>
                   </div>
                 </div>
               </div>

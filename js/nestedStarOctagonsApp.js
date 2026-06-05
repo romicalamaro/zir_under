@@ -5,6 +5,7 @@
   var designSvg = null;
   var cachedSegments = [];
   var cachedStarFills = [];
+  var cachedStarRhombusFills = [];
   var validLayouts = [];
 
   var STROKE_COLOR =
@@ -37,19 +38,18 @@
     return NestedStarOctagonsGeometry.closedPolygonPathD(points);
   }
 
-  function starFillsToGroup(starFills) {
+  function starFillsToGroup(starFills, fillColor, groupId) {
     var g = elSvg("g");
-    g.setAttribute("id", "layer-star-fills");
+    g.setAttribute("id", groupId || "layer-star-fills");
+    var fill = fillColor || BG_COLOR;
     var i;
     var p;
     for (i = 0; i < starFills.length; i++) {
       p = elSvg("path");
       p.setAttribute("d", closedPolygonPathD(starFills[i].outline));
-      p.setAttribute("fill", BG_COLOR);
+      p.setAttribute("fill", fill);
       p.setAttribute("fill-rule", "nonzero");
-      p.setAttribute("stroke", STROKE_COLOR);
-      p.setAttribute("stroke-width", String(STROKE_WIDTH));
-      p.setAttribute("stroke-linejoin", "miter");
+      p.setAttribute("stroke", "none");
       g.appendChild(p);
     }
     return g;
@@ -152,6 +152,7 @@
     var pattern = NestedStarOctagonsGeometry.buildPattern(layout);
     cachedSegments = pattern.segments;
     cachedStarFills = pattern.starFills;
+    cachedStarRhombusFills = pattern.starRhombusFills || [];
 
     if (!designSvg) {
       designSvg = createDesignSvg();
@@ -165,17 +166,22 @@
     while (patternLayer.firstChild) {
       patternLayer.removeChild(patternLayer.firstChild);
     }
-    patternLayer.appendChild(starFillsToGroup(cachedStarFills));
+    if (cachedStarFills.length) {
+      patternLayer.appendChild(starFillsToGroup(cachedStarFills));
+    }
     patternLayer.appendChild(segmentsToGroup(cachedSegments));
     layoutStage();
   }
 
   function buildExportSvgString() {
     var pattern = cachedSegments.length
-      ? { segments: cachedSegments, starFills: cachedStarFills }
+      ? {
+          segments: cachedSegments,
+          starFills: cachedStarFills,
+        }
       : NestedStarOctagonsGeometry.buildPattern(getCurrentLayout());
     var segments = pattern.segments;
-    var starFills = pattern.starFills;
+    var starFills = pattern.starFills || [];
     var lines = [];
     var fi;
 
@@ -217,11 +223,7 @@
           closedPolygonPathD(starFills[fi].outline) +
           '" fill="' +
           BG_COLOR +
-          '" fill-rule="nonzero" stroke="' +
-          STROKE_COLOR +
-          '" stroke-width="' +
-          STROKE_WIDTH +
-          '" stroke-linejoin="miter"/>'
+          '" fill-rule="nonzero" stroke="none"/>'
       );
     }
 

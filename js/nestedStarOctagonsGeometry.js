@@ -571,6 +571,25 @@ function roundCoord(v) {
           return Math.abs(d);
         }
 
+        /** Max clockwise rotation (rad) at pinwheelFactor 1 — 2× prior tangential equivalent. */
+        function middleStarMaxPinwheelRotationRad() {
+          return Math.sin(Math.PI / 8) * 2;
+        }
+
+        function applyMiddleStarPinwheelRotation(cx, cy, p, pinwheelFactor) {
+          var factor =
+            typeof pinwheelFactor === "number" ? pinwheelFactor : 0;
+          factor = Math.max(0, Math.min(1, factor));
+          if (!factor) return { x: p.x, y: p.y };
+          return rotatePoint(
+            cx,
+            cy,
+            p.x,
+            p.y,
+            factor * middleStarMaxPinwheelRotationRad()
+          );
+        }
+
         /** Match inner tips to outer tips (same arm); do not angle-sort concaves alone. */
         function octagramTipPhaseOffset(outerTips, innerTips, cx, cy) {
           var bestK = 0;
@@ -596,58 +615,218 @@ function roundCoord(v) {
         }
 
         /**
-         * Middle 8-point star: outer tips = outer star concaves; inner corners = inner star tips.
-         * Polygon walks CCW: inner tip then its outer concave (not concave→tip — that self-crosses).
-         * @returns {{x:number,y:number}[]|null} 16 vertices, closed polygon
+         * Inner junctions of the middle star (where its arms meet toward the center).
+         * @returns {{ points: {x:number,y:number}[], phase: number }|null}
          */
-        function buildMiddleStarOutline(outerOctagram, innerOctagram, cx, cy) {
+        function middleStarInnerJunctions(
+          outerOctagram,
+          innerOctagram,
+          cx,
+          cy,
+          pinwheelFactor
+        ) {
           if (outerOctagram.length < 16 || innerOctagram.length < 16) return null;
-          var outerConcaves = octagramConcaves(outerOctagram);
           var outerTips = octagramTips(outerOctagram);
           var innerTips = octagramTips(innerOctagram);
-          if (
-            outerConcaves.length !== 8 ||
-            outerTips.length !== 8 ||
-            innerTips.length !== 8
-          ) {
-            return null;
-          }
+          if (outerTips.length !== 8 || innerTips.length !== 8) return null;
+          var factor =
+            typeof pinwheelFactor === "number" ? pinwheelFactor : 0;
           var phase = octagramTipPhaseOffset(outerTips, innerTips, cx, cy);
+          var points = [];
+          var i;
+          for (i = 0; i < 8; i++) {
+            points.push(
+              applyMiddleStarPinwheelRotation(
+                cx,
+                cy,
+                innerTips[(i + phase) % 8],
+                factor
+              )
+            );
+          }
+          return { points: points, phase: phase };
+        }
+
+        /**
+         * Middle 8-point star: outer tips = outer star concaves (fixed on big-star junctions);
+         * inner corners = inner star tips, skewed tangentially for pinwheel.
+         * Polygon walks CCW: inner tip then its outer concave (not concave→tip — that self-crosses).
+         * @param {number} [pinwheelFactor] 0 = symmetric; 1 = max clockwise inner-corner skew
+         * @returns {{x:number,y:number}[]|null} 16 vertices, closed polygon
+         */
+        function buildMiddleStarOutline(
+          outerOctagram,
+          innerOctagram,
+          cx,
+          cy,
+          pinwheelFactor
+        ) {
+          if (outerOctagram.length < 16 || innerOctagram.length < 16) return null;
+          var outerConcaves = octagramConcaves(outerOctagram);
+          var junctions = middleStarInnerJunctions(
+            outerOctagram,
+            innerOctagram,
+            cx,
+            cy,
+            pinwheelFactor
+          );
+          if (!junctions || outerConcaves.length !== 8) return null;
           var entries = [];
           var i;
           for (i = 0; i < 8; i++) {
-            entries.push(innerTips[(i + phase) % 8]);
+            entries.push(junctions.points[i]);
             entries.push(outerConcaves[i]);
           }
-          entries.sort(function (a, b) {
-            return pointAngle(cx, cy, a) - pointAngle(cx, cy, b);
-          });
           return entries;
         }
 
-        function addMiddleStar(map, ox, oy, outerOctagram, innerOctagram, cx, cy) {
+        /**
+         * Innermost star: tips pinned to middle-star inner junctions; inner concaves skew for pinwheel.
+         * @param {number} [pinwheelFactor]
+         * @returns {{x:number,y:number}[]|null}
+         */
+        function buildInnermostStarOutline(
+          outerOctagram,
+          innerOctagram,
+          cx,
+          cy,
+          pinwheelFactor
+        ) {
+          if (innerOctagram.length < 16) return null;
+          var junctions = middleStarInnerJunctions(
+            outerOctagram,
+            innerOctagram,
+            cx,
+            cy,
+            pinwheelFactor
+          );
+          var innerConcaves = octagramConcaves(innerOctagram);
+          if (!junctions || innerConcaves.length !== 8) return null;
+          var factor =
+            typeof pinwheelFactor === "number" ? pinwheelFactor : 0;
+          var entries = [];
+          var i;
+          for (i = 0; i < 8; i++) {
+            entries.push(junctions.points[i]);
+            entries.push(
+              applyMiddleStarPinwheelRotation(
+                cx,
+                cy,
+                innerConcaves[i],
+                factor
+              )
+            );
+          }
+          return entries;
+        }
+
+        function addMiddleStar(
+          map,
+          ox,
+          oy,
+          outerOctagram,
+          innerOctagram,
+          cx,
+          cy,
+          pinwheelFactor
+        ) {
           var outline = buildMiddleStarOutline(
             outerOctagram,
             innerOctagram,
             cx,
-            cy
+            cy,
+            pinwheelFactor
           );
           if (!outline) return;
           addClosedPolygon(map, worldPoints(ox, oy, outline));
         }
 
         /**
+         * Eight rhombuses between the outer octagram and the unit octagon boundary
+         * (octagon area outside the big star).
+         * @param {{x:number,y:number}[]} outerOctagram local cell coords, 16 vertices
+         * @returns {{ outline: {x:number,y:number}[] }[]}
+         */
+        function buildOuterStarRhombusOutlines(outerOctagram, cx, cy, T) {
+          var cut = T * CUT_RATIO;
+          var tips = octagramTips(outerOctagram);
+          var concaves = octagramConcaves(outerOctagram);
+          if (tips.length !== 8 || concaves.length !== 8) return [];
+          var out = [];
+          var i;
+          var tipA;
+          var tipB;
+          var concave;
+          var dx;
+          var dy;
+          var dist;
+          var outerDist;
+          var outer;
+          for (i = 0; i < 8; i++) {
+            tipA = tips[i];
+            tipB = tips[(i + 1) % 8];
+            concave = concaves[i];
+            outerDist = rayOctagonHitDistance(
+              cx,
+              cy,
+              concave.x,
+              concave.y,
+              T,
+              cut
+            );
+            if (!(outerDist < Infinity)) continue;
+            dx = concave.x - cx;
+            dy = concave.y - cy;
+            dist = Math.hypot(dx, dy);
+            if (dist < 1e-12) continue;
+            outer = {
+              x: roundCoord(cx + (dx / dist) * outerDist),
+              y: roundCoord(cy + (dy / dist) * outerDist),
+            };
+            // Walk the kite boundary: tip → octagon → next tip → inner concave.
+            // Do not angle-sort from center — concave and outer share nearly the
+            // same bearing, which collapses the polygon to zero area.
+            out.push({
+              outline: [
+                { x: tipA.x, y: tipA.y },
+                outer,
+                { x: tipB.x, y: tipB.y },
+                { x: concave.x, y: concave.y },
+              ],
+            });
+          }
+          return out;
+        }
+
+        /**
          * Dual-square 8-point star + inner octagon; optionally recurse for inner star.
          * @param {Map} map
          * @param {{points:{x:number,y:number}[]}[]} starFills
+         * @param {{outline:{x:number,y:number}[]}[]} starRhombusFills
          * @param {number} ox world offset
          * @param {number} oy world offset
          * @param {number} cx local center x
          * @param {number} cy local center y
          * @param {number} T local tile size for this nesting level
          * @param {boolean} recurse draw outer star lines + nested inner star fill
+         * @param {number} [pinwheelFactor] middle-star tip skew (0–1)
+         * @param {{x:number,y:number}[]} [middleOuterOctagram] parent outer octagram for innermost anchor
+         * @param {{x:number,y:number}[]} [middleInnerOctagram] parent inner octagram for innermost anchor
          */
-        function addDualStar(map, starFills, ox, oy, cx, cy, T, recurse) {
+        function addDualStar(
+          map,
+          starFills,
+          starRhombusFills,
+          ox,
+          oy,
+          cx,
+          cy,
+          T,
+          recurse,
+          pinwheelFactor,
+          middleOuterOctagram,
+          middleInnerOctagram
+        ) {
           var cut = T * CUT_RATIO;
           var half = (T - 2 * cut) / 2;
           var starScale = 1;
@@ -699,14 +878,34 @@ function roundCoord(v) {
           );
           if (octagram.length < 16) return;
 
-          var worldOctagram = worldPoints(ox, oy, octagram);
+          var innermostOutline = octagram;
+          if (middleOuterOctagram && middleInnerOctagram) {
+            var pinned = buildInnermostStarOutline(
+              middleOuterOctagram,
+              middleInnerOctagram,
+              cx,
+              cy,
+              pinwheelFactor
+            );
+            if (pinned) innermostOutline = pinned;
+          }
+          var worldOctagram = worldPoints(ox, oy, innermostOutline);
 
           if (!recurse) {
             starFills.push({ outline: worldOctagram });
+            addClosedPolygon(map, worldOctagram);
             return;
           }
 
           addClosedPolygon(map, worldOctagram);
+
+          var rhombusOutlines = buildOuterStarRhombusOutlines(octagram, cx, cy, T);
+          var ri;
+          for (ri = 0; ri < rhombusOutlines.length; ri++) {
+            starRhombusFills.push({
+              outline: worldPoints(ox, oy, rhombusOutlines[ri].outline),
+            });
+          }
 
           var innerApothem = Infinity;
           for (i = 0; i < intersections.length; i++) {
@@ -724,13 +923,43 @@ function roundCoord(v) {
           var innerOctagram = buildLocalDualStarOctagram(cx, cy, TInner);
           if (innerOctagram) {
             addStarHorizontalLines(map, ox, oy, octagram, innerOctagram);
-            addMiddleStar(map, ox, oy, octagram, innerOctagram, cx, cy);
+            addMiddleStar(
+              map,
+              ox,
+              oy,
+              octagram,
+              innerOctagram,
+              cx,
+              cy,
+              pinwheelFactor
+            );
           }
 
-          addDualStar(map, starFills, ox, oy, cx, cy, TInner, false);
+          addDualStar(
+            map,
+            starFills,
+            starRhombusFills,
+            ox,
+            oy,
+            cx,
+            cy,
+            TInner,
+            false,
+            pinwheelFactor,
+            octagram,
+            innerOctagram
+          );
         }
 
-        function addUnitCell(map, starFills, ox, oy, T) {
+        function addUnitCell(
+          map,
+          starFills,
+          starRhombusFills,
+          ox,
+          oy,
+          T,
+          pinwheelFactor
+        ) {
           var cut = T * CUT_RATIO;
           var cx = T / 2;
           var cy = T / 2;
@@ -748,7 +977,18 @@ function roundCoord(v) {
             );
           }
 
-          addDualStar(map, starFills, ox, oy, cx, cy, T, true);
+          addDualStar(
+            map,
+            starFills,
+            starRhombusFills,
+            ox,
+            oy,
+            cx,
+            cy,
+            T,
+            true,
+            pinwheelFactor
+          );
         }
 
         /** Rotated 45° connector square at octagon junction (no upright square). */
@@ -761,10 +1001,30 @@ function roundCoord(v) {
           addSegment(map, cx - h, cy, cx, cy - h);
         }
 
-        function buildPattern(layout) {
+        /**
+         * Star grid only: upright Strength square half-side so corners meet the
+         * outer dual-square frame at the junction (scales with tile size).
+         * half = (T − 2·cut)/2 · starScaleToOctagon — same as outer a-square arm.
+         * @param {number} T tile size
+         * @returns {number}
+         */
+        function starGridJunctionStrengthHalfSide(T) {
+          var cut = T * CUT_RATIO;
+          var cx = T / 2;
+          var cy = T / 2;
+          var half = (T - 2 * cut) / 2;
+          var starScale = starScaleToOctagon(cx, cy, T, cut);
+          return roundCoord(half * starScale);
+        }
+
+        function buildPattern(layout, pinwheelFactor) {
+          if (typeof pinwheelFactor !== "number") {
+            pinwheelFactor = 0;
+          }
           var T = layout.tileSize;
           var map = new Map();
           var starFills = [];
+          var starRhombusFills = [];
           var row;
           var col;
 
@@ -773,9 +1033,11 @@ function roundCoord(v) {
               addUnitCell(
                 map,
                 starFills,
+                starRhombusFills,
                 col * T,
                 layout.offsetY + row * T,
-                T
+                T,
+                pinwheelFactor
               );
             }
           }
@@ -789,6 +1051,7 @@ function roundCoord(v) {
           return {
             segments: Array.from(map.values()),
             starFills: starFills,
+            starRhombusFills: starRhombusFills,
           };
         }
 
@@ -932,13 +1195,18 @@ function roundCoord(v) {
          * @param {{ tileSize: number, cols: number, rows: number, offsetY: number }} layout
          * @param {number} canvasW
          * @param {number} canvasH
-         * @returns {{ id: string, cx: number, cy: number, r: number }[]}
+         * @param {number} [innerScale]
+         * @returns {{ id: string, cx: number, cy: number, r: number, halfSide: number }[]}
          */
-        function buildJunctionCircleCatalog(layout, canvasW, canvasH) {
+        function buildJunctionCircleCatalog(layout, canvasW, canvasH, innerScale) {
+          if (typeof innerScale !== "number") {
+            innerScale = 1;
+          }
           var T = layout.tileSize;
           var cut = T * CUT_RATIO;
-          var h = cut;
+          var h = cut * innerScale;
           var r = (cut * Math.SQRT2) / 2;
+          var halfSide = starGridJunctionStrengthHalfSide(T);
           var catalog = [];
           var row;
           var col;
@@ -950,10 +1218,10 @@ function roundCoord(v) {
               cx = col * T;
               cy = layout.offsetY + row * T;
               if (
-                cx + h <= 0 ||
-                cx - h >= canvasW ||
-                cy + h <= 0 ||
-                cy - h >= canvasH
+                cx + halfSide <= 0 ||
+                cx - halfSide >= canvasW ||
+                cy + halfSide <= 0 ||
+                cy - halfSide >= canvasH
               ) {
                 continue;
               }
@@ -962,6 +1230,7 @@ function roundCoord(v) {
                 cx: cx,
                 cy: cy,
                 r: r,
+                halfSide: halfSide,
               });
             }
           }

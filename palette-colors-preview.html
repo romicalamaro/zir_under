@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>טבלת פלטות — תצוגת צבעים</title>
+    <style>
+      :root {
+        --bg: #f6f4ee;
+        --text: #1a1a1a;
+        --border: #ccc9be;
+        --header: #ebe6d8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 1.25rem 1.5rem 2rem;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.4;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem 1rem;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+        flex: 1 1 auto;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        padding: 0.4rem 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #fff;
+      }
+      button:hover {
+        background: #fffef8;
+      }
+      #status {
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 0.75rem;
+      }
+      #status.is-error {
+        color: #b00020;
+      }
+      .table-wrap {
+        overflow: auto;
+        max-width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+      }
+      table {
+        border-collapse: collapse;
+        width: max-content;
+        min-width: 100%;
+        font-size: 0.82rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.35rem 0.5rem;
+        vertical-align: middle;
+        max-width: 14rem;
+      }
+      th {
+        background: var(--header);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      tr.section-row td {
+        background: #e8e4d6;
+        font-weight: 600;
+      }
+      tr.division-row td {
+        background: #f0ede4;
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+      td.division {
+        text-align: center;
+        font-family: ui-monospace, monospace;
+        white-space: nowrap;
+      }
+      td.slot {
+        font-family: ui-monospace, monospace;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      td.color-cell {
+        font-family: ui-monospace, monospace;
+        text-align: center;
+        min-width: 5.5rem;
+        white-space: nowrap;
+      }
+      td.color-cell.is-empty {
+        background: repeating-linear-gradient(
+          45deg,
+          #f0f0f0,
+          #f0f0f0 6px,
+          #fafafa 6px,
+          #fafafa 12px
+        );
+        color: #888;
+      }
+      td.color-cell.is-invalid {
+        background: #ffe8e8;
+        color: #900;
+      }
+      a.back {
+        font-size: 0.9rem;
+        color: #3c06a7;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>טבלת פלטות — תצוגת צבעים</h1>
+      <div class="toolbar">
+        <button type="button" id="reload-btn">רענון</button>
+        <a class="back" href="index.html">← חזרה לאפליקציה</a>
+      </div>
+    </header>
+    <p id="status">טוען…</p>
+    <div class="table-wrap">
+      <table id="palette-table" aria-label="טבלת צבעי פלטות">
+        <thead id="palette-thead">
+          <tr>
+            <th>קטגוריה</th>
+            <th>חלוקה</th>
+            <th>Slot</th>
+            <th>אלמנט</th>
+            <th>Palette 1</th>
+          </tr>
+        </thead>
+        <tbody id="palette-tbody"></tbody>
+      </table>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var SHEET_DOC_ID = "1yMwNB7MopTJWDEH328VF0WiU2XXdPu5Cfs0I1YDyeDQ";
+        var SHEET_GID = "790839210";
+        var SHEET_CSV_URL =
+          "https://docs.google.com/spreadsheets/d/" +
+          SHEET_DOC_ID +
+          "/export?format=csv&gid=" +
+          SHEET_GID;
+        var LOCAL_CSV_URL = "data/sheet-palette-colors.csv";
+
+        var statusEl = document.getElementById("status");
+        var thead = document.getElementById("palette-thead");
+        var tbody = document.getElementById("palette-tbody");
+        var reloadBtn = document.getElementById("reload-btn");
+        var colorColumnLabels = ["Palette 1"];
+
+        function normalizeHex(value) {
+          if (!value || typeof value !== "string") return null;
+          var v = value.trim();
+          if (!v) return null;
+          if (v.charAt(0) !== "#") v = "#" + v;
+          v = v.toLowerCase();
+          if (/^#[0-9a-f]{3}$/.test(v)) {
+            return (
+              "#" +
+              v.charAt(1) +
+              v.charAt(1) +
+              v.charAt(2) +
+              v.charAt(2) +
+              v.charAt(3) +
+              v.charAt(3)
+            );
+          }
+          if (/^#[0-9a-f]{6}$/.test(v)) return v;
+          return null;
+        }
+
+        function contrastText(hex) {
+          var h = hex.replace("#", "");
+          var r = parseInt(h.substr(0, 2), 16);
+          var g = parseInt(h.substr(2, 2), 16);
+          var b = parseInt(h.substr(4, 2), 16);
+          var yiq = (r * 299 + g * 587 + b * 114) / 1000;
+          return yiq >= 140 ? "#111111" : "#ffffff";
+        }
+
+        function parseCsvLine(line) {
+          var fields = [];
+          var current = "";
+          var inQuotes = false;
+          var i;
+          for (i = 0; i < line.length; i++) {
+            var ch = line.charAt(i);
+            if (inQuotes) {
+              if (ch === '"') {
+                if (line.charAt(i + 1) === '"') {
+                  current += '"';
+                  i++;
+                } else {
+                  inQuotes = false;
+                }
+              } else {
+                current += ch;
+              }
+            } else if (ch === '"') {
+              inQuotes = true;
+            } else if (ch === ",") {
+              fields.push(current);
+              current = "";
+            } else {
+              current += ch;
+            }
+          }
+          fields.push(current);
+          return fields;
+        }
+
+        function getCsvLayout(headerLine) {
+          var header = (headerLine || "").replace(/^\uFEFF/, "");
+          var headerCols = parseCsvLine(header);
+          var colorsStart = 4;
+          var colorLabels = [];
+          var ci;
+          if (header.indexOf(",Division,") !== -1 || header.indexOf(",Division,Slot,") !== -1) {
+            for (ci = colorsStart; ci < headerCols.length; ci++) {
+              var label = (headerCols[ci] || "").trim();
+              if (label) colorLabels.push(label);
+            }
+            return {
+              hasDivision: true,
+              division: 1,
+              slot: 2,
+              element: 3,
+              colorsStart: colorsStart,
+              colorLabels: colorLabels,
+            };
+          }
+          colorsStart = 3;
+          colorLabels = [];
+          for (ci = colorsStart; ci < headerCols.length; ci++) {
+            label = (headerCols[ci] || "").trim();
+            if (label) colorLabels.push(label);
+          }
+          return {
+            hasDivision: false,
+            division: -1,
+            slot: 1,
+            element: 2,
+            colorsStart: colorsStart,
+            colorLabels: colorLabels,
+          };
+        }
+
+        function parseCsvRecords(text) {
+          var records = [];
+          var fields = [];
+          var current = "";
+          var inQuotes = false;
+          var body = (text || "").replace(/^\uFEFF/, "");
+          var i;
+          var ch;
+          for (i = 0; i < body.length; i++) {
+            ch = body.charAt(i);
+            if (inQuotes) {
+              if (ch === '"') {
+                if (body.charAt(i + 1) === '"') {
+                  current += '"';
+                  i++;
+                } else {
+                  inQuotes = false;
+                }
+              } else if (ch === "\r") {
+                if (body.charAt(i + 1) === "\n") i++;
+                current += "\n";
+              } else if (ch === "\n") {
+                current += "\n";
+              } else {
+                current += ch;
+              }
+            } else if (ch === '"') {
+              inQuotes = true;
+            } else if (ch === ",") {
+              fields.push(current);
+              current = "";
+            } else if (ch === "\r") {
+              if (body.charAt(i + 1) === "\n") i++;
+              fields.push(current);
+              current = "";
+              records.push(fields);
+              fields = [];
+            } else if (ch === "\n") {
+              fields.push(current);
+              current = "";
+              records.push(fields);
+              fields = [];
+            } else {
+              current += ch;
+            }
+          }
+          if (current.length || fields.length) {
+            fields.push(current);
+            records.push(fields);
+          }
+          return records;
+        }
+
+        function parseRows(text) {
+          var records = parseCsvRecords(text);
+          if (!records.length) return [];
+          var layout = getCsvLayout(records[0].join(","));
+          colorColumnLabels = layout.colorLabels.length
+            ? layout.colorLabels
+            : ["Palette 1"];
+          var rows = [];
+          var li;
+          for (li = 1; li < records.length; li++) {
+            var cols = records[li];
+            if (!cols || !cols.length) continue;
+            var colors = [];
+            var pi;
+            for (pi = 0; pi < colorColumnLabels.length; pi++) {
+              colors.push((cols[layout.colorsStart + pi] || "").trim());
+            }
+            rows.push({
+              category: (cols[0] || "").trim(),
+              division: layout.hasDivision ? (cols[1] || "").trim() : "",
+              slot: (cols[layout.slot] || "").trim(),
+              element: (cols[layout.element] || "").trim(),
+              colors: colors,
+            });
+          }
+          return rows;
+        }
+
+        function renderTableHeader() {
+          var tr = document.createElement("tr");
+          var headers = ["קטגוריה", "חלוקה", "Slot", "אלמנט"].concat(colorColumnLabels);
+          var hi;
+          for (hi = 0; hi < headers.length; hi++) {
+            var th = document.createElement("th");
+            th.textContent = headers[hi];
+            tr.appendChild(th);
+          }
+          thead.textContent = "";
+          thead.appendChild(tr);
+        }
+
+        function makeColorCell(raw) {
+          var td = document.createElement("td");
+          td.className = "color-cell";
+          if (!raw) {
+            td.classList.add("is-empty");
+            td.textContent = "—";
+            td.title = "ריק";
+            return td;
+          }
+          var hex = normalizeHex(raw);
+          if (!hex) {
+            td.classList.add("is-invalid");
+            td.textContent = raw;
+            td.title = "ערך לא תקין";
+            return td;
+          }
+          td.textContent = hex;
+          td.style.backgroundColor = hex;
+          td.style.color = contrastText(hex);
+          td.title = hex;
+          return td;
+        }
+
+        function renderTable(rows) {
+          renderTableHeader();
+          tbody.textContent = "";
+          var colSpan = 4 + colorColumnLabels.length;
+          var ri;
+          for (ri = 0; ri < rows.length; ri++) {
+            var row = rows[ri];
+            var tr = document.createElement("tr");
+            if (!row.slot) {
+              if (row.division || (row.element && row.element.indexOf("◆") === 0)) {
+                tr.className = "division-row";
+                var tdDiv = document.createElement("td");
+                tdDiv.colSpan = colSpan;
+                var divLabel = row.category ? row.category + " · " : "";
+                if (row.division) divLabel += "חלוקה " + row.division;
+                if (row.element) {
+                  divLabel += (divLabel ? " — " : "") + row.element;
+                }
+                tdDiv.textContent = divLabel || row.category;
+                tr.appendChild(tdDiv);
+              } else {
+                tr.className = "section-row";
+                var tdSection = document.createElement("td");
+                tdSection.colSpan = colSpan;
+                tdSection.textContent = row.category || "(קטגוריה)";
+                tr.appendChild(tdSection);
+              }
+              tbody.appendChild(tr);
+              continue;
+            }
+            var tdCat = document.createElement("td");
+            tdCat.textContent = row.category;
+            var tdDivision = document.createElement("td");
+            tdDivision.className = "division";
+            tdDivision.textContent = row.division || "—";
+            var tdSlot = document.createElement("td");
+            tdSlot.className = "slot";
+            tdSlot.textContent = row.slot;
+            var tdEl = document.createElement("td");
+            tdEl.textContent = row.element;
+            tr.appendChild(tdCat);
+            tr.appendChild(tdDivision);
+            tr.appendChild(tdSlot);
+            tr.appendChild(tdEl);
+            var ci;
+            for (ci = 0; ci < row.colors.length; ci++) {
+              tr.appendChild(makeColorCell(row.colors[ci]));
+            }
+            tbody.appendChild(tr);
+          }
+        }
+
+        function setStatus(msg, isError) {
+          statusEl.textContent = msg;
+          statusEl.classList.toggle("is-error", !!isError);
+        }
+
+        function fetchText(url) {
+          var bust =
+            (url.indexOf("?") >= 0 ? "&" : "?") + "_=" + Date.now();
+          return fetch(url + bust, {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
+          }).then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          });
+        }
+
+        function load() {
+          setStatus("טוען…");
+          tbody.textContent = "";
+          fetchText(SHEET_CSV_URL)
+            .then(function (text) {
+              if (
+                text.indexOf("Category,") === -1 ||
+                (text.indexOf(",Slot,") === -1 &&
+                  text.indexOf(",Division,Slot,") === -1)
+              ) {
+                throw new Error("Invalid sheet CSV");
+              }
+              renderTable(parseRows(text));
+              setStatus("נטען מ-Google Sheet (עדכני)");
+            })
+            .catch(function () {
+              return fetchText(LOCAL_CSV_URL).then(function (text) {
+                if (
+                  text.indexOf("Category,") === -1 ||
+                  (text.indexOf(",Slot,") === -1 &&
+                    text.indexOf(",Division,Slot,") === -1)
+                ) {
+                  throw new Error("Invalid local CSV");
+                }
+                renderTable(parseRows(text));
+                setStatus("נטען מקובץ מקומי: data/sheet-palette-colors.csv");
+              });
+            })
+            .catch(function (err) {
+              setStatus("שגיאה בטעינה: " + (err && err.message ? err.message : err), true);
+            });
+        }
+
+        reloadBtn.addEventListener("click", load);
+        var previewWasHidden = false;
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "hidden") {
+            previewWasHidden = true;
+            return;
+          }
+          if (previewWasHidden) {
+            previewWasHidden = false;
+            setTimeout(load, 200);
+          }
+        });
+        window.addEventListener("pageshow", function (ev) {
+          if (ev.persisted) load();
+        });
+        load();
+      })();
+    </script>
+  </body>
+</html>

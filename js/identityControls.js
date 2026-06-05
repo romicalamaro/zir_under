@@ -5,10 +5,6 @@
   var livingInIranChoice = true;
   /** @type {((choice: null | boolean) => void) | null} */
   var onLivingInIranChange = null;
-  /** @type {1 | 2 | 3} */
-  var lostCircleChoice = 1;
-  /** @type {((choice: 1 | 2 | 3) => void) | null} */
-  var onLostCircleChange = null;
   /** @type {string} */
   var ageValue =
     typeof LABEL_BAR_AGE_DEFAULT !== "undefined"
@@ -43,6 +39,10 @@
   var nameDisplayMode = "anonymous";
   /** @type {(() => void) | null} */
   var onNameChange = null;
+  /** @type {"inIran" | "whereILive" | "nowhere"} */
+  var homeAtChoice = "inIran";
+  /** @type {((choice: "inIran" | "whereILive" | "nowhere") => void) | null} */
+  var onHomeAtChange = null;
 
   /**
    * @param {object} options
@@ -267,94 +267,43 @@
     );
   }
 
-  /**
-   * @param {object} options
-   * @param {string} options.sliderId
-   * @param {string} options.controlId
-   * @param {string} options.labelAttr
-   * @param {Record<number, string>} options.labelsMap
-   * @param {Record<number, string>} [options.ariaLabelsMap]
-   * @param {(value: number) => void} [options.onChange]
-   */
-  function initThreeStepSlider(options) {
-    var slider = document.getElementById(options.sliderId);
-    var control = document.getElementById(options.controlId);
-    if (!slider || !control) return;
+  function initHomeAtPicker() {
+    var buttons = document.querySelectorAll("[data-home-at]");
+    if (!buttons.length) return;
 
-    var segments = control.querySelectorAll(".sidebar__identity-regime-segment");
-    var labels = control.querySelectorAll(".sidebar__identity-regime-label");
-    var labelAttr = options.labelAttr;
-    var labelsMap = options.labelsMap;
-    var ariaLabelsMap = options.ariaLabelsMap || labelsMap;
-
-    function update() {
-      var value = Number(slider.value);
-      var ariaText = ariaLabelsMap[value] || ariaLabelsMap[1] || "";
+    function applyUi(choice) {
       var i;
-      for (i = 0; i < segments.length; i++) {
-        var segValue = Number(segments[i].getAttribute("data-segment"));
-        segments[i].classList.toggle("is-active", segValue === value);
+      for (i = 0; i < buttons.length; i++) {
+        var btn = buttons[i];
+        var value = btn.getAttribute("data-home-at");
+        var isActive = value === choice;
+        btn.classList.toggle("is-active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
       }
-      for (i = 0; i < labels.length; i++) {
-        var labelValue = Number(labels[i].getAttribute(labelAttr));
-        labels[i].classList.toggle("is-active", labelValue === value);
-      }
-      slider.setAttribute("aria-valuenow", String(value));
-      slider.setAttribute("aria-valuetext", ariaText);
-      if (options.onChange) options.onChange(value);
     }
 
-    update();
-    slider.addEventListener("input", update);
+    function setChoice(choice) {
+      homeAtChoice = choice;
+      applyUi(homeAtChoice);
+      if (onHomeAtChange) onHomeAtChange(homeAtChoice);
+    }
 
-    for (var j = 0; j < labels.length; j++) {
+    applyUi(homeAtChoice);
+
+    for (var j = 0; j < buttons.length; j++) {
       (function (btn) {
         btn.addEventListener("click", function () {
-          slider.value = btn.getAttribute(labelAttr);
-          update();
+          var value = btn.getAttribute("data-home-at");
+          if (
+            value === "inIran" ||
+            value === "whereILive" ||
+            value === "nowhere"
+          ) {
+            setChoice(value);
+          }
         });
-      })(labels[j]);
+      })(buttons[j]);
     }
-  }
-
-  function initLostSlider() {
-    initThreeStepSlider({
-      sliderId: "identity-lost-slider",
-      controlId: "identity-lost-control",
-      labelAttr: "data-lost",
-      labelsMap: {
-        1: "Inner Circle",
-        2: "",
-        3: "Distant Circle",
-      },
-      ariaLabelsMap: {
-        1: "Inner Circle",
-        2: "Middle",
-        3: "Distant Circle",
-      },
-      onChange: function (value) {
-        lostCircleChoice = /** @type {1 | 2 | 3} */ (value);
-        if (onLostCircleChange) onLostCircleChange(lostCircleChoice);
-      },
-    });
-  }
-
-  function initWearControlSlider(sliderId, outputId) {
-    var slider = document.getElementById(sliderId);
-    var output = document.getElementById(outputId);
-    if (!slider || !output) return;
-
-    function update() {
-      output.textContent = slider.value;
-    }
-
-    update();
-    slider.addEventListener("input", update);
-  }
-
-  function initWearControlSliders() {
-    initWearControlSlider("wear-control-home", "wear-control-home-out");
-    initWearControlSlider("wear-control-outside", "wear-control-outside-out");
   }
 
   function init() {
@@ -364,8 +313,7 @@
     initNameInput();
     initNameDisplayModeToggle();
     initFromAndNowInInputs();
-    initLostSlider();
-    initWearControlSliders();
+    initHomeAtPicker();
   }
 
   window.IdentityControls = {
@@ -376,14 +324,6 @@
     /** @param {(choice: null | boolean) => void} fn */
     setOnLivingInIranChange: function (fn) {
       onLivingInIranChange = fn;
-    },
-    /** @returns {1 | 2 | 3} */
-    getLostCircle: function () {
-      return lostCircleChoice;
-    },
-    /** @param {(choice: 1 | 2 | 3) => void} fn */
-    setOnLostCircleChange: function (fn) {
-      onLostCircleChange = fn;
     },
     /** @returns {string} */
     getAge: function () {
@@ -424,6 +364,14 @@
     /** @param {() => void} fn */
     setOnNameChange: function (fn) {
       onNameChange = fn;
+    },
+    /** @returns {"inIran" | "whereILive" | "nowhere"} */
+    getHomeAt: function () {
+      return homeAtChoice;
+    },
+    /** @param {(choice: "inIran" | "whereILive" | "nowhere") => void} fn */
+    setOnHomeAtChange: function (fn) {
+      onHomeAtChange = fn;
     },
   };
 

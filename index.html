@@ -155,70 +155,43 @@
                 </div>
               </div>
               <div class="sidebar__identity-field">
-                <span class="sidebar__identity-heading">Lost</span>
-                <div class="sidebar__identity-slot" id="identity-lost-slot">
+                <span
+                  class="sidebar__identity-heading sidebar__identity-heading--wrap"
+                  >where do you feel most &quot;at home&quot; today?</span
+                >
+                <div class="sidebar__identity-slot" id="identity-home-at-slot">
                   <div
-                    class="sidebar__identity-regime"
-                    id="identity-lost-control"
+                    class="sidebar__toggle sidebar__identity-home-toggle"
+                    role="radiogroup"
+                    aria-label='where do you feel most "at home" today?'
                   >
-                    <div class="sidebar__identity-regime-slider-wrap">
-                      <div
-                        class="sidebar__identity-regime-segments"
-                        aria-hidden="true"
-                      >
-                        <span
-                          class="sidebar__identity-regime-segment is-active"
-                          data-segment="1"
-                        ></span>
-                        <span
-                          class="sidebar__identity-regime-segment"
-                          data-segment="2"
-                        ></span>
-                        <span
-                          class="sidebar__identity-regime-segment"
-                          data-segment="3"
-                        ></span>
-                      </div>
-                      <input
-                        id="identity-lost-slider"
-                        class="sidebar__identity-regime-slider"
-                        type="range"
-                        min="1"
-                        max="3"
-                        value="1"
-                        step="1"
-                        aria-valuemin="1"
-                        aria-valuemax="3"
-                        aria-valuenow="1"
-                        aria-valuetext="Inner Circle"
-                      />
-                    </div>
-                    <div
-                      class="sidebar__identity-regime-labels"
-                      role="group"
-                      aria-label="Lost"
+                    <button
+                      type="button"
+                      id="identity-home-at-in-iran-btn"
+                      class="sidebar__toggle-btn is-active"
+                      data-home-at="inIran"
+                      aria-pressed="true"
                     >
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label is-active"
-                        data-lost="1"
-                      >
-                        Inner Circle
-                      </button>
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label"
-                        data-lost="2"
-                        aria-label="Middle"
-                      ></button>
-                      <button
-                        type="button"
-                        class="sidebar__identity-regime-label"
-                        data-lost="3"
-                      >
-                        Distant Circle
-                      </button>
-                    </div>
+                      In Iran
+                    </button>
+                    <button
+                      type="button"
+                      id="identity-home-at-where-i-live-btn"
+                      class="sidebar__toggle-btn"
+                      data-home-at="whereILive"
+                      aria-pressed="false"
+                    >
+                      Outside Iran / where I live now
+                    </button>
+                    <button
+                      type="button"
+                      id="identity-home-at-nowhere-btn"
+                      class="sidebar__toggle-btn"
+                      data-home-at="nowhere"
+                      aria-pressed="false"
+                    >
+                      Nowhere / in between
+                    </button>
                   </div>
                 </div>
               </div>
@@ -247,6 +220,14 @@
                 aria-pressed="false"
               >
                 Star grid
+              </button>
+              <button
+                type="button"
+                id="grid-choose-girih-btn"
+                class="sidebar__grid-btn"
+                aria-pressed="false"
+              >
+                Girih
               </button>
             </div>
             <div class="sidebar__grid-choose-sliders">
@@ -297,18 +278,16 @@
                   <output id="inner-scale-out" for="inner-scale">1</output>
                 </div>
               </div>
-              <button
-                type="button"
-                id="randomize-all-controls-btn"
-                class="sidebar__btn sidebar__grid-randomize-all-btn"
-              >
-                Randomize all
-              </button>
             </div>
           </section>
 
           <section class="sidebar__section sidebar__section--color-divisions">
             <h2 class="sidebar__title">Colors</h2>
+            <p class="sidebar__hint">
+              <a href="palette-colors-preview.html" target="_blank" rel="noopener"
+                >תצוגת טבלת צבעים (תאים צבועים)</a
+              >
+            </p>
             <div class="sidebar__sheet-palette-row">
               <span class="sidebar__grid-density-label">Palette</span>
               <div
@@ -328,10 +307,10 @@
                   type="button"
                   id="sheet-palette-random-btn"
                   class="sidebar__palette-btn sidebar__palette-btn--label"
-                  aria-label="Shuffle palette"
-                  title="Shuffle palette"
+                  aria-label="החלף בין פלטות 1 עד 8"
+                  title="החלף בין פלטות 1 עד 8"
                 >
-                  Shuffle palette
+                  Palette 1–8
                 </button>
                 <button
                   type="button"
@@ -341,6 +320,84 @@
                   Mix areas
                 </button>
               </div>
+            </div>
+            <div class="sidebar__blend-swatches" id="blend-area-swatches">
+              <span class="sidebar__grid-density-label">שטחי שילוב (H1–H5)</span>
+              <p class="sidebar__hint sidebar__hint--blend">
+                פיפטה לכל אזור — נסי צבעים על הקנבס; אחר כך העתיקי ל־Palette 1 בגיליון (שורות H1–H5).
+              </p>
+              <ul class="sidebar__blend-swatch-list" aria-label="צבעי שטחי שילוב">
+                <li class="sidebar__blend-swatch-row">
+                  <label class="sidebar__blend-swatch-label" for="blend-color-H1">
+                    <span class="sidebar__blend-swatch-id">H1</span>
+                    <span class="sidebar__blend-swatch-caption">אזור 1 · exclusion</span>
+                  </label>
+                  <input
+                    type="color"
+                    id="blend-color-H1"
+                    class="sidebar__blend-swatch-input"
+                    data-slot="H1"
+                    value="#4200ae"
+                    aria-label="צבע אזור 1 exclusion"
+                  />
+                </li>
+                <li class="sidebar__blend-swatch-row">
+                  <label class="sidebar__blend-swatch-label" for="blend-color-H2">
+                    <span class="sidebar__blend-swatch-id">H2</span>
+                    <span class="sidebar__blend-swatch-caption">אזור 2 · exclusion</span>
+                  </label>
+                  <input
+                    type="color"
+                    id="blend-color-H2"
+                    class="sidebar__blend-swatch-input"
+                    data-slot="H2"
+                    value="#b2ff00"
+                    aria-label="צבע אזור 2 exclusion"
+                  />
+                </li>
+                <li class="sidebar__blend-swatch-row">
+                  <label class="sidebar__blend-swatch-label" for="blend-color-H3">
+                    <span class="sidebar__blend-swatch-id">H3</span>
+                    <span class="sidebar__blend-swatch-caption">אזור 3 · exclusion</span>
+                  </label>
+                  <input
+                    type="color"
+                    id="blend-color-H3"
+                    class="sidebar__blend-swatch-input"
+                    data-slot="H3"
+                    value="#ffffff"
+                    aria-label="צבע אזור 3 exclusion"
+                  />
+                </li>
+                <li class="sidebar__blend-swatch-row">
+                  <label class="sidebar__blend-swatch-label" for="blend-color-H4">
+                    <span class="sidebar__blend-swatch-id">H4</span>
+                    <span class="sidebar__blend-swatch-caption">אזור 4 · exclusion</span>
+                  </label>
+                  <input
+                    type="color"
+                    id="blend-color-H4"
+                    class="sidebar__blend-swatch-input"
+                    data-slot="H4"
+                    value="#000000"
+                    aria-label="צבע אזור 4 exclusion"
+                  />
+                </li>
+                <li class="sidebar__blend-swatch-row">
+                  <label class="sidebar__blend-swatch-label" for="blend-color-H5">
+                    <span class="sidebar__blend-swatch-id">H5</span>
+                    <span class="sidebar__blend-swatch-caption">אזור 5 · color dodge</span>
+                  </label>
+                  <input
+                    type="color"
+                    id="blend-color-H5"
+                    class="sidebar__blend-swatch-input"
+                    data-slot="H5"
+                    value="#303030"
+                    aria-label="צבע אזור 5 color dodge"
+                  />
+                </li>
+              </ul>
             </div>
             <div class="sidebar__grid-density">
               <span class="sidebar__grid-density-label">Color divisions</span>
@@ -395,7 +452,7 @@
                     >Full color</span
                   >
                   <span class="sidebar__grid-density-range-label"
-                    >60% white</span
+                    >40% white</span
                   >
                 </div>
                 <div class="sidebar__body-autonomy-control sidebar__item-control">
@@ -405,8 +462,8 @@
                     min="0"
                     max="100"
                     value="0"
-                    step="1"
-                    aria-label="Family and friends in Iran color fade. Full color to 60 percent white."
+                    step="25"
+                    aria-label="Family and friends in Iran color fade. Full color to 40 percent white."
                   />
                   <output id="border-side-white-fill-out" for="border-side-white-fill"
                     >0%</output
@@ -423,79 +480,81 @@
                 >How much were you able to control what you wear?</span
               >
               <div class="sidebar__wear-autonomy-sliders">
-                <div class="sidebar__grid-density">
-                  <span class="sidebar__grid-density-label">Home</span>
-                  <div class="sidebar__grid-density-control sidebar__item-control">
-                    <input
-                      id="wear-control-home"
-                      type="range"
-                      min="0"
-                      max="100"
-                      value="50"
-                      step="1"
-                      aria-label="How much were you able to control what you wear at home?"
-                    />
-                    <output id="wear-control-home-out" for="wear-control-home"
-                      >50</output
-                    >
+                <div class="sidebar__fan-tuning-group">
+                  <span class="sidebar__grid-density-label">Both fans</span>
+                  <div class="sidebar__fan-tuning-row">
+                    <span class="sidebar__fan-tuning-label">Leaves</span>
+                    <div class="sidebar__grid-density-control sidebar__wear-control-range">
+                      <input
+                        id="fan-leaves"
+                        type="range"
+                        min="0"
+                        max="10"
+                        value="0"
+                        step="1"
+                        aria-label="Fan leaves. Step 0 fully open, step 10 no fan."
+                      />
+                    </div>
                   </div>
-                </div>
-                <div class="sidebar__grid-density">
-                  <span class="sidebar__grid-density-label">Outside</span>
-                  <div class="sidebar__grid-density-control sidebar__item-control">
-                    <input
-                      id="wear-control-outside"
-                      type="range"
-                      min="0"
-                      max="100"
-                      value="50"
-                      step="1"
-                      aria-label="How much were you able to control what you wear outside?"
-                    />
-                    <output id="wear-control-outside-out" for="wear-control-outside"
-                      >50</output
-                    >
+                  <div class="sidebar__fan-tuning-row">
+                    <span class="sidebar__fan-tuning-label">Leaf size</span>
+                    <div class="sidebar__grid-density-control sidebar__wear-control-range">
+                      <input
+                        id="fan-leaf-size"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="90"
+                        step="1"
+                        aria-label="Inner leaf size — width and length"
+                      />
+                    </div>
+                  </div>
+                  <div class="sidebar__fan-tuning-row">
+                    <span class="sidebar__fan-tuning-label">Arc position</span>
+                    <div class="sidebar__grid-density-control sidebar__wear-control-range">
+                      <input
+                        id="fan-arc"
+                        type="range"
+                        min="20"
+                        max="80"
+                        value="50"
+                        step="1"
+                        aria-label="Fan inner arc position"
+                      />
+                    </div>
+                  </div>
+                  <div class="sidebar__fan-tuning-row">
+                    <span class="sidebar__fan-tuning-label">Star size</span>
+                    <div class="sidebar__grid-density-control sidebar__wear-control-range">
+                      <input
+                        id="fan-stars"
+                        type="range"
+                        min="50"
+                        max="95"
+                        value="75"
+                        step="1"
+                        aria-label="Fan star size"
+                      />
+                    </div>
+                  </div>
+                  <div class="sidebar__fan-tuning-row">
+                    <span class="sidebar__fan-tuning-label">Extra band offset</span>
+                    <div class="sidebar__grid-density-control sidebar__wear-control-range">
+                      <input
+                        id="fan-outside-extra-arc"
+                        type="range"
+                        min="0"
+                        max="80"
+                        value="24"
+                        step="1"
+                        aria-label="Fan extra arc distance from inner arc pair"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
-
-          <section class="sidebar__section sidebar__section--broken-system">
-            <h2 class="sidebar__title">State Violence</h2>
-            <div
-              class="sidebar__broken-system-toggle sidebar__toggle"
-              role="group"
-              aria-label="State violence interaction mode"
-            >
-              <button
-                type="button"
-                id="mode-view-btn"
-                class="sidebar__toggle-btn is-active"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                id="mode-merge-btn"
-                class="sidebar__toggle-btn"
-                aria-pressed="false"
-              >
-                Merge
-              </button>
-              <button
-                type="button"
-                id="mode-restore-btn"
-                class="sidebar__toggle-btn"
-                aria-pressed="false"
-              >
-                Restore
-              </button>
-            </div>
-            <button type="button" id="reset-grid-btn" class="sidebar__btn" disabled>
-              Reset grid
-            </button>
           </section>
 
           <section class="sidebar__section sidebar__section--feelings">
@@ -504,28 +563,6 @@
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Fear</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Fear on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-anger-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-anger-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-anger-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
@@ -533,13 +570,13 @@
                       id="anger-vertical-length"
                       type="range"
                       min="0"
-                      max="40"
-                      value="40"
-                      step="1"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Vertical line length"
                     />
                     <output id="anger-vertical-length-out" for="anger-vertical-length"
-                      >40%</output
+                      >0%</output
                     >
                   </div>
                   <div class="sidebar__grid-density">
@@ -550,12 +587,12 @@
                         type="range"
                         min="0"
                         max="100"
-                        value="17"
-                        step="1"
+                        value="0"
+                        step="25"
                         aria-label="Anxiety / Tension — vertical line thickness"
                       />
                       <output id="anxiety-vertical-stroke-out" for="anxiety-vertical-stroke"
-                        >3 px</output
+                        >0 px</output
                       >
                     </div>
                   </div>
@@ -564,98 +601,78 @@
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Anger</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Anger on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-fear-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
+                </div>
+                <div class="sidebar__feelings-slot" id="feelings-fear-slot">
+                  <div class="sidebar__feelings-control sidebar__item-control">
+                    <input
+                      id="anger-triangle-density"
+                      type="range"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
+                      aria-label="Anger triangle density"
+                    />
+                    <output id="anger-triangle-density-out" for="anger-triangle-density"
+                      >0%</output
                     >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-fear-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
                   </div>
                 </div>
-                <div class="sidebar__feelings-slot" id="feelings-fear-slot"></div>
               </div>
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Hope</span>
+                </div>
+                <div class="sidebar__feelings-slot" id="feelings-hope-slot">
                   <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
+                    class="sidebar__hope-mode-toggle sidebar__toggle"
                     role="group"
-                    aria-label="Show Hope on canvas"
+                    aria-label="Hope interaction mode"
                   >
                     <button
                       type="button"
-                      id="feelings-hope-canvas-on"
+                      id="hope-mode-view-btn"
                       class="sidebar__toggle-btn is-active"
                       aria-pressed="true"
                     >
-                      On
+                      View
                     </button>
                     <button
                       type="button"
-                      id="feelings-hope-canvas-off"
+                      id="hope-mode-merge-btn"
                       class="sidebar__toggle-btn"
                       aria-pressed="false"
                     >
-                      Off
+                      Merge
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    id="hope-reset-grid-btn"
+                    class="sidebar__btn"
+                    disabled
+                  >
+                    Reset grid
+                  </button>
                 </div>
-                <div class="sidebar__feelings-slot" id="feelings-hope-slot"></div>
               </div>
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Sadness</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Sadness on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-sadness-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-sadness-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-sadness-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="circle-density"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="25"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Circle density"
                     />
                     <output id="circle-density-out" for="circle-density"
-                      >25%</output
+                      >0%</output
                     >
                   </div>
                 </div>
@@ -663,42 +680,20 @@
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Longing</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Longing on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-longing-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-longing-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-longing-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="longing-circle-density"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="25"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Longing circle density"
                     />
                     <output id="longing-circle-density-out" for="longing-circle-density"
-                      >25%</output
+                      >0%</output
                     >
                   </div>
                 </div>
@@ -706,42 +701,41 @@
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Grief</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Grief on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-grief-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-grief-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-grief-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="grief-circle-density"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="25"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Grief circle density"
                     />
                     <output id="grief-circle-density-out" for="grief-circle-density"
-                      >25%</output
+                      >0%</output
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="sidebar__feelings-emotion">
+                <div class="sidebar__feelings-emotion-header">
+                  <span class="sidebar__feelings-heading">Strength / Power</span>
+                </div>
+                <div class="sidebar__feelings-slot" id="feelings-strength-slot">
+                  <div class="sidebar__feelings-control sidebar__item-control">
+                    <input
+                      id="strength-density"
+                      type="range"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
+                      aria-label="Strength / Power circle-in-square density"
+                    />
+                    <output id="strength-density-out" for="strength-density"
+                      >0%</output
                     >
                   </div>
                 </div>
@@ -749,28 +743,6 @@
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Pride</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Pride on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-pride-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-pride-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-pain-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
@@ -778,145 +750,59 @@
                       id="auto-merge-intensity"
                       type="range"
                       min="0"
-                      max="100"
-                      value="70"
-                      step="1"
+                      max="7"
+                      value="0"
+                      step="1.75"
                       aria-label="Pride merged area amount and size"
                     />
                     <output id="auto-merge-intensity-out" for="auto-merge-intensity"
-                      >70% · 3–6 areas</output
+                      >Off</output
                     >
                   </div>
                 </div>
-              </div>
-              <div class="sidebar__feelings-emotion">
-                <div class="sidebar__feelings-emotion-header">
-                  <span class="sidebar__feelings-heading">Happiness</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Happiness on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-happiness-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-happiness-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
-                </div>
-                <div class="sidebar__feelings-slot" id="feelings-happiness-slot"></div>
               </div>
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Pain</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Pain on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-pain-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-pain-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-pride-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="pride-fill-percent"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="25"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Pain diamond fill amount"
                     />
                     <output id="pride-fill-percent-out" for="pride-fill-percent"
-                      >25%</output
+                      >0%</output
                     >
                   </div>
-                  <button
-                    type="button"
-                    id="pride-color-shapes-btn"
-                    class="sidebar__btn"
-                  >
-                    Color shapes
-                  </button>
                 </div>
               </div>
               <div class="sidebar__feelings-emotion">
                 <div class="sidebar__feelings-emotion-header">
                   <span class="sidebar__feelings-heading">Guilt / Shame</span>
-                  <div
-                    class="sidebar__toggle sidebar__feelings-canvas-toggle"
-                    role="group"
-                    aria-label="Show Guilt / Shame on canvas"
-                  >
-                    <button
-                      type="button"
-                      id="feelings-guiltShame-canvas-on"
-                      class="sidebar__toggle-btn is-active"
-                      aria-pressed="true"
-                    >
-                      On
-                    </button>
-                    <button
-                      type="button"
-                      id="feelings-guiltShame-canvas-off"
-                      class="sidebar__toggle-btn"
-                      aria-pressed="false"
-                    >
-                      Off
-                    </button>
-                  </div>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-guiltShame-slot">
                   <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="guilt-shame-fill-percent"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="25"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Guilt / Shame hollow diamond fill amount"
                     />
                     <output
                       id="guilt-shame-fill-percent-out"
                       for="guilt-shame-fill-percent"
-                      >25%</output
+                      >0%</output
                     >
                   </div>
-                  <button
-                    type="button"
-                    id="guilt-shame-color-shapes-btn"
-                    class="sidebar__btn"
-                  >
-                    Color shapes
-                  </button>
                 </div>
               </div>
               <div class="sidebar__feelings-emotion">
@@ -924,33 +810,19 @@
                   <span class="sidebar__feelings-heading">Helplessness</span>
                 </div>
                 <div class="sidebar__feelings-slot" id="feelings-helplessness-slot">
-                  <div
-                    class="sidebar__feelings-control sidebar__item-control sidebar__feelings-control--helplessness"
-                  >
+                  <div class="sidebar__feelings-control sidebar__item-control">
                     <input
                       id="helplessness-percent"
                       type="range"
-                      min="10"
-                      max="40"
-                      value="10"
-                      step="1"
+                      min="0"
+                      max="30"
+                      value="0"
+                      step="7.5"
                       aria-label="Helplessness junction X mark density"
                     />
                     <output id="helplessness-percent-out" for="helplessness-percent"
-                      >10%</output
+                      >0%</output
                     >
-                    <label
-                      class="sidebar__feelings-layer-check"
-                      for="helplessness-layer-toggle"
-                    >
-                      <input
-                        id="helplessness-layer-toggle"
-                        type="checkbox"
-                        checked
-                        aria-label="Show Helplessness layer on canvas"
-                      />
-                      Show layer
-                    </label>
                   </div>
                 </div>
               </div>
@@ -984,11 +856,8 @@
           </section>
 
           <p class="sidebar__hint" id="tile-info" aria-live="polite"></p>
-          <p class="sidebar__hint sidebar__hint--mode" id="merge-hint" hidden>
+          <p class="sidebar__hint sidebar__hint--mode" id="hope-merge-hint" hidden>
             Drag across lines to merge
-          </p>
-          <p class="sidebar__hint sidebar__hint--mode" id="restore-hint" hidden>
-            Drag along gaps or next to lines to restore (no loose ends)
           </p>
         </div>
       </aside>
@@ -1030,11 +899,14 @@
       </div>
     </div>
     <script defer src="js/constants.js"></script>
-    <script defer src="js/sheetPalettes.js"></script>
-    <script defer src="js/labelBarSvgAssets.js"></script>
+    <script defer src="js/sheetPalettes.js?v=20260604-csv-multiline"></script>
+    <script defer src="js/labelBarSvgAssets.js?v=20260604-subfolder-icons"></script>
+    <script defer src="js/exportFontData.js"></script>
+    <script defer src="js/opentype.min.js"></script>
     <script defer src="js/topkapiGeometry.js"></script>
     <script defer src="js/nestedStarOctagonsGeometry.js"></script>
+    <script defer src="js/girihGeometry.js"></script>
     <script defer src="js/identityControls.js"></script>
-    <script defer src="js/app.js?v=20260531-palette"></script>
+    <script defer src="js/app.js?v=20260604-sheet-reload"></script>
   </body>
 </html>

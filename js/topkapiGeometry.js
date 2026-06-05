@@ -247,6 +247,87 @@
   }
 
   /**
+   * Octagon perimeter only (no inner diamond / connectors) for one unit cell.
+   * @param {number} T tile size
+   * @param {{x1:number,y1:number,x2:number,y2:number}[]} out
+   * @param {Set<string>} seen
+   */
+  function addOctagonBoundaryUnitSegments(T, out, seen) {
+    var cut = T * CUT;
+    var octagonEdges = getOctagonEdges(T, cut);
+
+    for (var e = 0; e < octagonEdges.length; e++) {
+      var edge = octagonEdges[e];
+      pushSegment(out, seen, edge.x1, edge.y1, edge.x2, edge.y2);
+    }
+  }
+
+  /**
+   * Coarse cell-boundary mesh for Hope merge (octagon outlines only).
+   * @param {number} tileSize
+   * @param {number} canvasW
+   * @param {number} canvasH
+   * @param {number} [octagonsN]
+   * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
+   */
+  function buildCoarseCellBoundarySegments(
+    tileSize,
+    canvasW,
+    canvasH,
+    octagonsN
+  ) {
+    var layout;
+    if (typeof octagonsN === "number" && octagonsN >= 1) {
+      layout = computeLayout(octagonsN, canvasW, canvasH);
+    } else {
+      var T = Math.max(8, tileSize);
+      var cols = Math.ceil(canvasW / T) + 1;
+      var rows = Math.ceil(canvasH / T) + 1;
+      layout = {
+        tileSize: T,
+        cols: cols,
+        rows: rows,
+        offsetY: 0,
+      };
+    }
+
+    var tile = layout.tileSize;
+    var out = [];
+    var seen = new Set();
+    var row;
+    var col;
+    var ox;
+    var oy;
+    var cellOut;
+    var cellSeen;
+    var i;
+    var s;
+
+    for (row = 0; row < layout.rows; row++) {
+      for (col = 0; col < layout.cols; col++) {
+        ox = col * tile;
+        oy = layout.offsetY + row * tile;
+        cellOut = [];
+        cellSeen = new Set();
+        addOctagonBoundaryUnitSegments(tile, cellOut, cellSeen);
+        for (i = 0; i < cellOut.length; i++) {
+          s = cellOut[i];
+          pushSegment(
+            out,
+            seen,
+            s.x1 + ox,
+            s.y1 + oy,
+            s.x2 + ox,
+            s.y2 + oy
+          );
+        }
+      }
+    }
+
+    return out;
+  }
+
+  /**
    * Build deduplicated pattern segments for the full canvas.
    * @param {number} tileSize
    * @param {number} canvasW
@@ -530,22 +611,6 @@
   }
 
   /**
-   * True if at least one endpoint shares a vertex with another visible segment.
-   * @param {{x1:number,y1:number,x2:number,y2:number}} seg
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} visibleSegments
-   * @returns {boolean}
-   */
-  function segmentTouchesVisibleGrid(seg, visibleSegments) {
-    if (!visibleSegments.length) return false;
-    var incidence = buildVertexIncidence(visibleSegments);
-    var v1 = vertexKey(seg.x1, seg.y1);
-    var v2 = vertexKey(seg.x2, seg.y2);
-    var c1 = incidence[v1] ? incidence[v1].length : 0;
-    var c2 = incidence[v2] ? incidence[v2].length : 0;
-    return c1 > 0 || c2 > 0;
-  }
-
-  /**
    * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
    * @param {Set<string>} removedSet
    * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
@@ -574,353 +639,6 @@
   }
 
   /**
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {string[]} keys
-   * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
-   */
-  function segmentsForKeys(allSegments, keys) {
-    var segs = [];
-    for (var i = 0; i < keys.length; i++) {
-      var seg = segmentForKey(allSegments, keys[i]);
-      if (seg) segs.push(seg);
-    }
-    return segs;
-  }
-
-  /**
-   * Keys of removed segments near the drag path, plus removed segments sharing
-   * a vertex with visible segments the path touches (easier brush UX).
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} visibleSegments
-   * @param {Set<string>} removedSet
-   * @param {{x:number,y:number}[]} pathPoints
-   * @param {number} threshold
-   * @returns {string[]}
-   */
-  function findRestoreCandidateKeys(
-    allSegments,
-    visibleSegments,
-    removedSet,
-    pathPoints,
-    threshold
-  ) {
-    if (!pathPoints.length || !removedSet.size) return [];
-
-    var removedSegs = [];
-    for (var i = 0; i < allSegments.length; i++) {
-      var s = allSegments[i];
-      var k = segmentKey(s.x1, s.y1, s.x2, s.y2);
-      if (removedSet.has(k)) removedSegs.push(s);
-    }
-    if (!removedSegs.length) return [];
-
-    var hitSet = new Set();
-    var direct = findSegmentsNearPolyline(
-      removedSegs,
-      pathPoints,
-      threshold,
-      null
-    );
-    for (var d = 0; d < direct.length; d++) hitSet.add(direct[d]);
-
-    if (visibleSegments.length) {
-      var visHits = findSegmentsNearPolyline(
-        visibleSegments,
-        pathPoints,
-        threshold,
-        null
-      );
-      if (visHits.length) {
-        var anchorVerts = new Set();
-        for (var v = 0; v < visHits.length; v++) {
-          var visSeg = segmentForKey(allSegments, visHits[v]);
-          if (!visSeg) continue;
-          anchorVerts.add(vertexKey(visSeg.x1, visSeg.y1));
-          anchorVerts.add(vertexKey(visSeg.x2, visSeg.y2));
-        }
-        for (var r = 0; r < removedSegs.length; r++) {
-          var rs = removedSegs[r];
-          var rk = segmentKey(rs.x1, rs.y1, rs.x2, rs.y2);
-          if (hitSet.has(rk)) continue;
-          var rv1 = vertexKey(rs.x1, rs.y1);
-          var rv2 = vertexKey(rs.x2, rs.y2);
-          if (anchorVerts.has(rv1) || anchorVerts.has(rv2)) hitSet.add(rk);
-        }
-      }
-    }
-
-    var hits = [];
-    hitSet.forEach(function (key) {
-      hits.push(key);
-    });
-    return hits;
-  }
-
-  /**
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {string[]} allowedKeys
-   * @param {string[]} seedKeys
-   * @returns {Set<string>}
-   */
-  function expandKeysBySharedVertices(allSegments, allowedKeys, seedKeys) {
-    var pool = new Set();
-    for (var i = 0; i < seedKeys.length; i++) pool.add(seedKeys[i]);
-    var changed = true;
-    while (changed) {
-      changed = false;
-      var verts = new Set();
-      pool.forEach(function (k) {
-        var seg = segmentForKey(allSegments, k);
-        if (seg) {
-          verts.add(vertexKey(seg.x1, seg.y1));
-          verts.add(vertexKey(seg.x2, seg.y2));
-        }
-      });
-      for (var a = 0; a < allowedKeys.length; a++) {
-        var key = allowedKeys[a];
-        if (pool.has(key)) continue;
-        var seg = segmentForKey(allSegments, key);
-        if (!seg) continue;
-        if (
-          verts.has(vertexKey(seg.x1, seg.y1)) ||
-          verts.has(vertexKey(seg.x2, seg.y2))
-        ) {
-          pool.add(key);
-          changed = true;
-        }
-      }
-    }
-    return pool;
-  }
-
-  /**
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {Set<string>} keySet
-   * @returns {string[][]}
-   */
-  function partitionKeysByConnectivity(allSegments, keySet) {
-    var keys = [];
-    keySet.forEach(function (k) {
-      keys.push(k);
-    });
-    if (!keys.length) return [];
-
-    var verticesToKeys = {};
-    for (var i = 0; i < keys.length; i++) {
-      var seg = segmentForKey(allSegments, keys[i]);
-      if (!seg) continue;
-      var v1 = vertexKey(seg.x1, seg.y1);
-      var v2 = vertexKey(seg.x2, seg.y2);
-      if (!verticesToKeys[v1]) verticesToKeys[v1] = [];
-      if (!verticesToKeys[v2]) verticesToKeys[v2] = [];
-      verticesToKeys[v1].push(keys[i]);
-      verticesToKeys[v2].push(keys[i]);
-    }
-
-    var visited = new Set();
-    var components = [];
-
-    for (var start = 0; start < keys.length; start++) {
-      var startKey = keys[start];
-      if (visited.has(startKey)) continue;
-      var stack = [startKey];
-      var component = [];
-      visited.add(startKey);
-      while (stack.length) {
-        var key = stack.pop();
-        component.push(key);
-        var seg = segmentForKey(allSegments, key);
-        if (!seg) continue;
-        var verts = [vertexKey(seg.x1, seg.y1), vertexKey(seg.x2, seg.y2)];
-        for (var vi = 0; vi < verts.length; vi++) {
-          var adj = verticesToKeys[verts[vi]] || [];
-          for (var ai = 0; ai < adj.length; ai++) {
-            var nk = adj[ai];
-            if (!visited.has(nk)) {
-              visited.add(nk);
-              stack.push(nk);
-            }
-          }
-        }
-      }
-      components.push(component);
-    }
-
-    return components;
-  }
-
-  /**
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {string[]} componentKeys
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} visibleSegments
-   * @returns {boolean}
-   */
-  function componentRestoreIsValid(allSegments, componentKeys, visibleSegments) {
-    var testSegs = visibleSegments.concat(
-      segmentsForKeys(allSegments, componentKeys)
-    );
-    var dangling = findDanglingSegmentKeys(testSegs);
-    var compSet = new Set(componentKeys);
-    for (var j = 0; j < dangling.length; j++) {
-      if (compSet.has(dangling[j])) return false;
-    }
-    return true;
-  }
-
-  /**
-   * Largest non-dangling subset (order-independent multi-pass).
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {string[]} componentKeys
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} visibleSegments
-   * @returns {string[]}
-   */
-  function maximalValidRestoreSubset(
-    allSegments,
-    componentKeys,
-    visibleSegments
-  ) {
-    var accepted = [];
-    var changed = true;
-    var guard = 0;
-    while (changed && guard < componentKeys.length + 2) {
-      guard += 1;
-      changed = false;
-      for (var i = 0; i < componentKeys.length; i++) {
-        var k = componentKeys[i];
-        if (accepted.indexOf(k) >= 0) continue;
-        var trial = accepted.concat([k]);
-        if (componentRestoreIsValid(allSegments, trial, visibleSegments)) {
-          accepted = trial;
-          changed = true;
-        }
-      }
-    }
-    return accepted;
-  }
-
-  /**
-   * Restore a component in waves from the visible grid inward (simulated).
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {string[]} componentKeys
-   * @param {Set<string>} removedSet
-   * @returns {string[]}
-   */
-  function restoreWavesInComponent(allSegments, componentKeys, removedSet) {
-    var simRemoved = new Set(removedSet);
-    var accepted = [];
-    var remaining = componentKeys.slice();
-    var guard = 0;
-
-    while (remaining.length && guard < componentKeys.length + 2) {
-      guard += 1;
-      var visibleBase = getVisibleSegmentsFromRemoved(allSegments, simRemoved);
-      var waveSeeds = [];
-      for (var i = 0; i < remaining.length; i++) {
-        var seg = segmentForKey(allSegments, remaining[i]);
-        if (seg && segmentTouchesVisibleGrid(seg, visibleBase)) {
-          waveSeeds.push(remaining[i]);
-        }
-      }
-      if (!waveSeeds.length) break;
-
-      var wavePool = expandKeysBySharedVertices(
-        allSegments,
-        remaining,
-        waveSeeds
-      );
-      var waveList = [];
-      wavePool.forEach(function (k) {
-        waveList.push(k);
-      });
-      var wave = maximalValidRestoreSubset(allSegments, waveList, visibleBase);
-      if (!wave.length) break;
-
-      for (var w = 0; w < wave.length; w++) {
-        simRemoved.delete(wave[w]);
-        accepted.push(wave[w]);
-      }
-
-      var nextRemaining = [];
-      for (var r = 0; r < remaining.length; r++) {
-        if (simRemoved.has(remaining[r])) nextRemaining.push(remaining[r]);
-      }
-      remaining = nextRemaining;
-    }
-
-    return accepted;
-  }
-
-  /**
-   * Restore connected groups from the visible grid inward. Validates each
-   * connected component as a whole (segments may need each other to avoid
-   * dangling ends).
-   * @param {{x1:number,y1:number,x2:number,y2:number}[]} allSegments
-   * @param {Set<string>} removedSet
-   * @param {string[]} keysToRestore
-   * @returns {string[]}
-   */
-  function filterValidRestoreKeys(allSegments, removedSet, keysToRestore) {
-    if (!keysToRestore.length) return [];
-
-    var visibleNow = getVisibleSegmentsFromRemoved(allSegments, removedSet);
-    if (!visibleNow.length) return [];
-
-    var allowed = [];
-    var allowedSeen = new Set();
-    for (var m = 0; m < keysToRestore.length; m++) {
-      var key = keysToRestore[m];
-      if (!removedSet.has(key) || allowedSeen.has(key)) continue;
-      allowed.push(key);
-      allowedSeen.add(key);
-    }
-    if (!allowed.length) return [];
-
-    var seeds = [];
-    for (var s = 0; s < allowed.length; s++) {
-      var sk = allowed[s];
-      var seedSeg = segmentForKey(allSegments, sk);
-      if (seedSeg && segmentTouchesVisibleGrid(seedSeg, visibleNow)) {
-        seeds.push(sk);
-      }
-    }
-    if (!seeds.length) return [];
-
-    var expanded = expandKeysBySharedVertices(allSegments, allowed, seeds);
-    var components = partitionKeysByConnectivity(allSegments, expanded);
-
-    var valid = [];
-    var validSeen = new Set();
-    for (var c = 0; c < components.length; c++) {
-      var comp = components[c];
-      var touchesVisible = false;
-      for (var t = 0; t < comp.length; t++) {
-        var compSeg = segmentForKey(allSegments, comp[t]);
-        if (compSeg && segmentTouchesVisibleGrid(compSeg, visibleNow)) {
-          touchesVisible = true;
-          break;
-        }
-      }
-      if (!touchesVisible) continue;
-
-      var toAdd = comp;
-      if (!componentRestoreIsValid(allSegments, comp, visibleNow)) {
-        toAdd = restoreWavesInComponent(allSegments, comp, removedSet);
-        if (!toAdd.length) continue;
-      }
-
-      for (var v = 0; v < toAdd.length; v++) {
-        var ck = toAdd[v];
-        if (!validSeen.has(ck)) {
-          validSeen.add(ck);
-          valid.push(ck);
-        }
-      }
-    }
-
-    return valid;
-  }
-
-  /**
    * Inscribed circle radius for the inner diamond inside an upright square at a
    * cell junction (diamond corners on midpoints of the square; side = cut·√2).
    * @param {number} T tile size
@@ -929,6 +647,20 @@
   function uprightSquareInscribedRadius(T) {
     var cut = T * CUT;
     return (cut * Math.SQRT2) / 2;
+  }
+
+  /**
+   * Half-side of the axis-aligned upright square at a junction (matches inner
+   * diamond extent h = cut·innerScale in buildDiamondCatalog).
+   * @param {number} T tile size
+   * @param {number} [innerScale]
+   * @returns {number}
+   */
+  function junctionUprightSquareHalfSide(T, innerScale) {
+    if (typeof innerScale !== "number") {
+      innerScale = 1;
+    }
+    return T * CUT * innerScale;
   }
 
   /**
@@ -974,12 +706,14 @@
    * @param {number} octagonsN
    * @param {number} canvasW
    * @param {number} canvasH
-   * @returns {{ id: string, cx: number, cy: number, r: number }[]}
+   * @param {number} [innerScale]
+   * @returns {{ id: string, cx: number, cy: number, r: number, halfSide: number }[]}
    */
-  function buildUprightSquareCatalog(octagonsN, canvasW, canvasH) {
+  function buildUprightSquareCatalog(octagonsN, canvasW, canvasH, innerScale) {
     var layout = computeLayout(octagonsN, canvasW, canvasH);
     var T = layout.tileSize;
     var r = uprightSquareInscribedRadius(T);
+    var halfSide = junctionUprightSquareHalfSide(T, innerScale);
     var catalog = [];
 
     for (var row = 0; row <= layout.rows; row++) {
@@ -989,6 +723,7 @@
           cx: col * T,
           cy: layout.offsetY + row * T,
           r: r,
+          halfSide: halfSide,
         });
       }
     }
@@ -2097,14 +1832,13 @@
 
   global.TopkapiGeometry = {
     buildPatternSegments: buildPatternSegments,
+    buildCoarseCellBoundarySegments: buildCoarseCellBoundarySegments,
     computeLayout: computeLayout,
     getGridContentBounds: getGridContentBounds,
     tileSizeFromN: tileSizeFromN,
     segmentKey: segmentKey,
     findSegmentsNearPolyline: findSegmentsNearPolyline,
     findDanglingPruneKeys: findDanglingPruneKeys,
-    findRestoreCandidateKeys: findRestoreCandidateKeys,
-    filterValidRestoreKeys: filterValidRestoreKeys,
     buildDiamondCatalog: buildDiamondCatalog,
     buildUprightSquareCatalog: buildUprightSquareCatalog,
     buildHelplessnessJunctionCatalog: buildHelplessnessJunctionCatalog,

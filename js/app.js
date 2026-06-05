@@ -1,14 +1,16 @@
 (function () {
   "use strict";
 
-  var HALF_CIRCLE_BUILD_ID = "half-circle-y450-2026-05-28T16:30";
   var HALF_CIRCLE_RADIUS_SCALE = 0.9;
   var HALF_CIRCLE_INNER_ARC_PAIR_GAP_PX = 20;
   var HALF_CIRCLE_FAN_STROKE_WIDTH = 1.5;
   var HALF_CIRCLE_FOCAL_Y = 450;
   var NS = "http://www.w3.org/2000/svg";
   var designSvg = null;
+  /** H1–H5 pipette picks override sheet palette until palette button / sheet reload clears them */
+  var blendAreaColorOverrides = {};
   var cachedExportFontDataUri = null;
+  var cachedExportOpentypeFont = null;
   var lastOctagonsN = OCTAGONS_N_DEFAULT;
   var lastTileSize = CANVAS_W / (OCTAGONS_N_DEFAULT + 1);
   var gridType = GRID_TYPE_OCTAGON;
@@ -16,10 +18,14 @@
   var cachedAllSegments = [];
   /** @type {{ outline: {x:number,y:number}[] }[]} */
   var cachedStarFills = [];
+  /** @type {{ outline: {x:number,y:number}[] }[]} */
+  var cachedStarRhombusFills = [];
+  var cachedGirihTileCount = 0;
+  var girihSliderRenderTimer = null;
   var cachedVerticalGridLines = [];
   var lastVerticalGridLayoutSignature = "";
 
-  var interactionMode = "view";
+  var hopeInteractionMode = "view";
   var removedEdges = new Set();
   /** Edges removed by Auto Merge (separate from manual merge mask/dots). */
   var autoMergeEdgeKeys = new Set();
@@ -33,49 +39,51 @@
   var longingCircleSelectedIds = new Set();
   var lastLongingCircleLayoutSignature = "";
   var griefCircleSelectedIds = new Set();
+  var strengthSelectedIds = new Set();
   var lastGriefCircleLayoutSignature = "";
+  var lastStrengthCircleLayoutSignature = "";
   var helplessnessSelectedIds = new Set();
   var lastHelplessnessLayoutSignature = "";
   var GRIEF_INNER_CIRCLE_DIAMETER_GAP_PX = 18;
   var diamondFilledIds = new Set();
+  var angerTriangleDiamondIds = new Set();
   var lastDiamondLayoutSignature = "";
   var guiltShameFilledIds = new Set();
-  var HOPE_STIPPLE_IMAGE = "stipple-1779907006832.png";
+  var HOPE_STIPPLE_IMAGE = "stipple-1780673179311.png";
+  var HOPE_STIPPLE_EXPORT_SVG = "stipple-1780673179311.svg";
   var HOPE_DOTS_MASK_ID = "hope-dots-mask";
   var HOPE_DOTS_MASK_INVERT_FILTER_ID = "hope-dots-mask-invert-filter";
   var hopeStippleImageReady = false;
   var hopeStippleImageElement = null;
   var hopeStippleExportDataUri = null;
   var hopeStippleRawExportDataUri = null;
+  var hopeStippleExportDataLoadPromise = null;
   /** Frame inset overlay (lines, caps, ellipses, diagonals); default hidden */
   var frameInsetOverlayVisible = false;
 
-  /** Feelings On/Off toggles — which emotion layers are drawn on the canvas. */
-  var emotionCanvasVisible = {
-    anger: true,
-    fear: true,
-    hope: true,
-    sadness: true,
-    longing: true,
-    grief: true,
-    pride: true,
-    happiness: true,
-    pain: true,
-    guiltShame: true,
-  };
-
-  var FEELINGS_CANVAS_KEYS = [
-    "anger",
-    "fear",
-    "hope",
-    "sadness",
-    "longing",
-    "grief",
-    "pride",
-    "happiness",
-    "pain",
-    "guiltShame",
-  ];
+  /** Whether an emotion layer is drawn (slider > 0, or always on for layers without sliders). */
+  function isEmotionLayerActive(key) {
+    switch (key) {
+      case "sadness":
+        return getCircleDensity() > 0;
+      case "longing":
+        return getLongingCircleDensity() > 0;
+      case "grief":
+        return getGriefCircleDensity() > 0;
+      case "strength":
+        return getStrengthDensity() > 0;
+      case "pain":
+        return getPrideFillPercent() > 0;
+      case "guiltShame":
+        return getGuiltShameFillPercent() > 0;
+      case "fear":
+        return getAngerVerticalLengthPercent() > 0;
+      case "anger":
+        return getAngerTriangleDensity() > 0;
+      default:
+        return true;
+    }
+  }
 
   /** Persist mask holes so continued merging cannot drop earlier cutouts. */
   var stickyMergedCutoutFaces = null;
@@ -85,8 +93,11 @@
   var lastBrownBarGridLayoutSignature = "";
   /** Random height ratios for left/right margin rows (regenerated on slider input). */
   var cachedBorderSideSegmentRatios = null;
-  /** Stable shuffled order for whitening left/right margin division cells. */
-  var cachedBorderSideWhiteCellOrder = null;
+  /** Shuffled row order for color-fade (outer column picks first; inner cols use offsets). */
+  var cachedBorderSideWhiteRowOrder = null;
+  /** Per thickness-column row offset along the margin strip (col 0 = 0). */
+  var cachedBorderSideWhiteColRowOffsets = null;
+  var cachedBorderSideWhiteRowCount = 0;
   /** Cell ids (col-row) currently painted white by the color-fade slider. */
   var borderSideWhiteCellIds = new Set();
   /** One random 8-digit serial per page load (top + bottom white strips). */
@@ -101,6 +112,8 @@
   /** Cached inline SVG assets for the dynamic label bar. */
   var labelBarSvgCache = {};
   var labelBarSvgLoadPromises = {};
+  /** End-cap tag SVG picked once per page load (sequential rotation from svg/tag/). */
+  var labelBarEndCapSvgFile = null;
 
   var magnifierCenterX = CANVAS_W / 2;
   var magnifierCenterY = CANVAS_H / 2;
@@ -148,77 +161,6 @@
 
   function elSvg(name) {
     return document.createElementNS(NS, name);
-  }
-
-  function isEmotionCanvasVisible(key) {
-    return emotionCanvasVisible[key] !== false;
-  }
-
-  function syncVisibilityTogglePair(onId, offId, visible) {
-    var onBtn = document.getElementById(onId);
-    var offBtn = document.getElementById(offId);
-    if (!onBtn || !offBtn) return;
-    onBtn.classList.toggle("is-active", visible);
-    offBtn.classList.toggle("is-active", !visible);
-    onBtn.setAttribute("aria-pressed", String(visible));
-    offBtn.setAttribute("aria-pressed", String(!visible));
-  }
-
-  function syncFeelingsCanvasToggleButtons(key) {
-    var visible = isEmotionCanvasVisible(key);
-    syncVisibilityTogglePair(
-      "feelings-" + key + "-canvas-on",
-      "feelings-" + key + "-canvas-off",
-      visible
-    );
-  }
-
-  function setEmotionCanvasVisible(key, visible) {
-    if (FEELINGS_CANVAS_KEYS.indexOf(key) < 0) return;
-    emotionCanvasVisible[key] = !!visible;
-    syncFeelingsCanvasToggleButtons(key);
-    refreshEmotionCanvasLayers();
-  }
-
-  function refreshEmotionCanvasLayers() {
-    renderVerticalGridLayer();
-    renderDiamondFillsLayer();
-    renderHollowDiamondFillsLayer();
-    renderPatternLayer();
-    if (isStarGrid()) {
-      renderBackgroundLayer();
-      renderGridMaskLayer("refreshEmotionCanvasLayers");
-    }
-    renderAutoMergeFillsLayer();
-    applyMergeReveal();
-    renderStippleDotsLayer();
-  }
-
-  function initFeelingsCanvasToggles() {
-    var i;
-    var key;
-    for (i = 0; i < FEELINGS_CANVAS_KEYS.length; i++) {
-      key = FEELINGS_CANVAS_KEYS[i];
-      syncFeelingsCanvasToggleButtons(key);
-      (function (emotionKey) {
-        var onBtn = document.getElementById(
-          "feelings-" + emotionKey + "-canvas-on"
-        );
-        var offBtn = document.getElementById(
-          "feelings-" + emotionKey + "-canvas-off"
-        );
-        if (onBtn) {
-          onBtn.addEventListener("click", function () {
-            setEmotionCanvasVisible(emotionKey, true);
-          });
-        }
-        if (offBtn) {
-          offBtn.addEventListener("click", function () {
-            setEmotionCanvasVisible(emotionKey, false);
-          });
-        }
-      })(key);
-    }
   }
 
   function hexToRgb(hex) {
@@ -292,7 +234,7 @@
   }
 
   function getBorderDivisionStrokeColor() {
-    return sheetColor("C10");
+    return sheetColor("C9");
   }
 
   function getAutoMergeFillColor() {
@@ -308,7 +250,11 @@
   }
 
   function getHopeDotsColor() {
-    return sheetColor("F7");
+    return sheetColor("F8");
+  }
+
+  function getHopeMergeFillColor() {
+    return sheetColor("F9");
   }
 
   function bakeHopeColoredStippleDataUri(img, colorHex) {
@@ -383,6 +329,93 @@
       });
   }
 
+  function ensureHopeStippleExportDataLoaded() {
+    if (
+      typeof window !== "undefined" &&
+      (window.HOPE_STIPPLE_EXPORT_SVG_TEXT ||
+        window.HOPE_STIPPLE_EXPORT_PNG_DATA_URI)
+    ) {
+      return Promise.resolve(true);
+    }
+    if (hopeStippleExportDataLoadPromise) {
+      return hopeStippleExportDataLoadPromise;
+    }
+    hopeStippleExportDataLoadPromise = new Promise(function (resolve) {
+      var script = document.createElement("script");
+      script.src = "js/hopeStippleExportData.js";
+      script.onload = function () {
+        resolve(true);
+      };
+      script.onerror = function () {
+        hopeStippleExportDataLoadPromise = null;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+    return hopeStippleExportDataLoadPromise;
+  }
+
+  function getHopeStippleSvgTextForExport() {
+    if (
+      typeof window !== "undefined" &&
+      window.HOPE_STIPPLE_EXPORT_SVG_TEXT
+    ) {
+      return Promise.resolve(window.HOPE_STIPPLE_EXPORT_SVG_TEXT);
+    }
+    return fetch(HOPE_STIPPLE_EXPORT_SVG)
+      .then(function (res) {
+        if (!res || !res.ok) return null;
+        return res.text();
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function ensureHopeStippleExportDataUriFromEmbed() {
+    if (hopeStippleExportDataUri) {
+      return Promise.resolve(hopeStippleExportDataUri);
+    }
+    var embedded =
+      typeof window !== "undefined" &&
+      window.HOPE_STIPPLE_EXPORT_PNG_DATA_URI;
+    if (!embedded) return Promise.resolve(null);
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        hopeStippleExportDataUri = bakeHopeColoredStippleDataUri(
+          img,
+          getHopeDotsColor()
+        );
+        hopeStippleRawExportDataUri = embedded;
+        resolve(hopeStippleExportDataUri);
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = embedded;
+    });
+  }
+
+  function loadHopeStippleImageElementForExport() {
+    var embedded =
+      typeof window !== "undefined" &&
+      window.HOPE_STIPPLE_EXPORT_PNG_DATA_URI;
+    if (embedded) {
+      return new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () {
+          resolve(img);
+        };
+        img.onerror = function () {
+          resolve(hopeStippleImageElement);
+        };
+        img.src = embedded;
+      });
+    }
+    return Promise.resolve(hopeStippleImageElement);
+  }
+
   function markHopeStipplePixelVisited(visited, width, height, cx, cy, radius) {
     var x0 = Math.max(0, cx - radius);
     var x1 = Math.min(width - 1, cx + radius);
@@ -399,17 +432,100 @@
     }
   }
 
-  function buildHopeDotsCirclesExportLines() {
-    if (
-      !isEmotionCanvasVisible("hope") ||
-      !hasActiveMergeCutouts() ||
-      !hopeStippleImageReady ||
-      !hopeStippleImageElement
-    ) {
+  function buildHopeStippleSvgExportLines() {
+    if (!isEmotionLayerActive("hope") || !hasActiveMergeCutouts()) {
       return Promise.resolve(null);
     }
 
-    return new Promise(function (resolve) {
+    return getHopeStippleSvgTextForExport().then(function (svgText) {
+        if (!svgText) return null;
+
+        var mergedRegions = getMergedRegionsForMask();
+        if (!mergedRegions || !mergedRegions.length) return null;
+
+        var viewBoxMatch = svgText.match(/viewBox="([^"]+)"/i);
+        var viewBox = viewBoxMatch ? viewBoxMatch[1] : "0 0 2494 6247";
+        var dotColor = getHopeDotsColor();
+        var innerMatch = svgText.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
+        var inner = innerMatch ? innerMatch[1] : svgText;
+        inner = inner.replace(/fill="#000000"/gi, 'fill="' + dotColor + '"');
+        inner = inner.replace(/fill="#000"/gi, 'fill="' + dotColor + '"');
+        inner = inner.replace(
+          /<rect[^>]*fill="(?:#ffffff|#fff|white)"[^>]*\/?>/gi,
+          ""
+        );
+
+        var lines = [];
+        lines.push("<defs>");
+        lines.push('<clipPath id="' + MERGE_REGIONS_CLIP_ID + '">');
+        var i;
+        var pts;
+        var p;
+        var pointsAttr;
+        for (i = 0; i < mergedRegions.length; i++) {
+          pts = mergedRegions[i].points;
+          if (!pts || !pts.length) continue;
+          pointsAttr = "";
+          for (p = 0; p < pts.length; p++) {
+            if (p) pointsAttr += " ";
+            pointsAttr += pts[p].x + "," + pts[p].y;
+          }
+          lines.push('<polygon points="' + pointsAttr + '"/>');
+        }
+        lines.push("</clipPath>");
+        lines.push("</defs>");
+
+        lines.push('<g clip-path="url(#inner-content-clip)">');
+        lines.push(
+          '<g id="layer-stipple-svg" clip-path="url(#' +
+            MERGE_REGIONS_CLIP_ID +
+            ')">'
+        );
+        lines.push(
+          '<svg xmlns="' +
+            NS +
+            '" x="0" y="0" width="' +
+            CANVAS_W +
+            '" height="' +
+            CANVAS_H +
+            '" viewBox="' +
+            viewBox +
+            '" overflow="hidden">'
+        );
+        lines.push(inner);
+        lines.push("</svg>");
+        lines.push("</g>");
+        lines.push("</g>");
+        return lines;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function buildHopeStippleExportLines() {
+    return ensureHopeStippleExportDataLoaded()
+      .then(function () {
+        return ensureHopeStippleExportDataUriFromEmbed();
+      })
+      .then(function () {
+        return buildHopeStippleSvgExportLines();
+      })
+      .then(function (svgLines) {
+        if (svgLines && svgLines.length) return svgLines;
+        return buildHopeDotsCirclesExportLines();
+      });
+  }
+
+  function buildHopeDotsCirclesExportLines() {
+    if (!isEmotionLayerActive("hope") || !hasActiveMergeCutouts()) {
+      return Promise.resolve(null);
+    }
+
+    return loadHopeStippleImageElementForExport().then(function (exportImg) {
+      if (!exportImg) return null;
+
+      return new Promise(function (resolve) {
       try {
         var mergedRegions = getMergedRegionsForMask();
         if (!mergedRegions || !mergedRegions.length) return resolve(null);
@@ -420,7 +536,7 @@
         var ctx = canvas.getContext("2d");
         if (!ctx) return resolve(null);
 
-        ctx.drawImage(hopeStippleImageElement, 0, 0, CANVAS_W, CANVAS_H);
+        ctx.drawImage(exportImg, 0, 0, CANVAS_W, CANVAS_H);
         var imageData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
         var data = imageData.data;
         var visited = new Uint8Array(CANVAS_W * CANVAS_H);
@@ -510,6 +626,7 @@
         resolve(null);
       }
     });
+    });
   }
 
   function refreshHopeColoredExportDataUri() {
@@ -594,7 +711,9 @@
   }
 
   function getOctagonsNMaxForActiveGrid() {
-    return isStarGrid() ? getStarGridOctagonsNMax() : OCTAGONS_N_MAX;
+    if (isStarGrid()) return getStarGridOctagonsNMax();
+    if (isGirihGrid()) return GIRIH_DENSITY_N_MAX;
+    return OCTAGONS_N_MAX;
   }
 
   function getOctagonsN() {
@@ -610,8 +729,36 @@
     return gridType === GRID_TYPE_STAR;
   }
 
+  function isGirihGrid() {
+    return gridType === GRID_TYPE_GIRIH;
+  }
+
   function isOctagonGrid() {
     return gridType === GRID_TYPE_OCTAGON;
+  }
+
+  /** Octagon + star grids share the same junction-diamond catalog (top/right/bottom/left). */
+  function supportsAngerDiamondTriangles() {
+    return isOctagonGrid() || isStarGrid();
+  }
+
+  function isAlternateGrid() {
+    return isStarGrid() || isGirihGrid();
+  }
+
+  function getGirihLayout() {
+    if (
+      typeof GirihGeometry === "undefined" ||
+      !GirihGeometry.computeLayout
+    ) {
+      return {
+        densityN: lastOctagonsN,
+        edgeLength: lastTileSize,
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+      };
+    }
+    return GirihGeometry.computeLayout(lastOctagonsN, CANVAS_W, CANVAS_H);
   }
 
   function ensureStarValidLayouts() {
@@ -663,6 +810,15 @@
       if (Number(slider.value) > maxN) {
         slider.value = String(maxN);
       }
+    } else if (isGirihGrid()) {
+      slider.min = String(GIRIH_DENSITY_N_MIN);
+      slider.max = String(GIRIH_DENSITY_N_MAX);
+      if (Number(slider.value) < GIRIH_DENSITY_N_MIN) {
+        slider.value = String(GIRIH_DENSITY_N_MIN);
+      }
+      if (Number(slider.value) > GIRIH_DENSITY_N_MAX) {
+        slider.value = String(GIRIH_DENSITY_N_MAX);
+      }
     } else {
       slider.min = String(OCTAGONS_N_MIN);
       slider.max = String(OCTAGONS_N_MAX);
@@ -672,6 +828,7 @@
   function syncGridTypeButtons() {
     var octBtn = document.getElementById("grid-choose-octagon-btn");
     var starBtn = document.getElementById("grid-choose-star-btn");
+    var girihBtn = document.getElementById("grid-choose-girih-btn");
     if (octBtn) {
       octBtn.classList.toggle("is-active", isOctagonGrid());
       octBtn.setAttribute("aria-pressed", String(isOctagonGrid()));
@@ -679,6 +836,10 @@
     if (starBtn) {
       starBtn.classList.toggle("is-active", isStarGrid());
       starBtn.setAttribute("aria-pressed", String(isStarGrid()));
+    }
+    if (girihBtn) {
+      girihBtn.classList.toggle("is-active", isGirihGrid());
+      girihBtn.setAttribute("aria-pressed", String(isGirihGrid()));
     }
   }
 
@@ -689,7 +850,7 @@
     innerScaleWrap =
       innerScaleWrap &&
       innerScaleWrap.closest(".sidebar__grid-density");
-    if (innerScaleWrap) innerScaleWrap.hidden = isStarGrid();
+    if (innerScaleWrap) innerScaleWrap.hidden = isAlternateGrid();
   }
 
   /** Star grid: layers not used yet (gradient overlay, etc.). */
@@ -701,7 +862,7 @@
     if (el) el.style.display = visible ? "" : "none";
   }
 
-  function applyStarGridLayerVisibility() {
+  function applyAlternateGridLayerVisibility() {
     var i;
     for (i = 0; i < STAR_GRID_DEFERRED_LAYER_SELECTORS.length; i++) {
       setSvgSubtreeVisible(STAR_GRID_DEFERRED_LAYER_SELECTORS[i], false);
@@ -738,18 +899,29 @@
   function updateInnerContentTransformForGridType() {
     if (!designSvg) return;
     var inner = designSvg.querySelector("#inner-content");
-    if (!inner) return;
-    inner.setAttribute("transform", getInnerContentTransformAttr());
+    if (inner) inner.setAttribute("transform", getInnerContentTransformAttr());
+    var gridBoundaryLayer = designSvg.querySelector("#layer-grid-boundary");
+    if (gridBoundaryLayer) {
+      gridBoundaryLayer.setAttribute("transform", getInnerContentTransformAttr());
+    }
   }
 
   function refreshBorderFrameAndLabelBars() {
     updateGridBoundaryRect();
+    ensureGridBoundaryLayerOnTop();
     updateBorderDivisionLines();
+    updateBorderDivisionOverlay();
     updateCanvasEdgeBrownBars();
   }
 
   function setGridType(nextType) {
-    if (nextType !== GRID_TYPE_OCTAGON && nextType !== GRID_TYPE_STAR) return;
+    if (
+      nextType !== GRID_TYPE_OCTAGON &&
+      nextType !== GRID_TYPE_STAR &&
+      nextType !== GRID_TYPE_GIRIH
+    ) {
+      return;
+    }
     if (gridType === nextType) return;
     gridType = nextType;
     clearMergeState();
@@ -757,18 +929,25 @@
     if (isStarGrid()) {
       ensureStarValidLayouts();
       syncOctagonDensitySliderRange();
-      setMode("view");
+      setHopeInteractionMode("view");
+    } else if (isGirihGrid()) {
+      syncOctagonDensitySliderRange();
+      setHopeInteractionMode("view");
     } else {
       syncOctagonDensitySliderRange();
     }
     syncGridTypeButtons();
     syncGridSlidersForGridType();
+    if (supportsAngerDiamondTriangles() && getAngerTriangleDensity() > 0) {
+      syncAngerShapes();
+    }
     render();
   }
 
   function initGridTypeButtons() {
     var octBtn = document.getElementById("grid-choose-octagon-btn");
     var starBtn = document.getElementById("grid-choose-star-btn");
+    var girihBtn = document.getElementById("grid-choose-girih-btn");
     if (octBtn) {
       octBtn.addEventListener("click", function () {
         setGridType(GRID_TYPE_OCTAGON);
@@ -777,6 +956,11 @@
     if (starBtn) {
       starBtn.addEventListener("click", function () {
         setGridType(GRID_TYPE_STAR);
+      });
+    }
+    if (girihBtn) {
+      girihBtn.addEventListener("click", function () {
+        setGridType(GRID_TYPE_GIRIH);
       });
     }
     syncGridTypeButtons();
@@ -792,31 +976,116 @@
     );
   }
 
+  /**
+   * Snap raw slider value to one of `steps` evenly spaced positions between min and max.
+   * @param {number} raw
+   * @param {number} min
+   * @param {number} max
+   * @param {number} steps
+   * @returns {number}
+   */
+  function snapSteppedSliderValue(raw, min, max, steps) {
+    if (steps < 2) {
+      return Math.min(max, Math.max(min, Math.round(raw)));
+    }
+    var stepSize = (max - min) / (steps - 1);
+    var idx = Math.round((raw - min) / stepSize);
+    if (idx < 0) idx = 0;
+    if (idx > steps - 1) idx = steps - 1;
+    return min + idx * stepSize;
+  }
+
+  function getFeelingsSliderSteps() {
+    return typeof FEELINGS_SLIDER_STEPS !== "undefined" ? FEELINGS_SLIDER_STEPS : 5;
+  }
+
+  function snapFeelingsSliderValue(raw, min, max) {
+    return snapSteppedSliderValue(raw, min, max, getFeelingsSliderSteps());
+  }
+
+  /** @returns {number} */
+  function randomFeelingsStepValue(min, max) {
+    var steps = getFeelingsSliderSteps();
+    var stepIndex = randomIntInRange(0, Math.max(0, steps - 1));
+    var stepSize = steps < 2 ? 0 : (max - min) / (steps - 1);
+    return min + stepIndex * stepSize;
+  }
+
+  /**
+   * @param {string} sliderId
+   * @param {number} min
+   * @param {number} max
+   * @param {number} defaultValue
+   * @param {() => void} onInput
+   */
+  function initFeelingsSteppedSlider(sliderId, min, max, defaultValue, onInput) {
+    var slider = document.getElementById(sliderId);
+    if (!slider) return;
+
+    var steps = getFeelingsSliderSteps();
+    var stepSize = steps < 2 ? 1 : (max - min) / (steps - 1);
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(stepSize);
+    slider.value = String(snapFeelingsSliderValue(defaultValue, min, max));
+
+    slider.addEventListener("input", function () {
+      var snapped = snapFeelingsSliderValue(Number(slider.value), min, max);
+      if (Number(slider.value) !== snapped) {
+        slider.value = String(snapped);
+      }
+      onInput();
+    });
+  }
+
+  /** Star grid: slider min → max pinwheel; slider max → symmetric middle star. */
+  function getStarMiddlePinwheelFactor() {
+    var span = INNER_SCALE_MAX - INNER_SCALE_MIN;
+    if (span < 1e-9) return 0;
+    var t = (getInnerScale() - INNER_SCALE_MIN) / span;
+    return Math.max(0, Math.min(1, 1 - t));
+  }
+
   function getCircleDensity() {
     var slider = document.getElementById("circle-density");
     var v = slider ? Number(slider.value) : CIRCLE_DENSITY_DEFAULT;
-    return Math.min(
-      CIRCLE_DENSITY_MAX,
-      Math.max(CIRCLE_DENSITY_MIN, Math.round(v))
+    return Math.round(
+      snapFeelingsSliderValue(v, CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
     );
   }
 
   function getLongingCircleDensity() {
     var slider = document.getElementById("longing-circle-density");
     var v = slider ? Number(slider.value) : CIRCLE_DENSITY_DEFAULT;
-    return Math.min(
-      CIRCLE_DENSITY_MAX,
-      Math.max(CIRCLE_DENSITY_MIN, Math.round(v))
+    return Math.round(
+      snapFeelingsSliderValue(v, CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
     );
   }
 
   function getGriefCircleDensity() {
     var slider = document.getElementById("grief-circle-density");
     var v = slider ? Number(slider.value) : CIRCLE_DENSITY_DEFAULT;
-    return Math.min(
-      CIRCLE_DENSITY_MAX,
-      Math.max(CIRCLE_DENSITY_MIN, Math.round(v))
+    return Math.round(
+      snapFeelingsSliderValue(v, CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
     );
+  }
+
+  function getStrengthDensity() {
+    var slider = document.getElementById("strength-density");
+    var def =
+      typeof STRENGTH_DENSITY_DEFAULT !== "undefined"
+        ? STRENGTH_DENSITY_DEFAULT
+        : CIRCLE_DENSITY_DEFAULT;
+    var min =
+      typeof STRENGTH_DENSITY_MIN !== "undefined"
+        ? STRENGTH_DENSITY_MIN
+        : CIRCLE_DENSITY_MIN;
+    var max =
+      typeof STRENGTH_DENSITY_MAX !== "undefined"
+        ? STRENGTH_DENSITY_MAX
+        : CIRCLE_DENSITY_MAX;
+    var v = slider ? Number(slider.value) : def;
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   function getHelplessnessPercent() {
@@ -824,30 +1093,32 @@
     var def =
       typeof HELPLESSNESS_PERCENT_DEFAULT !== "undefined"
         ? HELPLESSNESS_PERCENT_DEFAULT
-        : 10;
+        : 0;
     var min =
       typeof HELPLESSNESS_PERCENT_MIN !== "undefined"
         ? HELPLESSNESS_PERCENT_MIN
-        : 10;
+        : 0;
     var max =
       typeof HELPLESSNESS_PERCENT_MAX !== "undefined"
         ? HELPLESSNESS_PERCENT_MAX
-        : 40;
+        : 30;
     var v = slider ? Number(slider.value) : def;
-    return Math.min(max, Math.max(min, Math.round(v)));
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   function isHelplessnessLayerVisible() {
-    var toggle = document.getElementById("helplessness-layer-toggle");
-    return !toggle || toggle.checked;
+    return getHelplessnessPercent() > 0;
   }
 
   function getAngerVerticalLengthPercent() {
     var slider = document.getElementById("anger-vertical-length");
     var v = slider ? Number(slider.value) : ANGER_VERTICAL_LENGTH_DEFAULT;
-    return Math.min(
-      ANGER_VERTICAL_LENGTH_MAX,
-      Math.max(ANGER_VERTICAL_LENGTH_MIN, Math.round(v))
+    return Math.round(
+      snapFeelingsSliderValue(
+        v,
+        ANGER_VERTICAL_LENGTH_MIN,
+        ANGER_VERTICAL_LENGTH_MAX
+      )
     );
   }
 
@@ -856,7 +1127,7 @@
     var def =
       typeof ANXIETY_VERTICAL_STROKE_DEFAULT !== "undefined"
         ? ANXIETY_VERTICAL_STROKE_DEFAULT
-        : 17;
+        : 0;
     var min =
       typeof ANXIETY_VERTICAL_STROKE_MIN !== "undefined"
         ? ANXIETY_VERTICAL_STROKE_MIN
@@ -866,16 +1137,33 @@
         ? ANXIETY_VERTICAL_STROKE_MAX
         : 100;
     var v = slider ? Number(slider.value) : def;
-    return Math.min(max, Math.max(min, Math.round(v)));
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   function getPrideFillPercent() {
     var slider = document.getElementById("pride-fill-percent");
     var v = slider ? Number(slider.value) : PRIDE_FILL_PERCENT_DEFAULT;
-    return Math.min(
-      PRIDE_FILL_PERCENT_MAX,
-      Math.max(PRIDE_FILL_PERCENT_MIN, Math.round(v))
+    return Math.round(
+      snapFeelingsSliderValue(v, PRIDE_FILL_PERCENT_MIN, PRIDE_FILL_PERCENT_MAX)
     );
+  }
+
+  function getAngerTriangleDensity() {
+    var slider = document.getElementById("anger-triangle-density");
+    var def =
+      typeof ANGER_TRIANGLE_DENSITY_DEFAULT !== "undefined"
+        ? ANGER_TRIANGLE_DENSITY_DEFAULT
+        : 0;
+    var min =
+      typeof ANGER_TRIANGLE_DENSITY_MIN !== "undefined"
+        ? ANGER_TRIANGLE_DENSITY_MIN
+        : 0;
+    var max =
+      typeof ANGER_TRIANGLE_DENSITY_MAX !== "undefined"
+        ? ANGER_TRIANGLE_DENSITY_MAX
+        : 30;
+    var v = slider ? Number(slider.value) : def;
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   function getGuiltShameFillPercent() {
@@ -883,17 +1171,17 @@
     var def =
       typeof GUILT_SHAME_FILL_PERCENT_DEFAULT !== "undefined"
         ? GUILT_SHAME_FILL_PERCENT_DEFAULT
-        : 25;
+        : 0;
     var min =
       typeof GUILT_SHAME_FILL_PERCENT_MIN !== "undefined"
         ? GUILT_SHAME_FILL_PERCENT_MIN
-        : 10;
+        : 0;
     var max =
       typeof GUILT_SHAME_FILL_PERCENT_MAX !== "undefined"
         ? GUILT_SHAME_FILL_PERCENT_MAX
-        : 40;
+        : 30;
     var v = slider ? Number(slider.value) : def;
-    return Math.min(max, Math.max(min, Math.round(v)));
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   function getAutoMergeIntensity() {
@@ -905,61 +1193,73 @@
     var max =
       typeof AUTO_MERGE_INTENSITY_MAX !== "undefined"
         ? AUTO_MERGE_INTENSITY_MAX
-        : 100;
+        : 7;
     var def =
       typeof AUTO_MERGE_INTENSITY_DEFAULT !== "undefined"
         ? AUTO_MERGE_INTENSITY_DEFAULT
-        : 50;
+        : 0;
     var v = slider ? Number(slider.value) : def;
-    return Math.min(max, Math.max(min, Math.round(v)));
+    return Math.round(snapFeelingsSliderValue(v, min, max));
   }
 
   /**
-   * Map slider 0–100 to area count and deleted-edge count per area.
+   * Map discrete step 0–7 to area count (0 = off, 1–7 → 2–8 areas) and edge budget.
    * @returns {{ areaCountMin: number, areaCountMax: number, edgesPerAreaMin: number, edgesPerAreaMax: number, boundsInset: number }}
    */
   function getAutoMergePlanOptions() {
-    var pct = getAutoMergeIntensity();
-    var t = pct / 100;
+    var step = getAutoMergeIntensity();
     var areasAtMin =
       typeof AUTO_MERGE_AREA_COUNT_AT_MIN !== "undefined"
         ? AUTO_MERGE_AREA_COUNT_AT_MIN
-        : 3;
+        : 2;
     var areasAtMax =
       typeof AUTO_MERGE_AREA_COUNT_AT_MAX !== "undefined"
         ? AUTO_MERGE_AREA_COUNT_AT_MAX
-        : 10;
+        : 8;
     var edgeMinAtMin =
       typeof AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MIN !== "undefined"
         ? AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MIN
-        : 2;
+        : 4;
     var edgeMaxAtMin =
       typeof AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MIN !== "undefined"
         ? AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MIN
-        : 4;
+        : 7;
     var edgeMinAtMax =
       typeof AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MAX !== "undefined"
         ? AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MAX
-        : 3;
+        : 7;
     var edgeMaxAtMax =
       typeof AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MAX !== "undefined"
         ? AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MAX
-        : 10;
+        : 16;
 
-    var areaSpan = areasAtMax - areasAtMin;
-    var areaCountMin = Math.round(areasAtMin + t * areaSpan * 0.35);
-    var areaCountMax = Math.round(areasAtMin + t * areaSpan);
-    if (areaCountMax < areasAtMin) areaCountMax = areasAtMin;
-    if (areaCountMin < areasAtMin) areaCountMin = areasAtMin;
-    if (areaCountMax < areaCountMin) areaCountMax = areaCountMin;
+    var activeSteps = Math.max(1, areasAtMax - areasAtMin + 1);
+    var areaCount = 0;
+    var t = 0;
+    if (step > 0) {
+      var clampedStep = Math.min(step, activeSteps);
+      areaCount = areasAtMin + clampedStep - 1;
+      if (areaCount > areasAtMax) areaCount = areasAtMax;
+      t = activeSteps > 1 ? (clampedStep - 1) / (activeSteps - 1) : 1;
+    }
 
     var edgesPerAreaMin = Math.round(edgeMinAtMin + t * (edgeMinAtMax - edgeMinAtMin));
     var edgesPerAreaMax = Math.round(edgeMaxAtMin + t * (edgeMaxAtMax - edgeMinAtMin));
     if (edgesPerAreaMax < edgesPerAreaMin) edgesPerAreaMax = edgesPerAreaMin;
 
+    if (isStarGrid()) {
+      var edgeMult =
+        typeof STAR_GRID_AUTO_MERGE_EDGE_MULTIPLIER !== "undefined"
+          ? STAR_GRID_AUTO_MERGE_EDGE_MULTIPLIER
+          : 1.7;
+      edgesPerAreaMin = Math.round(edgesPerAreaMin * edgeMult);
+      edgesPerAreaMax = Math.round(edgesPerAreaMax * edgeMult);
+      if (edgesPerAreaMax < edgesPerAreaMin) edgesPerAreaMax = edgesPerAreaMin;
+    }
+
     return {
-      areaCountMin: areaCountMin,
-      areaCountMax: areaCountMax,
+      areaCountMin: areaCount,
+      areaCountMax: areaCount,
       edgesPerAreaMin: edgesPerAreaMin,
       edgesPerAreaMax: edgesPerAreaMax,
       boundsInset:
@@ -972,14 +1272,13 @@
   function updateAutoMergeIntensityOutput() {
     var out = document.getElementById("auto-merge-intensity-out");
     if (!out) return;
+    var step = getAutoMergeIntensity();
+    if (step <= 0) {
+      out.textContent = "Off";
+      return;
+    }
     var opts = getAutoMergePlanOptions();
-    out.textContent =
-      String(getAutoMergeIntensity()) +
-      "% · " +
-      opts.areaCountMin +
-      "–" +
-      opts.areaCountMax +
-      " areas";
+    out.textContent = "Step " + step + " · " + opts.areaCountMin + " areas";
   }
 
   function getGridStrokeWidth() {
@@ -1012,13 +1311,12 @@
     return "Thick";
   }
 
-  function getBorderSideWhiteFillSliderValue() {
-    var slider = document.getElementById("border-side-white-fill");
-    var fallback =
-      typeof BORDER_SIDE_WHITE_FILL_DEFAULT !== "undefined"
-        ? BORDER_SIDE_WHITE_FILL_DEFAULT
-        : 0;
-    var v = slider ? Number(slider.value) : fallback;
+  /**
+   * Snap raw slider value to one of BORDER_SIDE_WHITE_FILL_STEPS positions (min … max).
+   * @param {number} raw
+   * @returns {number}
+   */
+  function snapBorderSideWhiteFillSliderValue(raw) {
     var min =
       typeof BORDER_SIDE_WHITE_FILL_MIN !== "undefined"
         ? BORDER_SIDE_WHITE_FILL_MIN
@@ -1027,7 +1325,21 @@
       typeof BORDER_SIDE_WHITE_FILL_MAX !== "undefined"
         ? BORDER_SIDE_WHITE_FILL_MAX
         : 100;
-    return Math.min(max, Math.max(min, Math.round(v)));
+    var steps =
+      typeof BORDER_SIDE_WHITE_FILL_STEPS !== "undefined"
+        ? BORDER_SIDE_WHITE_FILL_STEPS
+        : 5;
+    return snapSteppedSliderValue(raw, min, max, steps);
+  }
+
+  function getBorderSideWhiteFillSliderValue() {
+    var slider = document.getElementById("border-side-white-fill");
+    var fallback =
+      typeof BORDER_SIDE_WHITE_FILL_DEFAULT !== "undefined"
+        ? BORDER_SIDE_WHITE_FILL_DEFAULT
+        : 0;
+    var v = slider ? Number(slider.value) : fallback;
+    return snapBorderSideWhiteFillSliderValue(v);
   }
 
   /**
@@ -1038,7 +1350,7 @@
     var cap =
       typeof BORDER_SIDE_WHITE_CAP_PERCENT !== "undefined"
         ? BORDER_SIDE_WHITE_CAP_PERCENT
-        : 60;
+        : 40;
     var sliderMax =
       typeof BORDER_SIDE_WHITE_FILL_MAX !== "undefined"
         ? BORDER_SIDE_WHITE_FILL_MAX
@@ -1056,68 +1368,198 @@
   }
 
   /**
-   * Left/right margin division slots (one per column × row).
-   * @returns {{ id: string }[]}
+   * @param {string[]|null} cachedOrder
+   * @param {string[]} validIds
+   * @param {boolean} forceReshuffle
+   * @returns {string[]}
    */
-  function getBorderSideDivisionCellCatalog() {
-    var cols = getBorderSideThicknessColumns();
-    var yBounds = getLeftRightBorderCellYBounds();
-    var rowCount = yBounds.length - 1;
-    var catalog = [];
-    var c;
-    var r;
-    for (c = 0; c < cols; c++) {
-      for (r = 0; r < rowCount; r++) {
-        catalog.push({ id: String(c) + "-" + String(r) });
-      }
+  function syncBorderSideWhiteColumnOrder(cachedOrder, validIds, forceReshuffle) {
+    var validSet = new Set(validIds);
+    if (forceReshuffle || !cachedOrder) {
+      return shufflePickIds(
+        validIds.map(function (id) {
+          return { id: id };
+        }),
+        validIds.length
+      );
     }
-    return catalog;
+    var order = cachedOrder.filter(function (id) {
+      return validSet.has(id);
+    });
+    var existing = new Set(order);
+    var newcomers = [];
+    var i;
+    for (i = 0; i < validIds.length; i++) {
+      if (!existing.has(validIds[i])) newcomers.push(validIds[i]);
+    }
+    if (newcomers.length) {
+      for (i = newcomers.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = newcomers[i];
+        newcomers[i] = newcomers[j];
+        newcomers[j] = tmp;
+      }
+      order = order.concat(newcomers);
+    }
+    return order;
   }
 
   /**
+   * Staggered row offsets so middle/inner columns whiten at different strip positions
+   * than the outer column (same slider share per column, not aligned on one row).
+   * @param {number} rowCount
+   * @param {number} cols
+   * @param {boolean} randomize
+   * @returns {number[]}
+   */
+  function buildBorderSideWhiteColRowOffsets(rowCount, cols, randomize) {
+    var offsets = [0];
+    if (cols < 2 || rowCount < 2) return offsets;
+
+    var span = Math.max(1, rowCount - 1);
+    var jitter = function () {
+      if (!randomize || rowCount < 4) return 0;
+      return Math.floor(Math.random() * Math.max(1, Math.floor(rowCount / 5)));
+    };
+
+    var o1 = (Math.max(1, Math.round(span / 3)) + jitter()) % rowCount;
+    if (o1 === 0) o1 = 1;
+    offsets.push(o1);
+
+    if (cols < 3) return offsets;
+
+    var o2 = (Math.max(2, Math.round((2 * span) / 3)) + jitter()) % rowCount;
+    if (o2 === 0) o2 = Math.min(rowCount - 1, 2);
+    if (o2 === o1) o2 = (o2 + Math.max(1, Math.floor(rowCount / 4))) % rowCount;
+    if (o2 === 0) o2 = Math.min(rowCount - 1, o1 + 1);
+    offsets.push(o2);
+    return offsets;
+  }
+
+  /**
+   * True if whitening (col, row) would put a third column on the same strip row (cols === 3).
+   * @param {Object.<number, Set<number>>} colsByRow
+   * @param {number} cols
+   * @param {number} colIndex
+   * @param {number} rowIndex
+   * @returns {boolean}
+   */
+  function canBorderSideWhiteCellAtRow(colsByRow, cols, colIndex, rowIndex) {
+    if (cols < 3) return true;
+    var atRow = colsByRow[rowIndex];
+    if (!atRow || atRow.size < 2) return true;
+    return atRow.has(colIndex);
+  }
+
+  /**
+   * @param {Object.<number, Set<number>>} colsByRow
+   * @param {number} colIndex
+   * @param {number} rowIndex
+   */
+  function markBorderSideWhiteCellAtRow(colsByRow, colIndex, rowIndex) {
+    if (!colsByRow[rowIndex]) colsByRow[rowIndex] = new Set();
+    colsByRow[rowIndex].add(colIndex);
+    borderSideWhiteCellIds.add(
+      String(colIndex) + "-" + String(rowIndex)
+    );
+  }
+
+  /**
+   * Color fade: same whitened-row share in every thickness column, staggered along the strip.
+   * Never whitens all three thickness columns on the same strip row.
    * @param {boolean} forceReshuffle
    */
   function syncBorderSideWhiteCells(forceReshuffle) {
-    var catalog = getBorderSideDivisionCellCatalog();
-    var catalogIds = catalog.map(function (item) {
-      return item.id;
-    });
-    var validSet = new Set(catalogIds);
+    var cols = getBorderSideThicknessColumns();
+    var rowCount = getLeftRightBorderCellYBounds().length - 1;
+    var targetPercent = getBorderSideWhiteFillTargetPercent();
+    var perColTarget = Math.round((rowCount * targetPercent) / 100);
+    if (perColTarget < 0) perColTarget = 0;
+    if (perColTarget > rowCount) perColTarget = rowCount;
 
-    if (forceReshuffle || !cachedBorderSideWhiteCellOrder) {
-      cachedBorderSideWhiteCellOrder = shufflePickIds(catalog, catalogIds.length);
-    } else {
-      cachedBorderSideWhiteCellOrder = cachedBorderSideWhiteCellOrder.filter(
-        function (id) {
-          return validSet.has(id);
-        }
-      );
-      var existing = new Set(cachedBorderSideWhiteCellOrder);
-      var newcomers = [];
-      var i;
-      for (i = 0; i < catalogIds.length; i++) {
-        if (!existing.has(catalogIds[i])) newcomers.push(catalogIds[i]);
-      }
-      if (newcomers.length) {
-        for (i = newcomers.length - 1; i > 0; i--) {
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = newcomers[i];
-          newcomers[i] = newcomers[j];
-          newcomers[j] = tmp;
-        }
-        cachedBorderSideWhiteCellOrder =
-          cachedBorderSideWhiteCellOrder.concat(newcomers);
-      }
+    var rowIds = [];
+    var r;
+    for (r = 0; r < rowCount; r++) {
+      rowIds.push(String(r));
     }
 
-    var targetPercent = getBorderSideWhiteFillTargetPercent();
-    var target = Math.round((catalog.length * targetPercent) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
+    var layoutChanged = cachedBorderSideWhiteRowCount !== rowCount;
+    if (
+      forceReshuffle ||
+      layoutChanged ||
+      !cachedBorderSideWhiteRowOrder
+    ) {
+      cachedBorderSideWhiteRowOrder = syncBorderSideWhiteColumnOrder(
+        cachedBorderSideWhiteRowOrder,
+        rowIds,
+        forceReshuffle || layoutChanged
+      );
+      cachedBorderSideWhiteColRowOffsets = buildBorderSideWhiteColRowOffsets(
+        rowCount,
+        cols,
+        forceReshuffle || layoutChanged
+      );
+      cachedBorderSideWhiteRowCount = rowCount;
+    } else if (
+      !cachedBorderSideWhiteColRowOffsets ||
+      cachedBorderSideWhiteColRowOffsets.length < cols
+    ) {
+      cachedBorderSideWhiteColRowOffsets = buildBorderSideWhiteColRowOffsets(
+        rowCount,
+        cols,
+        false
+      );
+    }
 
     borderSideWhiteCellIds.clear();
-    for (i = 0; i < target; i++) {
-      borderSideWhiteCellIds.add(cachedBorderSideWhiteCellOrder[i]);
+
+    if (!perColTarget || !rowCount) return;
+
+    var c;
+    var k;
+    var order = cachedBorderSideWhiteRowOrder;
+    var offsets = cachedBorderSideWhiteColRowOffsets;
+    var colsByRow = {};
+    var usedRowsByCol = [];
+    var candidateRows;
+    var rowIndex;
+    var assigned;
+    var r;
+
+    for (c = 0; c < cols; c++) {
+      usedRowsByCol[c] = new Set();
+      assigned = 0;
+      candidateRows = [];
+      for (r = 0; r < order.length; r++) {
+        candidateRows.push(
+          (Number(order[r]) + (offsets[c] || 0)) % rowCount
+        );
+      }
+      for (r = 0; r < candidateRows.length && assigned < perColTarget; r++) {
+        rowIndex = candidateRows[r];
+        if (usedRowsByCol[c].has(rowIndex)) continue;
+        if (
+          !canBorderSideWhiteCellAtRow(colsByRow, cols, c, rowIndex)
+        ) {
+          continue;
+        }
+        usedRowsByCol[c].add(rowIndex);
+        markBorderSideWhiteCellAtRow(colsByRow, c, rowIndex);
+        assigned++;
+      }
+      if (assigned >= perColTarget) continue;
+      for (k = 0; k < rowCount && assigned < perColTarget; k++) {
+        rowIndex = k;
+        if (usedRowsByCol[c].has(rowIndex)) continue;
+        if (
+          !canBorderSideWhiteCellAtRow(colsByRow, cols, c, rowIndex)
+        ) {
+          continue;
+        }
+        usedRowsByCol[c].add(rowIndex);
+        markBorderSideWhiteCellAtRow(colsByRow, c, rowIndex);
+        assigned++;
+      }
     }
   }
 
@@ -1195,6 +1637,11 @@
     return sheetColor("A1");
   }
 
+  /** Color fade: fill for margin cells that lost their pattern color (sheet C10). */
+  function getBorderSideColorFadeFillColor() {
+    return sheetColor("C10");
+  }
+
   function getCircleFillColor() {
     return sheetColor("F3");
   }
@@ -1208,7 +1655,35 @@
   }
 
   function getGuiltShameDiamondFillColor() {
-    return sheetColor("F8");
+    return sheetColor("F10");
+  }
+
+  function getStrengthSquareFillColor() {
+    return sheetColor("F11");
+  }
+
+  function getStrengthCircleFillColor() {
+    return sheetColor("F12");
+  }
+
+  function getStrengthStrokeColor() {
+    return sheetColor("F13");
+  }
+
+  function getHelplessnessStrokeColor() {
+    return sheetColor("F14");
+  }
+
+  function getAngerTriangleFillColor() {
+    return sheetColor("F15");
+  }
+
+  function getLongingCircleStrokeColor() {
+    return sheetColor("F16");
+  }
+
+  function getGriefCircleStrokeColor() {
+    return sheetColor("F17");
   }
 
   function getLabelBarBackgroundColor() {
@@ -1216,7 +1691,12 @@
   }
 
   function getLabelBarContentColor() {
-    return sheetColor("G4");
+    return normalizeHexColor(
+      sheetColor("G4"),
+      typeof LABEL_BAR_CONTENT_COLOR_DEFAULT !== "undefined"
+        ? LABEL_BAR_CONTENT_COLOR_DEFAULT
+        : "#ffffff"
+    );
   }
 
   function ensureLabelBarBackgroundDiffersFromCanvas() {
@@ -1286,6 +1766,14 @@
       applyMergeReveal();
       return;
     }
+    if (isGirihGrid()) {
+      renderBackgroundLayer();
+      updateBorderDivisionLines();
+      renderGridMaskLayer("canvas-background-color");
+      renderPatternLayer();
+      applyMergeReveal();
+      return;
+    }
     renderBackgroundLayer();
     renderGridMaskLayer("canvas-background-color");
     renderHalfCircleLayer();
@@ -1329,8 +1817,7 @@
   }
 
   function hasActiveMergeCutouts() {
-    if (removedEdges.size > 0) return true;
-    return !!(stickyMergedCutoutFaces && stickyMergedCutoutFaces.length);
+    return getMergedRegionsForMask().length > 0;
   }
 
   function updateGridWhiteMaskDef(defs, mergedRegions, bounds) {
@@ -1465,10 +1952,7 @@
     if (!removedEdges.size) {
       stickyMergedCutoutFaces = null;
       mergedRegions = freshRegions;
-    } else if (isStarGrid()) {
-      stickyMergedCutoutFaces = freshRegions;
-      mergedRegions = freshRegions;
-    } else if (trigger === "restore" || interactionMode === "restore") {
+    } else if (isAlternateGrid()) {
       stickyMergedCutoutFaces = freshRegions;
       mergedRegions = freshRegions;
     } else if (freshRegions.length) {
@@ -1505,9 +1989,11 @@
     if (!designSvg) return;
 
     var active = hasActiveMergeCutouts();
-    var showHope = isEmotionCanvasVisible("hope");
+    var showHope = isEmotionLayerActive("hope");
     var maskClipped = designSvg.querySelector("#inner-clipped-grid-mask");
+    var hopeFillClipped = designSvg.querySelector("#inner-clipped-hope-merge-fill");
     var dotsClipped = designSvg.querySelector("#inner-clipped-stipple-dots");
+    var hopeFillLayer = designSvg.querySelector("#layer-hope-merge-fill");
     var dotsLayer = designSvg.querySelector("#layer-stipple-dots");
     var defs = designSvg.querySelector("defs");
     var hasClipDef = !!(
@@ -1518,18 +2004,27 @@
     }
 
     if (!active || !showHope) {
+      if (hopeFillClipped) hopeFillClipped.style.display = "none";
       if (dotsClipped) dotsClipped.style.display = "none";
+      if (hopeFillLayer) hopeFillLayer.removeAttribute("clip-path");
       if (dotsLayer) dotsLayer.removeAttribute("clip-path");
       return;
     }
 
+    if (hopeFillClipped) hopeFillClipped.style.display = "";
     if (dotsClipped) dotsClipped.style.display = "";
+    if (hopeFillLayer && hasClipDef) {
+      hopeFillLayer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
+    } else if (hopeFillLayer) {
+      hopeFillLayer.removeAttribute("clip-path");
+    }
     if (dotsLayer && hasClipDef) {
       dotsLayer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
     } else if (dotsLayer) {
       dotsLayer.removeAttribute("clip-path");
     }
 
+    renderHopeMergeFillLayer();
     renderStippleDotsLayer();
   }
 
@@ -1555,6 +2050,10 @@
     return sheetColor("F6");
   }
 
+  function getAutoMergeShadowColor() {
+    return sheetColor("F7");
+  }
+
   function getAutoMergeOutlineWidth() {
     var mult =
       typeof AUTO_MERGE_OUTLINE_WIDTH_GRID_MULTIPLIER !== "undefined"
@@ -1563,9 +2062,17 @@
     return getGridStrokeWidth() * mult;
   }
 
+  function hasActivePrideAutoMergeRegions() {
+    return (
+      getAutoMergeIntensity() > 0 &&
+      autoMergeFillRegions &&
+      autoMergeFillRegions.length > 0
+    );
+  }
+
   function getAutoMergeShadowFilterParams() {
     return {
-      shadowColor: sheetColor("D6"),
+      shadowColor: getAutoMergeShadowColor(),
       blur:
         typeof AUTO_MERGE_SHADOW_BLUR_PX !== "undefined"
           ? AUTO_MERGE_SHADOW_BLUR_PX
@@ -1596,6 +2103,38 @@
   }
 
   /**
+   * SVG 1.1–compatible cast shadow (feDropShadow is often dropped in export apps).
+   * @returns {string}
+   */
+  function getAutoMergeShadowFilterDefMarkup() {
+    var filterId = getAutoMergeShadowFilterId();
+    var shadow = getAutoMergeShadowFilterParams();
+    return (
+      '<filter id="' +
+      filterId +
+      '" filterUnits="objectBoundingBox" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">' +
+      '<feGaussianBlur in="SourceAlpha" stdDeviation="' +
+      shadow.blur +
+      '" result="auto-merge-shadow-blur"/>' +
+      '<feOffset in="auto-merge-shadow-blur" dx="' +
+      shadow.offsetX +
+      '" dy="' +
+      shadow.offsetY +
+      '" result="auto-merge-shadow-offset"/>' +
+      '<feFlood flood-color="' +
+      shadow.shadowColor +
+      '" flood-opacity="' +
+      shadow.opacity +
+      '" result="auto-merge-shadow-flood"/>' +
+      '<feComposite in="auto-merge-shadow-flood" in2="auto-merge-shadow-offset" operator="in" result="auto-merge-shadow-shape"/>' +
+      '<feMerge>' +
+      '<feMergeNode in="auto-merge-shadow-shape"/>' +
+      "</feMerge>" +
+      "</filter>"
+    );
+  }
+
+  /**
    * @param {SVGElement} defs
    */
   function ensureAutoMergeShadowFilter(defs) {
@@ -1607,18 +2146,45 @@
 
     var filter = elSvg("filter");
     filter.setAttribute("id", filterId);
+    filter.setAttribute("filterUnits", "objectBoundingBox");
     filter.setAttribute("x", "-50%");
     filter.setAttribute("y", "-50%");
     filter.setAttribute("width", "200%");
     filter.setAttribute("height", "200%");
+    filter.setAttribute("color-interpolation-filters", "sRGB");
 
-    var drop = elSvg("feDropShadow");
-    drop.setAttribute("dx", String(shadow.offsetX));
-    drop.setAttribute("dy", String(shadow.offsetY));
-    drop.setAttribute("stdDeviation", String(shadow.blur));
-    drop.setAttribute("flood-color", shadow.shadowColor);
-    drop.setAttribute("flood-opacity", String(shadow.opacity));
-    filter.appendChild(drop);
+    var blur = elSvg("feGaussianBlur");
+    blur.setAttribute("in", "SourceAlpha");
+    blur.setAttribute("stdDeviation", String(shadow.blur));
+    blur.setAttribute("result", "auto-merge-shadow-blur");
+
+    var offset = elSvg("feOffset");
+    offset.setAttribute("in", "auto-merge-shadow-blur");
+    offset.setAttribute("dx", String(shadow.offsetX));
+    offset.setAttribute("dy", String(shadow.offsetY));
+    offset.setAttribute("result", "auto-merge-shadow-offset");
+
+    var flood = elSvg("feFlood");
+    flood.setAttribute("flood-color", shadow.shadowColor);
+    flood.setAttribute("flood-opacity", String(shadow.opacity));
+    flood.setAttribute("result", "auto-merge-shadow-flood");
+
+    var composite = elSvg("feComposite");
+    composite.setAttribute("in", "auto-merge-shadow-flood");
+    composite.setAttribute("in2", "auto-merge-shadow-offset");
+    composite.setAttribute("operator", "in");
+    composite.setAttribute("result", "auto-merge-shadow-shape");
+
+    var merge = elSvg("feMerge");
+    var mergeShadow = elSvg("feMergeNode");
+    mergeShadow.setAttribute("in", "auto-merge-shadow-shape");
+    merge.appendChild(mergeShadow);
+
+    filter.appendChild(blur);
+    filter.appendChild(offset);
+    filter.appendChild(flood);
+    filter.appendChild(composite);
+    filter.appendChild(merge);
     defs.appendChild(filter);
   }
 
@@ -1626,58 +2192,61 @@
    * @param {string[]} lines
    */
   function pushAutoMergeShadowFilterDefLines(lines) {
-    var filterId = getAutoMergeShadowFilterId();
-    var shadow = getAutoMergeShadowFilterParams();
+    lines.push(getAutoMergeShadowFilterDefMarkup());
+  }
 
-    lines.push(
-      '<filter id="' +
-        filterId +
-        '" x="-50%" y="-50%" width="200%" height="200%">' +
-        '<feDropShadow dx="' +
-        shadow.offsetX +
-        '" dy="' +
-        shadow.offsetY +
-        '" stdDeviation="' +
-        shadow.blur +
-        '" flood-color="' +
-        shadow.shadowColor +
-        '" flood-opacity="' +
-        shadow.opacity +
-        '"/>' +
-        "</filter>"
-    );
+  /**
+   * @param {{ x: number, y: number }[]} pts
+   * @returns {string}
+   */
+  function polygonPointsToAttr(pts) {
+    var pointsAttr = "";
+    var p;
+    for (p = 0; p < pts.length; p++) {
+      if (p) pointsAttr += " ";
+      pointsAttr += pts[p].x + "," + pts[p].y;
+    }
+    return pointsAttr;
+  }
+
+  /**
+   * @param {SVGElement} parent
+   * @param {{ x: number, y: number }[]} pts
+   */
+  function appendAutoMergeFilteredShadowPolygon(parent, pts) {
+    var poly = elSvg("polygon");
+    poly.setAttribute("points", polygonPointsToAttr(pts));
+    poly.setAttribute("fill", "#000");
+    poly.setAttribute("stroke", "none");
+    poly.setAttribute("filter", getAutoMergeShadowFilterUrl());
+    parent.appendChild(poly);
   }
 
   /**
    * @param {string} pointsAttr
-   * @param {string} fillColor
    * @returns {string}
    */
-  function getAutoMergeRegionExportMarkup(pointsAttr, fillColor) {
-    var outline = getAutoMergeOutlineColor();
-    var strokeWidth = getAutoMergeOutlineWidth();
-    var filterUrl = getAutoMergeShadowFilterUrl();
+  function getAutoMergeShadowPolygonExportMarkup(pointsAttr) {
     return (
-      "<g>" +
-      '<g filter="' +
-      filterUrl +
-      '">' +
       '<polygon points="' +
       pointsAttr +
-      '" fill="' +
-      fillColor +
-      '" stroke="none"/>' +
-      "</g>" +
+      '" fill="#000" stroke="none" filter="' +
+      getAutoMergeShadowFilterUrl() +
+      '"/>'
+    );
+  }
+
+  function getAutoMergeRegionFillExportMarkup(pointsAttr, fillColor) {
+    return (
       '<polygon points="' +
       pointsAttr +
       '" fill="' +
       fillColor +
       '" stroke="' +
-      outline +
+      getAutoMergeOutlineColor() +
       '" stroke-width="' +
-      strokeWidth +
-      '" stroke-linejoin="round"/>' +
-      "</g>"
+      getAutoMergeOutlineWidth() +
+      '" stroke-linejoin="round"/>'
     );
   }
 
@@ -1687,20 +2256,9 @@
    * @returns {SVGElement}
    */
   function createAutoMergeRegionGroup(pts, fillColor) {
-    var pointsAttr = "";
-    var p;
-    for (p = 0; p < pts.length; p++) {
-      if (p) pointsAttr += " ";
-      pointsAttr += pts[p].x + "," + pts[p].y;
-    }
-
+    var pointsAttr = polygonPointsToAttr(pts);
     var g = elSvg("g");
-    var shadowPoly = elSvg("polygon");
-    shadowPoly.setAttribute("points", pointsAttr);
-    shadowPoly.setAttribute("fill", fillColor);
-    shadowPoly.setAttribute("stroke", "none");
-    shadowPoly.setAttribute("filter", getAutoMergeShadowFilterUrl());
-    g.appendChild(shadowPoly);
+    appendAutoMergeFilteredShadowPolygon(g, pts);
 
     var poly = elSvg("polygon");
     poly.setAttribute("points", pointsAttr);
@@ -1715,22 +2273,37 @@
   /**
    * @param {string[]} lines
    */
-  function pushAutoMergeFillExportLines(lines) {
-    if (
-      !isEmotionCanvasVisible("pride") ||
-      !autoMergeFillRegions ||
-      !autoMergeFillRegions.length
-    ) {
+  function pushAutoMergeShadowExportLines(lines) {
+    if (!hasActivePrideAutoMergeRegions()) {
+      return;
+    }
+
+    var i;
+    var pts;
+
+    lines.push('<g id="layer-auto-merge-fills-shadows">');
+    for (i = 0; i < autoMergeFillRegions.length; i++) {
+      pts = autoMergeFillRegions[i].points;
+      if (!pts.length) continue;
+      lines.push(
+        getAutoMergeShadowPolygonExportMarkup(polygonPointsToAttr(pts))
+      );
+    }
+    lines.push("</g>");
+  }
+
+  function pushAutoMergeFillOnlyExportLines(lines) {
+    if (!hasActivePrideAutoMergeRegions()) {
       return;
     }
 
     var fillColor = getAutoMergeFillColor();
-    lines.push('<g clip-path="url(#inner-content-clip)">');
-    lines.push('<g id="layer-auto-merge-fills">');
     var i;
     var pts;
     var p;
     var pointsAttr;
+
+    lines.push('<g id="layer-auto-merge-fills">');
     for (i = 0; i < autoMergeFillRegions.length; i++) {
       pts = autoMergeFillRegions[i].points;
       if (!pts.length) continue;
@@ -1739,9 +2312,8 @@
         if (p) pointsAttr += " ";
         pointsAttr += pts[p].x + "," + pts[p].y;
       }
-      lines.push(getAutoMergeRegionExportMarkup(pointsAttr, fillColor));
+      lines.push(getAutoMergeRegionFillExportMarkup(pointsAttr, fillColor));
     }
-    lines.push("</g>");
     lines.push("</g>");
   }
 
@@ -1800,6 +2372,69 @@
     lines.push("</g>");
   }
 
+  function pushHopeMergeFillExportLines(lines) {
+    if (!isEmotionLayerActive("hope") || !hasActiveMergeCutouts()) return;
+
+    var mergedRegions = getMergedRegionsForMask();
+    if (!mergedRegions.length) return;
+
+    var fillColor = getHopeMergeFillColor();
+    lines.push('<g clip-path="url(#inner-content-clip)">');
+    lines.push('<g id="layer-hope-merge-fill">');
+    var i;
+    var pts;
+    var p;
+    var pointsAttr;
+    for (i = 0; i < mergedRegions.length; i++) {
+      pts = mergedRegions[i].points;
+      if (!pts.length) continue;
+      pointsAttr = "";
+      for (p = 0; p < pts.length; p++) {
+        if (p) pointsAttr += " ";
+        pointsAttr += pts[p].x + "," + pts[p].y;
+      }
+      lines.push(
+        '<polygon points="' + pointsAttr + '" fill="' + fillColor + '" stroke="none"/>'
+      );
+    }
+    lines.push("</g>");
+    lines.push("</g>");
+  }
+
+  function renderHopeMergeFillLayer() {
+    if (!designSvg) return;
+    var layer = designSvg.querySelector("#layer-hope-merge-fill");
+    if (!layer) return;
+
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+    if (!isEmotionLayerActive("hope") || !hasActiveMergeCutouts()) return;
+
+    var mergedRegions = getMergedRegionsForMask();
+    if (!mergedRegions.length) return;
+
+    var fillColor = getHopeMergeFillColor();
+    var i;
+    var pts;
+    var p;
+    var pointsAttr;
+    var poly;
+    for (i = 0; i < mergedRegions.length; i++) {
+      pts = mergedRegions[i].points;
+      if (!pts.length) continue;
+      pointsAttr = "";
+      for (p = 0; p < pts.length; p++) {
+        if (p) pointsAttr += " ";
+        pointsAttr += pts[p].x + "," + pts[p].y;
+      }
+      poly = elSvg("polygon");
+      poly.setAttribute("points", pointsAttr);
+      poly.setAttribute("fill", fillColor);
+      poly.setAttribute("stroke", "none");
+      layer.appendChild(poly);
+    }
+  }
+
   function renderStippleDotsLayer() {
     if (!designSvg) return;
     var layer = designSvg.querySelector("#layer-stipple-dots");
@@ -1809,7 +2444,7 @@
     while (layer.firstChild) layer.removeChild(layer.firstChild);
 
     if (
-      !isEmotionCanvasVisible("hope") ||
+      !isEmotionLayerActive("hope") ||
       !hasActiveMergeCutouts() ||
       !hopeStippleImageReady
     ) {
@@ -1820,9 +2455,13 @@
     var hasMergeClip = !!(
       defs && defs.querySelector("#" + MERGE_REGIONS_CLIP_ID)
     );
-    if (hasMergeClip) {
-      layer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
+    if (!hasMergeClip) {
+      layer.removeAttribute("clip-path");
+      applyMergeReveal();
+      return;
     }
+
+    layer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
 
     ensureHopeDotsMaskDef(defs);
     var fill = elSvg("rect");
@@ -1840,7 +2479,7 @@
    */
   function pushStippleDotsExportLines(lines) {
     if (
-      !isEmotionCanvasVisible("hope") ||
+      !isEmotionLayerActive("hope") ||
       !hasActiveMergeCutouts() ||
       !hopeStippleImageReady
     ) {
@@ -1944,13 +2583,29 @@
       return NestedStarOctagonsGeometry.buildJunctionCircleCatalog(
         getStarLayout(),
         CANVAS_W,
+        CANVAS_H,
+        1
+      );
+    }
+    if (isGirihGrid()) {
+      if (
+        typeof GirihGeometry === "undefined" ||
+        !GirihGeometry.buildJunctionCircleCatalog
+      ) {
+        return [];
+      }
+      return GirihGeometry.buildJunctionCircleCatalog(
+        getGirihLayout(),
+        CANVAS_W,
         CANVAS_H
       );
     }
+    // Junction positions only; halfSide is for Strength marks — not tied to inner-scale slider.
     return TopkapiGeometry.buildUprightSquareCatalog(
       lastOctagonsN,
       CANVAS_W,
-      CANVAS_H
+      CANVAS_H,
+      1
     );
   }
 
@@ -1964,6 +2619,19 @@
       }
       return NestedStarOctagonsGeometry.buildHelplessnessJunctionCatalog(
         getStarLayout(),
+        CANVAS_W,
+        CANVAS_H
+      );
+    }
+    if (isGirihGrid()) {
+      if (
+        typeof GirihGeometry === "undefined" ||
+        !GirihGeometry.buildHelplessnessJunctionCatalog
+      ) {
+        return [];
+      }
+      return GirihGeometry.buildHelplessnessJunctionCatalog(
+        getGirihLayout(),
         CANVAS_W,
         CANVAS_H
       );
@@ -1994,6 +2662,17 @@
         CANVAS_H
       );
     }
+    if (isGirihGrid()) {
+      var girihLayout = getGirihLayout();
+      return (
+        "girih-hp|" +
+        girihLayout.densityN +
+        "|" +
+        CANVAS_W +
+        "|" +
+        CANVAS_H
+      );
+    }
     return buildDiamondLayoutSignature() + "|" + getInnerScale();
   }
 
@@ -2011,6 +2690,19 @@
       }
       return NestedStarOctagonsGeometry.buildJunctionDiamondCatalog(
         getStarLayout(),
+        CANVAS_W,
+        CANVAS_H
+      );
+    }
+    if (isGirihGrid()) {
+      if (
+        typeof GirihGeometry === "undefined" ||
+        !GirihGeometry.buildDiamondCatalog
+      ) {
+        return [];
+      }
+      return GirihGeometry.buildDiamondCatalog(
+        getGirihLayout(),
         CANVAS_W,
         CANVAS_H
       );
@@ -2038,10 +2730,48 @@
         "|" +
         CANVAS_W +
         "|" +
+        CANVAS_H +
+        "|" +
+        getInnerScale()
+      );
+    }
+    if (isGirihGrid()) {
+      var girihLayout = getGirihLayout();
+      return (
+        "girih|" +
+        girihLayout.densityN +
+        "|" +
+        CANVAS_W +
+        "|" +
         CANVAS_H
       );
     }
     return lastOctagonsN + "|" + CANVAS_W + "|" + CANVAS_H;
+  }
+
+  /**
+   * Shared junction key for octagon/star diamond + upright-square catalogs (col-row).
+   * @param {string} id
+   * @returns {string|null}
+   */
+  function junctionKeyFromCatalogId(id) {
+    var m = id.match(/^(?:star-)?(?:dm|sq)-(\d+)-(\d+)$/);
+    if (m) return m[1] + "-" + m[2];
+    return null;
+  }
+
+  /**
+   * @param {{ id: string }[]} catalog
+   * @returns {Map<string, string>}
+   */
+  function buildCatalogJunctionKeyMap(catalog) {
+    var map = new Map();
+    for (var i = 0; i < catalog.length; i++) {
+      var item = catalog[i];
+      var key = junctionKeyFromCatalogId(item.id);
+      if (key) map.set(item.id, key);
+    }
+    return map;
   }
 
   /**
@@ -2060,6 +2790,152 @@
       ids[j] = tmp;
     }
     return ids.slice(0, count);
+  }
+
+  /**
+   * @param {{ id: string }[]} catalog
+   * @param {number} count
+   * @param {Set<string>} excludedKeys junction keys to skip
+   * @returns {string[]}
+   */
+  function shufflePickIdsExcluding(catalog, count, excludedKeys) {
+    var available = [];
+    var i;
+    var item;
+    var key;
+    for (i = 0; i < catalog.length; i++) {
+      item = catalog[i];
+      key = junctionKeyFromCatalogId(item.id);
+      if (key && excludedKeys.has(key)) continue;
+      available.push(item);
+    }
+    var pickCount = count;
+    if (pickCount > available.length) pickCount = available.length;
+    if (pickCount < 0) pickCount = 0;
+    return shufflePickIds(available, pickCount);
+  }
+
+  /**
+   * Grow/shrink selectedIds to target; full reshuffle only when forceReshuffle is true.
+   * Incremental mode: LIFO remove, random add from remaining catalog slots.
+   * @param {Set<string>} selectedIds
+   * @param {{ id: string }[]} catalog
+   * @param {number} target
+   * @param {{ forceReshuffle?: boolean, excludeJunctionKeys?: Set<string>, pickFn?: function({ id: string }[], number, Set<string>): string[] }} [options]
+   */
+  function adjustCatalogSelection(selectedIds, catalog, target, options) {
+    options = options || {};
+    var forceReshuffle = options.forceReshuffle === true;
+    var excludedKeys = options.excludeJunctionKeys || new Set();
+    var pickFn = options.pickFn;
+
+    if (target < 0) target = 0;
+    if (target > catalog.length) target = catalog.length;
+
+    var validIds = new Set();
+    var vi;
+    for (vi = 0; vi < catalog.length; vi++) {
+      validIds.add(catalog[vi].id);
+    }
+
+    function pickFromCatalog(cat, count) {
+      if (pickFn) return pickFn(cat, count, excludedKeys);
+      if (excludedKeys.size) return shufflePickIdsExcluding(cat, count, excludedKeys);
+      return shufflePickIds(cat, count);
+    }
+
+    if (forceReshuffle) {
+      selectedIds.clear();
+      var fullPicked = pickFromCatalog(catalog, target);
+      for (var fp = 0; fp < fullPicked.length; fp++) {
+        selectedIds.add(fullPicked[fp]);
+      }
+      return;
+    }
+
+    selectedIds.forEach(function (id) {
+      if (!validIds.has(id)) selectedIds.delete(id);
+    });
+
+    while (selectedIds.size > target) {
+      var order = Array.from(selectedIds);
+      selectedIds.delete(order[order.length - 1]);
+    }
+
+    if (selectedIds.size < target) {
+      var need = target - selectedIds.size;
+      var available = [];
+      var item;
+      var key;
+      var ai;
+      for (ai = 0; ai < catalog.length; ai++) {
+        item = catalog[ai];
+        if (selectedIds.has(item.id)) continue;
+        key = junctionKeyFromCatalogId(item.id);
+        if (key && excludedKeys.has(key)) continue;
+        available.push(item);
+      }
+      var added = pickFromCatalog(available, need);
+      for (var ad = 0; ad < added.length; ad++) {
+        selectedIds.add(added[ad]);
+      }
+    }
+  }
+
+  /**
+   * Junction keys occupied by active circle emotions (Sadness, Longing, Grief, Strength).
+   * @returns {Set<string>}
+   */
+  function getActiveCircleJunctionKeys() {
+    var catalog = getUprightSquareCatalog();
+    var idToKey = buildCatalogJunctionKeyMap(catalog);
+    var keys = new Set();
+    var key;
+
+    if (isEmotionLayerActive("sadness")) {
+      circleSelectedIds.forEach(function (id) {
+        key = idToKey.get(id);
+        if (key) keys.add(key);
+      });
+    }
+    if (isEmotionLayerActive("longing")) {
+      longingCircleSelectedIds.forEach(function (id) {
+        key = idToKey.get(id);
+        if (key) keys.add(key);
+      });
+    }
+    if (isEmotionLayerActive("grief")) {
+      griefCircleSelectedIds.forEach(function (id) {
+        key = idToKey.get(id);
+        if (key) keys.add(key);
+      });
+    }
+    if (isEmotionLayerActive("strength")) {
+      strengthSelectedIds.forEach(function (id) {
+        key = idToKey.get(id);
+        if (key) keys.add(key);
+      });
+    }
+    return keys;
+  }
+
+  /**
+   * Junction keys occupied by active anger triangles.
+   * @returns {Set<string>}
+   */
+  function getActiveTriangleJunctionKeys() {
+    if (!supportsAngerDiamondTriangles() || !isEmotionLayerActive("anger")) {
+      return new Set();
+    }
+    var catalog = getDiamondCatalog();
+    var idToKey = buildCatalogJunctionKeyMap(catalog);
+    var keys = new Set();
+    var key;
+    angerTriangleDiamondIds.forEach(function (id) {
+      key = idToKey.get(id);
+      if (key) keys.add(key);
+    });
+    return keys;
   }
 
   /**
@@ -2103,35 +2979,22 @@
 
   /**
    * @param {boolean} forceReshuffle
+   * @param {boolean} [useRandomShuffle] when true, pick positions with Math.random (Randomize button)
    */
-  function syncHelplessnessSelection(forceReshuffle) {
+  function syncHelplessnessSelection(forceReshuffle, useRandomShuffle) {
     var catalog = getHelplessnessJunctionCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
-
-    if (!forceReshuffle) {
-      helplessnessSelectedIds.forEach(function (id) {
-        if (!validIds.has(id)) helplessnessSelectedIds.delete(id);
-      });
-    }
-
     var target = Math.round((catalog.length * getHelplessnessPercent()) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    if (forceReshuffle || helplessnessSelectedIds.size !== target) {
-      helplessnessSelectedIds.clear();
-      var picked = seededShufflePickIds(
-        catalog,
-        target,
-        getHelplessnessShuffleSeed()
-      );
-      for (var p = 0; p < picked.length; p++) {
-        helplessnessSelectedIds.add(picked[p]);
-      }
-    }
+    var pickFn = forceReshuffle
+      ? function (cat, count) {
+          return useRandomShuffle
+            ? shufflePickIds(cat, count)
+            : seededShufflePickIds(cat, count, getHelplessnessShuffleSeed());
+        }
+      : undefined;
+    adjustCatalogSelection(helplessnessSelectedIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      pickFn: pickFn,
+    });
   }
 
   /**
@@ -2139,29 +3002,11 @@
    */
   function syncCircleSelection(forceReshuffle) {
     var catalog = getUprightSquareCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
-
-    if (!forceReshuffle) {
-      circleSelectedIds.forEach(function (id) {
-        if (!validIds.has(id)) circleSelectedIds.delete(id);
-      });
-    }
-
-    var density = getCircleDensity();
-    var target = Math.round((catalog.length * density) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    if (forceReshuffle || circleSelectedIds.size !== target) {
-      circleSelectedIds.clear();
-      var picked = shufflePickIds(catalog, target);
-      for (var p = 0; p < picked.length; p++) {
-        circleSelectedIds.add(picked[p]);
-      }
-    }
+    var target = Math.round((catalog.length * getCircleDensity()) / 100);
+    adjustCatalogSelection(circleSelectedIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      excludeJunctionKeys: getActiveTriangleJunctionKeys(),
+    });
   }
 
   /**
@@ -2169,29 +3014,11 @@
    */
   function syncLongingCircleSelection(forceReshuffle) {
     var catalog = getUprightSquareCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
-
-    if (!forceReshuffle) {
-      longingCircleSelectedIds.forEach(function (id) {
-        if (!validIds.has(id)) longingCircleSelectedIds.delete(id);
-      });
-    }
-
-    var density = getLongingCircleDensity();
-    var target = Math.round((catalog.length * density) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    if (forceReshuffle || longingCircleSelectedIds.size !== target) {
-      longingCircleSelectedIds.clear();
-      var picked = shufflePickIds(catalog, target);
-      for (var p = 0; p < picked.length; p++) {
-        longingCircleSelectedIds.add(picked[p]);
-      }
-    }
+    var target = Math.round((catalog.length * getLongingCircleDensity()) / 100);
+    adjustCatalogSelection(longingCircleSelectedIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      excludeJunctionKeys: getActiveTriangleJunctionKeys(),
+    });
   }
 
   /**
@@ -2199,29 +3026,23 @@
    */
   function syncGriefCircleSelection(forceReshuffle) {
     var catalog = getUprightSquareCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
+    var target = Math.round((catalog.length * getGriefCircleDensity()) / 100);
+    adjustCatalogSelection(griefCircleSelectedIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      excludeJunctionKeys: getActiveTriangleJunctionKeys(),
+    });
+  }
 
-    if (!forceReshuffle) {
-      griefCircleSelectedIds.forEach(function (id) {
-        if (!validIds.has(id)) griefCircleSelectedIds.delete(id);
-      });
-    }
-
-    var density = getGriefCircleDensity();
-    var target = Math.round((catalog.length * density) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    if (forceReshuffle || griefCircleSelectedIds.size !== target) {
-      griefCircleSelectedIds.clear();
-      var picked = shufflePickIds(catalog, target);
-      for (var p = 0; p < picked.length; p++) {
-        griefCircleSelectedIds.add(picked[p]);
-      }
-    }
+  /**
+   * @param {boolean} forceReshuffle
+   */
+  function syncStrengthSelection(forceReshuffle) {
+    var catalog = getUprightSquareCatalog();
+    var target = Math.round((catalog.length * getStrengthDensity()) / 100);
+    adjustCatalogSelection(strengthSelectedIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      excludeJunctionKeys: getActiveTriangleJunctionKeys(),
+    });
   }
 
   /**
@@ -2229,57 +3050,40 @@
    */
   function syncDiamondFill(forceReshuffle) {
     var catalog = getDiamondCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
-
-    if (!forceReshuffle) {
-      diamondFilledIds.forEach(function (id) {
-        if (!validIds.has(id)) diamondFilledIds.delete(id);
-      });
-      return;
-    }
-
     var target = Math.round((catalog.length * getPrideFillPercent()) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    diamondFilledIds.clear();
-    var picked = shufflePickIds(catalog, target);
-    for (var p = 0; p < picked.length; p++) {
-      diamondFilledIds.add(picked[p]);
-    }
+    adjustCatalogSelection(diamondFilledIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+    });
   }
 
-  /** Random-fill inner diamonds (Pride slider / button). */
+  /** Random-fill inner diamonds (Pain slider / Randomize). */
   function syncPrideShapes() {
     syncDiamondFill(true);
   }
 
-  function syncGuiltShameDiamondFill(forceReshuffle) {
-    var catalog = getDiamondCatalog();
-    var validIds = new Set();
-    for (var i = 0; i < catalog.length; i++) {
-      validIds.add(catalog[i].id);
-    }
-
-    if (!forceReshuffle) {
-      guiltShameFilledIds.forEach(function (id) {
-        if (!validIds.has(id)) guiltShameFilledIds.delete(id);
-      });
+  function syncAngerTriangleSelection(forceReshuffle) {
+    if (!supportsAngerDiamondTriangles()) {
+      angerTriangleDiamondIds.clear();
       return;
     }
+    var catalog = getDiamondCatalog();
+    var target = Math.round((catalog.length * getAngerTriangleDensity()) / 100);
+    adjustCatalogSelection(angerTriangleDiamondIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+      excludeJunctionKeys: getActiveCircleJunctionKeys(),
+    });
+  }
 
+  function syncAngerShapes() {
+    syncAngerTriangleSelection(true);
+  }
+
+  function syncGuiltShameDiamondFill(forceReshuffle) {
+    var catalog = getDiamondCatalog();
     var target = Math.round((catalog.length * getGuiltShameFillPercent()) / 100);
-    if (target < 0) target = 0;
-    if (target > catalog.length) target = catalog.length;
-
-    guiltShameFilledIds.clear();
-    var picked = shufflePickIds(catalog, target);
-    for (var p = 0; p < picked.length; p++) {
-      guiltShameFilledIds.add(picked[p]);
-    }
+    adjustCatalogSelection(guiltShameFilledIds, catalog, target, {
+      forceReshuffle: forceReshuffle,
+    });
   }
 
   function syncGuiltShameShapes() {
@@ -2290,7 +3094,7 @@
    * @returns {{ id: string, points: { x: number, y: number }[] }[]}
    */
   function getFilledHollowDiamonds() {
-    if (!isEmotionCanvasVisible("guiltShame")) return [];
+    if (!isEmotionLayerActive("guiltShame")) return [];
     var catalog = getDiamondCatalog();
     var filled = [];
     for (var i = 0; i < catalog.length; i++) {
@@ -2374,7 +3178,7 @@
    * @returns {{ id: string, points: { x: number, y: number }[] }[]}
    */
   function getFilledDiamonds() {
-    if (!isEmotionCanvasVisible("pain")) return [];
+    if (!isEmotionLayerActive("pain")) return [];
     var catalog = getDiamondCatalog();
     var filled = [];
     for (var i = 0; i < catalog.length; i++) {
@@ -2382,6 +3186,64 @@
       if (diamondFilledIds.has(dm.id)) filled.push(dm);
     }
     return filled;
+  }
+
+  /**
+   * @returns {{ id: string, points: { x: number, y: number }[] }[]}
+   */
+  function getAngerTriangleDiamonds() {
+    if (!supportsAngerDiamondTriangles() || !isEmotionLayerActive("anger")) {
+      return [];
+    }
+    var catalog = getDiamondCatalog();
+    var filled = [];
+    for (var i = 0; i < catalog.length; i++) {
+      var dm = catalog[i];
+      if (angerTriangleDiamondIds.has(dm.id)) filled.push(dm);
+    }
+    return filled;
+  }
+
+  /**
+   * Upper-half isosceles triangle: left, right, top vertices of the junction diamond.
+   * @param {{ x: number, y: number }[]} points top, right, bottom, left
+   * @returns {string}
+   */
+  function angerTrianglePointsAttr(points) {
+    var left = points[3];
+    var top = points[0];
+    var right = points[1];
+    return (
+      left.x +
+      "," +
+      left.y +
+      " " +
+      right.x +
+      "," +
+      right.y +
+      " " +
+      top.x +
+      "," +
+      top.y
+    );
+  }
+
+  /**
+   * @param {{ id: string, points: { x: number, y: number }[] }[]} diamonds
+   * @returns {SVGElement}
+   */
+  function angerTrianglesToGroup(diamonds) {
+    var g = elSvg("g");
+    var fillColor = getAngerTriangleFillColor();
+    for (var i = 0; i < diamonds.length; i++) {
+      var dm = diamonds[i];
+      var poly = elSvg("polygon");
+      poly.setAttribute("points", angerTrianglePointsAttr(dm.points));
+      poly.setAttribute("fill", fillColor);
+      poly.setAttribute("stroke", "none");
+      g.appendChild(poly);
+    }
+    return g;
   }
 
   /**
@@ -2433,11 +3295,7 @@
 
     while (layer.firstChild) layer.removeChild(layer.firstChild);
 
-    if (
-      isEmotionCanvasVisible("pride") &&
-      autoMergeFillRegions &&
-      autoMergeFillRegions.length
-    ) {
+    if (hasActivePrideAutoMergeRegions()) {
       var defs = designSvg.querySelector("defs");
       if (defs) ensureAutoMergeShadowFilter(defs);
       layer.appendChild(autoMergeFillsToGroup(autoMergeFillRegions));
@@ -2448,7 +3306,7 @@
    * @returns {{ cx: number, cy: number, r: number }[]}
    */
   function getActiveCircles() {
-    if (!isEmotionCanvasVisible("sadness")) return [];
+    if (!isEmotionLayerActive("sadness")) return [];
     var catalog = getUprightSquareCatalog();
     var circles = [];
     for (var i = 0; i < catalog.length; i++) {
@@ -2464,7 +3322,7 @@
    * @returns {{ cx: number, cy: number, r: number }[]}
    */
   function getActiveLongingCircles() {
-    if (!isEmotionCanvasVisible("longing")) return [];
+    if (!isEmotionLayerActive("longing")) return [];
     var catalog = getUprightSquareCatalog();
     var circles = [];
     for (var i = 0; i < catalog.length; i++) {
@@ -2480,7 +3338,7 @@
    * @returns {{ cx: number, cy: number, r: number }[]}
    */
   function getActiveGriefCircles() {
-    if (!isEmotionCanvasVisible("grief")) return [];
+    if (!isEmotionLayerActive("grief")) return [];
     var catalog = getUprightSquareCatalog();
     var circles = [];
     for (var i = 0; i < catalog.length; i++) {
@@ -2490,6 +3348,29 @@
       }
     }
     return circles;
+  }
+
+  /**
+   * @returns {{ cx: number, cy: number, r: number, halfSide: number }[]}
+   */
+  function getActiveStrengthMarks() {
+    if (!isEmotionLayerActive("strength")) return [];
+    var catalog = getUprightSquareCatalog();
+    var marks = [];
+    for (var i = 0; i < catalog.length; i++) {
+      var sq = catalog[i];
+      if (strengthSelectedIds.has(sq.id)) {
+        var halfSide =
+          typeof sq.halfSide === "number" ? sq.halfSide : sq.r;
+        marks.push({
+          cx: sq.cx,
+          cy: sq.cy,
+          r: sq.r,
+          halfSide: halfSide,
+        });
+      }
+    }
+    return marks;
   }
 
   /**
@@ -2546,7 +3427,7 @@
     var g = elSvg("g");
     g.setAttribute("id", "layer-helplessness");
     g.setAttribute("fill", "none");
-    g.setAttribute("stroke", getPatternStrokeColor());
+    g.setAttribute("stroke", getHelplessnessStrokeColor());
     g.setAttribute(
       "stroke-width",
       String(
@@ -2592,7 +3473,7 @@
     g.setAttribute("id", "layer-longing-circles");
     g.setAttribute("fill", "none");
     var circleStroke = getLongingCircleStrokeWidth();
-    g.setAttribute("stroke", getPatternStrokeColor());
+    g.setAttribute("stroke", getLongingCircleStrokeColor());
     g.setAttribute("stroke-width", String(circleStroke));
 
     var strokeInset = circleStroke / 2;
@@ -2617,7 +3498,7 @@
     g.setAttribute("id", "layer-grief-circles");
     g.setAttribute("fill", "none");
     var circleStroke = getGriefCircleStrokeWidth();
-    g.setAttribute("stroke", getPatternStrokeColor());
+    g.setAttribute("stroke", getGriefCircleStrokeColor());
     g.setAttribute("stroke-width", String(circleStroke));
 
     var strokeInset = circleStroke / 2;
@@ -2644,12 +3525,62 @@
     return g;
   }
 
+  /**
+   * @param {{ cx: number, cy: number, r: number, halfSide: number }[]} marks
+   * @returns {SVGElement}
+   */
+  function strengthMarksToGroup(marks) {
+    var g = elSvg("g");
+    g.setAttribute("id", "layer-strength");
+    var squareFill = getStrengthSquareFillColor();
+    var circleFill = getStrengthCircleFillColor();
+    var strokeColor = getStrengthStrokeColor();
+    var stroke = getCircleStrokeWidth();
+    var strokeInset = stroke / 2;
+
+    for (var i = 0; i < marks.length; i++) {
+      var m = marks[i];
+      var halfSide = m.halfSide;
+      var side = halfSide * 2;
+      var rect = elSvg("rect");
+      rect.setAttribute("x", String(m.cx - halfSide));
+      rect.setAttribute("y", String(m.cy - halfSide));
+      rect.setAttribute("width", String(side));
+      rect.setAttribute("height", String(side));
+      rect.setAttribute("fill", squareFill);
+      rect.setAttribute("stroke", strokeColor);
+      rect.setAttribute("stroke-width", String(stroke));
+      rect.setAttribute("paint-order", "stroke fill");
+      g.appendChild(rect);
+
+      var circle = elSvg("circle");
+      circle.setAttribute("cx", String(m.cx));
+      circle.setAttribute("cy", String(m.cy));
+      circle.setAttribute("r", String(Math.max(0, m.r - strokeInset)));
+      circle.setAttribute("fill", circleFill);
+      circle.setAttribute("stroke", strokeColor);
+      circle.setAttribute("stroke-width", String(stroke));
+      g.appendChild(circle);
+    }
+    return g;
+  }
+
   function updateLayoutState() {
     lastOctagonsN = getOctagonsN();
     if (isStarGrid()) {
       var starLayout = getStarLayout();
       lastOctagonsN = starLayout.n;
       lastTileSize = starLayout.tileSize;
+    } else if (isGirihGrid()) {
+      if (
+        typeof GirihGeometry !== "undefined" &&
+        GirihGeometry.edgeLengthFromDensity
+      ) {
+        lastTileSize = GirihGeometry.edgeLengthFromDensity(
+          lastOctagonsN,
+          CANVAS_W
+        );
+      }
     } else {
       lastTileSize = TopkapiGeometry.tileSizeFromN(lastOctagonsN, CANVAS_W);
     }
@@ -2663,13 +3594,41 @@
         !NestedStarOctagonsGeometry.buildPattern
       ) {
         cachedStarFills = [];
+        cachedStarRhombusFills = [];
+        cachedGirihTileCount = 0;
         return [];
       }
-      var pattern = NestedStarOctagonsGeometry.buildPattern(layout);
+      var pattern = NestedStarOctagonsGeometry.buildPattern(
+        layout,
+        getStarMiddlePinwheelFactor()
+      );
       cachedStarFills = pattern.starFills || [];
+      cachedStarRhombusFills = pattern.starRhombusFills || [];
+      cachedGirihTileCount = 0;
       return pattern.segments;
     }
+    if (isGirihGrid()) {
+      cachedStarFills = [];
+      cachedStarRhombusFills = [];
+      if (
+        typeof GirihGeometry === "undefined" ||
+        !GirihGeometry.buildPattern
+      ) {
+        cachedGirihTileCount = 0;
+        return [];
+      }
+      var girihPattern = GirihGeometry.buildPattern({
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+        densityN: lastOctagonsN,
+        seed: lastOctagonsN,
+      });
+      cachedGirihTileCount = girihPattern.tileCount || 0;
+      return girihPattern.segments;
+    }
     cachedStarFills = [];
+    cachedStarRhombusFills = [];
+    cachedGirihTileCount = 0;
     return TopkapiGeometry.buildPatternSegments(
       lastTileSize,
       CANVAS_W,
@@ -2711,9 +3670,42 @@
     return out;
   }
 
+  function getStarGridFillOutlines() {
+    return cachedStarFills.concat(cachedStarRhombusFills);
+  }
+
+  /** Hide star cell fills under Pride auto-merge (solid red replaces them). */
+  function getVisibleStarFillsForPattern() {
+    if (!cachedStarFills.length) return [];
+    if (
+      !isEmotionLayerActive("pride") ||
+      !autoMergeFillRegions ||
+      !autoMergeFillRegions.length
+    ) {
+      return cachedStarFills;
+    }
+    var out = [];
+    var i;
+    var ri;
+    var c;
+    for (i = 0; i < cachedStarFills.length; i++) {
+      c = getStarFillCentroid(cachedStarFills[i].outline);
+      for (ri = 0; ri < autoMergeFillRegions.length; ri++) {
+        if (hopePointInPolygon(c.x, c.y, autoMergeFillRegions[ri].points)) {
+          break;
+        }
+      }
+      if (ri >= autoMergeFillRegions.length) out.push(cachedStarFills[i]);
+    }
+    return out;
+  }
+
   /** Line network for face tracing / merge (includes star fill boundaries on star grid). */
   function getAllSegmentsForTracing() {
-    if (!isStarGrid() || !cachedStarFills.length) {
+    if (
+      !isStarGrid() ||
+      (!cachedStarFills.length && !cachedStarRhombusFills.length)
+    ) {
       return cachedAllSegments;
     }
     var seen = new Set();
@@ -2728,7 +3720,7 @@
       seen.add(key);
       out.push(s);
     }
-    var extra = starFillOutlineSegments(cachedStarFills);
+    var extra = starFillOutlineSegments(getStarGridFillOutlines());
     for (i = 0; i < extra.length; i++) {
       s = extra[i];
       key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
@@ -2740,13 +3732,63 @@
   }
 
   /**
-   * Hope mask / merge cutouts use the same segment network as drag tracing (includes
-   * star fill outlines on the star grid). False positives are filtered in
-   * filterHopeMergeRegionsForGridType (min area + multi-star enclosure).
+   * Hope merge: octagon grid uses coarse cell boundaries only (no inner diamond).
+   * Star / girih keep the full tracing network; false positives are filtered in
+   * filterHopeMergeRegionsForGridType.
+   * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
+   */
+  function getSegmentsForHopeMerge() {
+    if (isOctagonGrid()) {
+      return TopkapiGeometry.buildCoarseCellBoundarySegments(
+        lastTileSize,
+        CANVAS_W,
+        CANVAS_H,
+        lastOctagonsN
+      );
+    }
+    return getAllSegmentsForTracing();
+  }
+
+  /**
    * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
    */
   function getSegmentsForMergeRegionDetection() {
-    return getAllSegmentsForTracing();
+    return getSegmentsForHopeMerge();
+  }
+
+  /**
+   * Pride auto-merge on star grid: octagon + square tessellation only (no inner-star
+   * micro-faces) so merged regions match octagon-grid simplicity.
+   * @returns {{x1:number,y1:number,x2:number,y2:number}[]}
+   */
+  function getSegmentsForPrideAutoMerge() {
+    if (!isStarGrid()) return getAllSegmentsForTracing();
+    var layout = getStarLayout();
+    var coarseInner =
+      typeof STAR_GRID_PRIDE_COARSE_INNER_SCALE !== "undefined"
+        ? STAR_GRID_PRIDE_COARSE_INNER_SCALE
+        : 1;
+    return TopkapiGeometry.buildPatternSegments(
+      layout.tileSize,
+      CANVAS_W,
+      CANVAS_H,
+      layout.n,
+      coarseInner
+    );
+  }
+
+  function isSegmentMidpointInsidePrideFill(s) {
+    if (!isStarGrid() || !isEmotionLayerActive("pride")) return false;
+    if (!autoMergeFillRegions || !autoMergeFillRegions.length) return false;
+    var mx = (s.x1 + s.x2) * 0.5;
+    var my = (s.y1 + s.y2) * 0.5;
+    var ri;
+    for (ri = 0; ri < autoMergeFillRegions.length; ri++) {
+      if (hopePointInPolygon(mx, my, autoMergeFillRegions[ri].points)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function hopePointInPolygon(px, py, points) {
@@ -2818,6 +3860,52 @@
     return tile * tile * frac;
   }
 
+  function hopeBaselineFaceIsOctagonUnit(face) {
+    var n = face.points ? face.points.length : 0;
+    return n >= 8;
+  }
+
+  /** True when merged cutout encloses at least one octagon cell (not square-only orphan). */
+  function hopeMergedRegionEnclosesOctagonUnit(region, baselineFaces) {
+    var i;
+    var c;
+    for (i = 0; i < baselineFaces.length; i++) {
+      if (!hopeBaselineFaceIsOctagonUnit(baselineFaces[i])) continue;
+      c = getStarFillCentroid(baselineFaces[i].points);
+      if (hopePointInPolygon(c.x, c.y, region.points)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Low inner-scale: drop square-cell orphan holes; keep real octagon-area merges.
+   * @param {{ points: { x: number, y: number }[] }[]} regions
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function filterHopeOctagonRegionsLowInnerScale(regions) {
+    if (!regions.length) return regions;
+    var baselineFaces = TopkapiGeometry.traceFaces(
+      getSegmentsForMergeRegionDetection()
+    );
+    var tile = lastTileSize;
+    if (!tile || tile <= 0) {
+      tile = TopkapiGeometry.tileSizeFromN(lastOctagonsN, CANVAS_W, CANVAS_H);
+    }
+    var frac =
+      typeof HOPE_LOW_INNER_SCALE_MIN_AREA_TILE_FRACTION !== "undefined"
+        ? HOPE_LOW_INNER_SCALE_MIN_AREA_TILE_FRACTION
+        : 1.5;
+    var minArea = tile * tile * frac;
+    var out = [];
+    var i;
+    for (i = 0; i < regions.length; i++) {
+      if (!hopeMergedRegionEnclosesOctagonUnit(regions[i], baselineFaces)) continue;
+      if (polygonAreaAbs(regions[i].points) < minArea) continue;
+      out.push(regions[i]);
+    }
+    return out;
+  }
+
   /**
    * Star grid: drop micro-faces and single-star false positives; keep real multi-star merges.
    * @param {{ points: { x: number, y: number }[] }[]} regions
@@ -2845,42 +3933,23 @@
       if (polygonAreaAbs(regions[oi].points) > maxHoleArea) continue;
       octOut.push(regions[oi]);
     }
+    if (shouldLimitPrideAutoMergeAtLowInnerScale()) {
+      octOut = filterHopeOctagonRegionsLowInnerScale(octOut);
+    }
     return octOut;
   }
 
-  function isConvexPolygon(points) {
-    var n = points.length;
-    if (n < 4) return false;
-    var sign = 0;
-    for (var i = 0; i < n; i++) {
-      var a = points[i];
-      var b = points[(i + 1) % n];
-      var c = points[(i + 2) % n];
-      var abx = b.x - a.x;
-      var aby = b.y - a.y;
-      var bcx = c.x - b.x;
-      var bcy = c.y - b.y;
-      var cross = abx * bcy - aby * bcx;
-      if (Math.abs(cross) < 1e-6) continue;
-      var s = cross > 0 ? 1 : -1;
-      if (sign === 0) sign = s;
-      else if (s !== sign) return false;
-    }
-    return sign !== 0;
-  }
-
   /**
-   * Pride star-grid preference: drop "simple" single-cell octagon fills.
-   * These show up often as a plain convex 8-sided region roughly one tile in area.
+   * Pride star grid: keep multi-star coarse merges only (Hope uses the same rule).
    * @param {{ points: { x: number, y: number }[] }[]} regions
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
   function filterStarGridPrideAutoMergeRegions(regions) {
     if (!isStarGrid() || !regions.length) return regions;
-    var layout = getStarLayout();
-    var T = layout && layout.tileSize ? layout.tileSize : lastTileSize;
-    if (!T || T <= 0) return regions;
-    var tileArea = T * T;
+    var minStars =
+      typeof STAR_GRID_PRIDE_MIN_STARS_INSIDE !== "undefined"
+        ? STAR_GRID_PRIDE_MIN_STARS_INSIDE
+        : 2;
 
     var out = [];
     for (var i = 0; i < regions.length; i++) {
@@ -2888,27 +3957,18 @@
       var pts = region.points || [];
       if (pts.length < 3) continue;
 
-      var starsInside = countStarFillsInsideMergeRegion(region);
-      var area = polygonAreaAbs(pts);
-      var isSimpleOctagon =
-        starsInside <= 1 &&
-        pts.length >= 8 &&
-        pts.length <= 10 &&
-        isConvexPolygon(pts) &&
-        area > tileArea * 0.55 &&
-        area < tileArea * 0.95;
-
-      if (isSimpleOctagon) continue;
+      if (countStarFillsInsideMergeRegion(region) < minStars) continue;
       out.push(region);
     }
     return out;
   }
 
-  function isSegmentRemoved(key) {
+  function isSegmentRemoved(key, segment) {
     if (removedEdges.has(key)) return true;
-    if (isEmotionCanvasVisible("pride") && autoMergeEdgeKeys.has(key)) {
+    if (isEmotionLayerActive("pride") && autoMergeEdgeKeys.has(key)) {
       return true;
     }
+    if (segment && isSegmentMidpointInsidePrideFill(segment)) return true;
     return false;
   }
 
@@ -2917,7 +3977,7 @@
     for (var i = 0; i < segments.length; i++) {
       var s = segments[i];
       var key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
-      if (!isSegmentRemoved(key)) visible.push(s);
+      if (!isSegmentRemoved(key, s)) visible.push(s);
     }
     return visible;
   }
@@ -2945,36 +4005,40 @@
     return combined;
   }
 
-  function isDragInteractionMode() {
-    return interactionMode === "merge" || interactionMode === "restore";
+  function isHopeDragInteractionMode() {
+    return hopeInteractionMode === "merge";
   }
 
   function clearMergeState() {
     removedEdges.clear();
     stickyMergedCutoutFaces = null;
-    updateResetButton();
+    updateHopeResetButton();
   }
 
   function clearAutoMergeState() {
     autoMergeEdgeKeys.clear();
     autoMergeFillRegions = null;
-    updateResetButton();
+    updateHopeResetButton();
     renderAutoMergeFillsLayer();
   }
 
-  function updateResetButton() {
-    var resetBtn = document.getElementById("reset-grid-btn");
+  function updateHopeResetButton() {
+    var resetBtn = document.getElementById("hope-reset-grid-btn");
     if (resetBtn) {
       resetBtn.disabled =
         removedEdges.size === 0 && autoMergeEdgeKeys.size === 0;
     }
   }
 
-  function applyAutoMergeDanglingPrune() {
+  function applyAutoMergeDanglingPrune(segmentNetwork) {
     var changed = false;
     var combined = getCombinedRemovedEdgeSet();
+    var segments =
+      segmentNetwork && segmentNetwork.length
+        ? segmentNetwork
+        : getAllSegmentsForTracing();
     var pruneKeys = TopkapiGeometry.findDanglingPruneKeys(
-      getAllSegmentsForTracing(),
+      segments,
       combined,
       { bounds: getGridContentBounds() }
     );
@@ -2990,14 +4054,35 @@
     return changed;
   }
 
+  /**
+   * Small inner diamond: dangling prune + orphan fills assign one red region per square cell.
+   * @returns {boolean}
+   */
+  function shouldLimitPrideAutoMergeAtLowInnerScale() {
+    var threshold =
+      typeof PRIDE_LOW_INNER_SCALE_AUTO_MERGE_THRESHOLD !== "undefined"
+        ? PRIDE_LOW_INNER_SCALE_AUTO_MERGE_THRESHOLD
+        : 0.45;
+    return getInnerScale() < threshold;
+  }
+
   function runAutoMerge() {
-    var allSegments = getAllSegmentsForTracing();
-    if (!allSegments.length) return;
+    var prideSegments = getSegmentsForPrideAutoMerge();
+    if (!prideSegments.length) return;
 
     clearAutoMergeState();
 
+    if (getAutoMergeIntensity() <= 0) {
+      renderPatternAndVerticalLayers();
+      renderAutoMergeFillsLayer();
+      updateHopeResetButton();
+      return;
+    }
+
+    var limitLowInnerScale = shouldLimitPrideAutoMergeAtLowInnerScale();
+
     var bounds = getGridContentBounds();
-    var manualVisible = getVisibleSegmentsManualOnly(allSegments);
+    var manualVisible = getVisibleSegmentsManualOnly(prideSegments);
     var baselineFaces = TopkapiGeometry.traceFaces(manualVisible);
     var plan = TopkapiGeometry.computeAutoMergePlan(
       baselineFaces,
@@ -3012,8 +4097,10 @@
       autoMergeEdgeKeys.add(key);
     }
 
-    while (applyAutoMergeDanglingPrune()) {
-      /* prune waves until stable */
+    if (!limitLowInnerScale) {
+      while (applyAutoMergeDanglingPrune(prideSegments)) {
+        /* prune waves until stable */
+      }
     }
 
     var fillRegions = [];
@@ -3023,7 +4110,7 @@
 
     for (ci = 0; ci < clusters.length; ci++) {
       fillRegion = TopkapiGeometry.getClusterFillRegion(
-        allSegments,
+        prideSegments,
         baselineFaces,
         clusters[ci].faceIndices,
         clusters[ci].edgeKeys,
@@ -3032,12 +4119,11 @@
       if (fillRegion) fillRegions.push(fillRegion);
     }
 
-    // Star grid has thousands of small faces; orphan detection fills ~300 extra
-    // regions and blankets the canvas. Octagon grid still uses orphan fills.
-    if (!isStarGrid()) {
+    // Girih: skip orphans. Star + octagon: square fills between octagons (coarse mesh).
+    if (!isGirihGrid() && !limitLowInnerScale) {
       fillRegions = TopkapiGeometry.appendOrphanAutoMergeFillRegions(
         fillRegions,
-        allSegments,
+        prideSegments,
         baselineFaces,
         autoMergeEdgeKeys
       );
@@ -3051,7 +4137,7 @@
 
     renderPatternAndVerticalLayers();
     renderAutoMergeFillsLayer();
-    updateResetButton();
+    updateHopeResetButton();
   }
 
   /**
@@ -3083,11 +4169,14 @@
   /**
    * Inner nested stars (geometry stores these as filled outlines, not line segments).
    * @param {{ outline: {x:number,y:number}[] }[]} starFills
+   * @param {string} [fillColor]
+   * @param {string} [groupId]
    * @returns {SVGElement}
    */
-  function starFillsToGroup(starFills) {
+  function starFillsToGroup(starFills, fillColor, groupId) {
     var g = elSvg("g");
-    g.setAttribute("id", "layer-star-fills");
+    g.setAttribute("id", groupId || "layer-star-fills");
+    var fill = fillColor || getCanvasBackgroundColor();
     var i;
     var p;
     var d;
@@ -3100,7 +4189,7 @@
       if (!d) continue;
       p = elSvg("path");
       p.setAttribute("d", d);
-      p.setAttribute("fill", getCanvasBackgroundColor());
+      p.setAttribute("fill", fill);
       p.setAttribute("fill-rule", "nonzero");
       // Outlines are drawn as line segments (includes star-fill edges for merge).
       p.setAttribute("stroke", "none");
@@ -3120,6 +4209,14 @@
         y: y0,
         width: CANVAS_W,
         height: y1 - y0,
+      };
+    }
+    if (isGirihGrid()) {
+      return {
+        x: 0,
+        y: 0,
+        width: CANVAS_W,
+        height: CANVAS_H,
       };
     }
     return TopkapiGeometry.getGridContentBounds(
@@ -3239,7 +4336,16 @@
   }
 
   function getColorDivisionsColoredCount() {
-    return Math.max(0, getColorDivisionsSliderValue() - 1);
+    var v = getColorDivisionsSliderValue();
+    if (v <= 1) return 0;
+    var maxRegions =
+      typeof COLOR_DIVISIONS_REGION_COUNT !== "undefined"
+        ? COLOR_DIVISIONS_REGION_COUNT
+        : 5;
+    var sliderMax =
+      typeof COLOR_DIVISIONS_MAX !== "undefined" ? COLOR_DIVISIONS_MAX : 5;
+    if (v >= sliderMax) return maxRegions;
+    return Math.min(maxRegions, v - 1);
   }
 
   function getColorDivisionsFillDefault(index) {
@@ -3251,12 +4357,98 @@
     }
     return typeof COLOR_DIVISIONS_FILL_DEFAULT !== "undefined"
       ? COLOR_DIVISIONS_FILL_DEFAULT
-      : "#888888";
+      : "#303030";
+  }
+
+  var BLEND_AREA_COLOR_SLOTS_ORDER = ["H1", "H2", "H3", "H4", "H5"];
+
+  function clearBlendAreaColorOverrides() {
+    blendAreaColorOverrides = {};
+  }
+
+  function getBlendAreaFillColor(slotId) {
+    if (
+      slotId &&
+      blendAreaColorOverrides[slotId] &&
+      normalizeHexColor(blendAreaColorOverrides[slotId], "")
+    ) {
+      return blendAreaColorOverrides[slotId];
+    }
+    return sheetColor(slotId);
   }
 
   function getColorDivisionsFillColor(index) {
+    var slot = BLEND_AREA_COLOR_SLOTS_ORDER[index] || "H5";
+    return getBlendAreaFillColor(slot);
+  }
+
+  function getBlendAreaSlotFallbackHex(slotId) {
     var slots = ["H1", "H2", "H3", "H4", "H5"];
-    return sheetColor(slots[index] || "H5");
+    var index = slots.indexOf(slotId);
+    if (index < 0) return "#000000";
+    if (
+      typeof COLOR_DIVISIONS_FILL_DEFAULTS !== "undefined" &&
+      COLOR_DIVISIONS_FILL_DEFAULTS[index]
+    ) {
+      return COLOR_DIVISIONS_FILL_DEFAULTS[index];
+    }
+    return typeof COLOR_DIVISIONS_FILL_DEFAULT !== "undefined"
+      ? COLOR_DIVISIONS_FILL_DEFAULT
+      : "#000000";
+  }
+
+  function applyBlendAreaColorFromPipette(slot, hex) {
+    if (!slot) return;
+    var normalized = normalizeHexColor(hex, getBlendAreaSlotFallbackHex(slot));
+    blendAreaColorOverrides[slot] = normalized;
+    if (window.SheetPalettes && window.SheetPalettes.setSlotColor) {
+      window.SheetPalettes.setSlotColor(slot, normalized);
+    }
+    var input = document.getElementById("blend-color-" + slot);
+    if (input) input.value = normalized;
+    updateColorDivisionsLayer();
+  }
+
+  function syncBlendAreaSwatchInputs() {
+    var inputs = document.querySelectorAll(
+      ".sidebar__blend-swatch-input[data-slot]"
+    );
+    var i;
+    for (i = 0; i < inputs.length; i++) {
+      var input = inputs[i];
+      var slot = input.getAttribute("data-slot");
+      if (!slot) continue;
+      input.value = normalizeHexColor(
+        getBlendAreaFillColor(slot),
+        getBlendAreaSlotFallbackHex(slot)
+      );
+    }
+  }
+
+  function onBlendAreaSwatchInput(input) {
+    var slot = input.getAttribute("data-slot");
+    if (!slot) return;
+    applyBlendAreaColorFromPipette(slot, input.value);
+  }
+
+  function initBlendAreaColorSwatches() {
+    syncBlendAreaSwatchInputs();
+    var inputs = document.querySelectorAll(
+      ".sidebar__blend-swatch-input[data-slot]"
+    );
+    var i;
+    for (i = 0; i < inputs.length; i++) {
+      (function (input) {
+        if (input.__blendSwatchBound) return;
+        input.__blendSwatchBound = true;
+        input.addEventListener("input", function () {
+          onBlendAreaSwatchInput(input);
+        });
+        input.addEventListener("change", function () {
+          onBlendAreaSwatchInput(input);
+        });
+      })(inputs[i]);
+    }
   }
 
   function syncColorDivisionsOutput() {
@@ -3435,12 +4627,9 @@
   }
 
   function getColorDivisionMaxColoredSlots() {
-    return Math.min(
-      typeof COLOR_DIVISIONS_REGION_COUNT !== "undefined"
-        ? COLOR_DIVISIONS_REGION_COUNT
-        : 4,
-      typeof COLOR_DIVISIONS_MAX !== "undefined" ? COLOR_DIVISIONS_MAX - 1 : 4
-    );
+    return typeof COLOR_DIVISIONS_REGION_COUNT !== "undefined"
+      ? COLOR_DIVISIONS_REGION_COUNT
+      : 5;
   }
 
   function isValidColorDivisionRectOrder(order, adj, maxColored) {
@@ -3576,6 +4765,30 @@
     return absoluteRects[cachedColorDivisionRectOrder[slot]];
   }
 
+  function getColorDivisionsBlendMode(areaIndex) {
+    if (areaIndex === 4) {
+      return typeof COLOR_DIVISIONS_BLEND_MODE_H5 !== "undefined"
+        ? COLOR_DIVISIONS_BLEND_MODE_H5
+        : "color-dodge";
+    }
+    return typeof COLOR_DIVISIONS_BLEND_MODE !== "undefined"
+      ? COLOR_DIVISIONS_BLEND_MODE
+      : "exclusion";
+  }
+
+  function applyColorDivisionRectPresentation(rect, areaIndex) {
+    rect.setAttribute("opacity", "1");
+    var isH5 = areaIndex === 4;
+    rect.setAttribute(
+      "class",
+      "color-division-tile" + (isH5 ? " color-division-tile--h5" : "")
+    );
+    rect.setAttribute(
+      "style",
+      "mix-blend-mode:" + getColorDivisionsBlendMode(areaIndex)
+    );
+  }
+
   function appendColorDivisionRectsToGroup(g, count) {
     ensureColorDivisionRects(false);
     if (
@@ -3600,8 +4813,7 @@
       rect.setAttribute("width", String(r.width));
       rect.setAttribute("height", String(r.height));
       rect.setAttribute("fill", getColorDivisionsFillColor(i));
-      rect.setAttribute("opacity", "1");
-      rect.style.mixBlendMode = "exclusion";
+      applyColorDivisionRectPresentation(rect, i);
       g.appendChild(rect);
     }
   }
@@ -3647,7 +4859,11 @@
           r.height +
           '" fill="' +
           getColorDivisionsFillColor(i) +
-          '" opacity="1" style="mix-blend-mode:exclusion"/>'
+          '" opacity="1" class="color-division-tile' +
+          (i === 4 ? " color-division-tile--h5" : "") +
+          '" style="mix-blend-mode:' +
+          getColorDivisionsBlendMode(i) +
+          '"/>'
       );
     }
     lines.push("</g>");
@@ -3689,7 +4905,21 @@
   function buildVerticalGridLayoutSignature() {
     if (isStarGrid()) {
       return (
-        "star|" + lastOctagonsN + "|" + CANVAS_W + "|" + CANVAS_H + "|" + gridType
+        "star|" +
+        lastOctagonsN +
+        "|" +
+        CANVAS_W +
+        "|" +
+        CANVAS_H +
+        "|" +
+        gridType +
+        "|" +
+        getInnerScale()
+      );
+    }
+    if (isGirihGrid()) {
+      return (
+        "girih|" + lastOctagonsN + "|" + CANVAS_W + "|" + CANVAS_H + "|" + gridType
       );
     }
     return (
@@ -3716,6 +4946,16 @@
     return NestedStarOctagonsGeometry.collectStarGridVerticalAnchorXCoords(
       getStarLayout()
     );
+  }
+
+  function collectGirihVerticalAnchorXCoords() {
+    if (
+      typeof GirihGeometry === "undefined" ||
+      !GirihGeometry.collectVerticalAnchorXCoords
+    ) {
+      return [];
+    }
+    return GirihGeometry.collectVerticalAnchorXCoords(getGirihLayout());
   }
 
   function pickVerticalShortenMode() {
@@ -3765,6 +5005,8 @@
    * @returns {{ x: number, y1: number, y2: number } | null}
    */
   function resolveVerticalLineDrawCoords(vl) {
+    if (getAngerVerticalLengthPercent() === 0) return null;
+
     var t = getAngerVerticalLengthPercent() / 100;
     var yTop = vl.yTop;
     var yBottom = vl.yBottom;
@@ -3832,9 +5074,11 @@
 
     var xs = isStarGrid()
       ? collectStarGridVerticalAnchorXCoords()
-      : TopkapiGeometry.collectUniqueGridXCoords(cachedAllSegments);
+      : isGirihGrid()
+        ? collectGirihVerticalAnchorXCoords()
+        : TopkapiGeometry.collectUniqueGridXCoords(cachedAllSegments);
     var bounds = getGridContentBounds();
-    // "Fear" verticals are currently driven by the Anger layer logic.
+    // Fear verticals (anger-vertical-length slider under Fear heading).
     // Restrict verticals to the left third of the grid content area.
     var xBounds = { x: bounds.x, width: bounds.width / 3 };
     var yTop = bounds.y;
@@ -3865,7 +5109,7 @@
 
   function getActiveVerticalGridLayer() {
     if (!designSvg) return null;
-    var layerId = isStarGrid()
+    var layerId = isAlternateGrid()
       ? "layer-vertical-grid-overlay"
       : "layer-vertical-grid";
     return designSvg.querySelector("#" + layerId);
@@ -3873,7 +5117,7 @@
 
   function clearInactiveVerticalGridLayer() {
     if (!designSvg) return;
-    var inactiveId = isStarGrid()
+    var inactiveId = isAlternateGrid()
       ? "layer-vertical-grid"
       : "layer-vertical-grid-overlay";
     var inactive = designSvg.querySelector("#" + inactiveId);
@@ -3906,7 +5150,7 @@
     var layer = getActiveVerticalGridLayer();
     if (!layer) return;
     while (layer.firstChild) layer.removeChild(layer.firstChild);
-    if (!isEmotionCanvasVisible("anger")) return;
+    if (!isEmotionLayerActive("fear")) return;
     appendVerticalGridLinesToLayer(layer);
   }
 
@@ -3914,13 +5158,13 @@
    * @param {string[]} lines
    */
   function pushVerticalGridExportLines(lines) {
-    if (!isEmotionCanvasVisible("anger") || !cachedVerticalGridLines.length) {
+    if (!isEmotionLayerActive("fear") || !cachedVerticalGridLines.length) {
       return;
     }
     lines.push('<g clip-path="url(#inner-content-clip)">');
     lines.push(
       '<g id="' +
-        (isStarGrid() ? "layer-vertical-grid-overlay" : "layer-vertical-grid") +
+        (isAlternateGrid() ? "layer-vertical-grid-overlay" : "layer-vertical-grid") +
         '" fill="none" stroke="' +
         sheetColor("F1") +
         '" stroke-width="' +
@@ -3946,10 +5190,34 @@
     lines.push("</g>");
   }
 
+  /**
+   * @param {string[]} lines
+   */
+  function pushAngerTriangleExportLines(lines) {
+    if (!supportsAngerDiamondTriangles()) return;
+    var triangles = getAngerTriangleDiamonds();
+    if (!triangles.length) return;
+    var fillColor = getAngerTriangleFillColor();
+    lines.push('<g clip-path="url(#inner-content-clip)">');
+    lines.push('<g id="layer-anger-diamond-triangles">');
+    for (var i = 0; i < triangles.length; i++) {
+      var dm = triangles[i];
+      lines.push(
+        '<polygon points="' +
+          angerTrianglePointsAttr(dm.points) +
+          '" fill="' +
+          fillColor +
+          '" stroke="none"/>'
+      );
+    }
+    lines.push("</g>");
+    lines.push("</g>");
+  }
+
   function renderPatternAndVerticalLayers() {
     syncVerticalGridLines(false);
     renderVerticalGridLayer();
-    if (isStarGrid()) {
+    if (isAlternateGrid()) {
       renderBackgroundLayer();
     }
     renderPatternLayer();
@@ -3981,12 +5249,36 @@
     return rect;
   }
 
+  function createGridBoundaryLayer() {
+    var layer = elSvg("g");
+    layer.setAttribute("id", "layer-grid-boundary");
+    layer.setAttribute("transform", getInnerContentTransformAttr());
+    layer.appendChild(createGridBoundaryRect());
+    return layer;
+  }
+
   function updateGridBoundaryRect() {
     if (!designSvg) return;
     var rect = designSvg.querySelector("#grid-boundary");
     if (!rect) return;
     applyGridBoundaryAttrs(rect, getGridBoundaryDisplayBounds());
     applyGridBoundaryStyle(rect);
+    var layer = designSvg.querySelector("#layer-grid-boundary");
+    if (layer) {
+      layer.setAttribute("transform", getInnerContentTransformAttr());
+    }
+  }
+
+  function ensureGridBoundaryLayerOnTop() {
+    if (!designSvg) return;
+    var layer = designSvg.querySelector("#layer-grid-boundary");
+    if (!layer) return;
+    var anchor = designSvg.querySelector("#layer-edge-brown-bars");
+    if (anchor && anchor.parentNode === designSvg) {
+      designSvg.insertBefore(layer, anchor);
+      return;
+    }
+    designSvg.appendChild(layer);
   }
 
   function pushGridBoundaryExportLine(lines, bounds) {
@@ -4313,256 +5605,6 @@
 
   var BORDER_DIVISION_STROKE_WIDTH = 1;
 
-  var BORDER_DIVISION_STROKE_WIDTH = 1;
-  var BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID =
-    "border-side-white-inner-shadow-blur";
-  var BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID =
-    "border-side-white-inner-shadow-left";
-  var BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID =
-    "border-side-white-inner-shadow-top";
-
-  function getBorderSideWhiteInnerShadowDepth(cellW, cellH) {
-    var maxPx =
-      typeof BORDER_SIDE_WHITE_INNER_SHADOW_DEPTH_MAX_PX !== "undefined"
-        ? BORDER_SIDE_WHITE_INNER_SHADOW_DEPTH_MAX_PX
-        : 16;
-    var ratio =
-      typeof BORDER_SIDE_WHITE_INNER_SHADOW_DEPTH_RATIO !== "undefined"
-        ? BORDER_SIDE_WHITE_INNER_SHADOW_DEPTH_RATIO
-        : 0.34;
-    return Math.max(3, Math.min(maxPx, Math.round(Math.min(cellW, cellH) * ratio)));
-  }
-
-  function getBorderSideWhiteInnerShadowBlur() {
-    return typeof BORDER_SIDE_WHITE_INNER_SHADOW_BLUR !== "undefined"
-      ? BORDER_SIDE_WHITE_INNER_SHADOW_BLUR
-      : 2.8;
-  }
-
-  function getBorderSideWhiteInnerShadowOpacity() {
-    return typeof BORDER_SIDE_WHITE_INNER_SHADOW_OPACITY !== "undefined"
-      ? BORDER_SIDE_WHITE_INNER_SHADOW_OPACITY
-      : 0.24;
-  }
-
-  /**
-   * @param {SVGElement} defs
-   */
-  function ensureBorderSideWhiteInnerShadowDefs(defs) {
-    if (!defs || getBorderSideWhiteFillTargetPercent() <= 0) return;
-
-    var ids = [
-      BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID,
-      BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID,
-      BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID,
-    ];
-    var i;
-    for (i = 0; i < ids.length; i++) {
-      var existing = defs.querySelector("#" + ids[i]);
-      if (existing) defs.removeChild(existing);
-    }
-
-    var blur = getBorderSideWhiteInnerShadowBlur();
-    var filter = elSvg("filter");
-    filter.setAttribute("id", BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID);
-    filter.setAttribute("x", "-40%");
-    filter.setAttribute("y", "-40%");
-    filter.setAttribute("width", "180%");
-    filter.setAttribute("height", "180%");
-    filter.setAttribute("color-interpolation-filters", "sRGB");
-    var gauss = elSvg("feGaussianBlur");
-    gauss.setAttribute("in", "SourceGraphic");
-    gauss.setAttribute("stdDeviation", String(blur));
-    filter.appendChild(gauss);
-    defs.appendChild(filter);
-
-    var shadowColor = getPatternStrokeColor();
-    var opacity = String(getBorderSideWhiteInnerShadowOpacity());
-
-    function appendShadowGradient(id, x1, y1, x2, y2) {
-      var grad = elSvg("linearGradient");
-      grad.setAttribute("id", id);
-      grad.setAttribute("gradientUnits", "objectBoundingBox");
-      grad.setAttribute("x1", x1);
-      grad.setAttribute("y1", y1);
-      grad.setAttribute("x2", x2);
-      grad.setAttribute("y2", y2);
-      var stop0 = elSvg("stop");
-      stop0.setAttribute("offset", "0%");
-      stop0.setAttribute("stop-color", shadowColor);
-      stop0.setAttribute("stop-opacity", opacity);
-      var stop1 = elSvg("stop");
-      stop1.setAttribute("offset", "100%");
-      stop1.setAttribute("stop-color", shadowColor);
-      stop1.setAttribute("stop-opacity", "0");
-      grad.appendChild(stop0);
-      grad.appendChild(stop1);
-      defs.appendChild(grad);
-    }
-
-    appendShadowGradient(
-      BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID,
-      "0",
-      "0",
-      "1",
-      "0"
-    );
-    appendShadowGradient(
-      BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID,
-      "0",
-      "0",
-      "0",
-      "1"
-    );
-  }
-
-  /**
-   * @param {string[]} lines
-   */
-  function pushBorderSideWhiteInnerShadowDefLines(lines) {
-    if (getBorderSideWhiteFillTargetPercent() <= 0) return;
-
-    var blur = getBorderSideWhiteInnerShadowBlur();
-    var shadowColor = getPatternStrokeColor();
-    var opacity = String(getBorderSideWhiteInnerShadowOpacity());
-
-    lines.push(
-      '<filter id="' +
-        BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID +
-        '" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">' +
-        '<feGaussianBlur in="SourceGraphic" stdDeviation="' +
-        blur +
-        '"/>' +
-        "</filter>"
-    );
-    lines.push(
-      '<linearGradient id="' +
-        BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID +
-        '" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0%" stop-color="' +
-        shadowColor +
-        '" stop-opacity="' +
-        opacity +
-        '"/>' +
-        '<stop offset="100%" stop-color="' +
-        shadowColor +
-        '" stop-opacity="0"/>' +
-        "</linearGradient>"
-    );
-    lines.push(
-      '<linearGradient id="' +
-        BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID +
-        '" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0%" stop-color="' +
-        shadowColor +
-        '" stop-opacity="' +
-        opacity +
-        '"/>' +
-        '<stop offset="100%" stop-color="' +
-        shadowColor +
-        '" stop-opacity="0"/>' +
-        "</linearGradient>"
-    );
-  }
-
-  /**
-   * Soft inset shadow along the top + left inner edges of one whitened cell.
-   * @param {SVGElement} g
-   * @param {number} x
-   * @param {number} b
-   * @param {number} yTop
-   * @param {number} yBottom
-   */
-  function appendBorderSideWhitenedCellInnerShadowAtX(g, x, b, yTop, yBottom) {
-    if (getBorderSideWhiteFillTargetPercent() <= 0) return;
-
-    var h = yBottom - yTop;
-    var depth = getBorderSideWhiteInnerShadowDepth(b, h);
-    var filterUrl = "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID + ")";
-
-    var left = elSvg("rect");
-    left.setAttribute("x", String(x));
-    left.setAttribute("y", String(yTop));
-    left.setAttribute("width", String(depth));
-    left.setAttribute("height", String(h));
-    left.setAttribute(
-      "fill",
-      "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID + ")"
-    );
-    left.setAttribute("filter", filterUrl);
-    left.setAttribute("stroke", "none");
-    left.setAttribute("pointer-events", "none");
-    g.appendChild(left);
-
-    var top = elSvg("rect");
-    top.setAttribute("x", String(x));
-    top.setAttribute("y", String(yTop));
-    top.setAttribute("width", String(b));
-    top.setAttribute("height", String(depth));
-    top.setAttribute(
-      "fill",
-      "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID + ")"
-    );
-    top.setAttribute("filter", filterUrl);
-    top.setAttribute("stroke", "none");
-    top.setAttribute("pointer-events", "none");
-    g.appendChild(top);
-  }
-
-  /**
-   * @param {string[]} lines
-   * @param {number} x
-   * @param {number} b
-   * @param {number} yTop
-   * @param {number} yBottom
-   */
-  function pushBorderSideWhitenedCellInnerShadowAtXExport(
-    lines,
-    x,
-    b,
-    yTop,
-    yBottom
-  ) {
-    if (getBorderSideWhiteFillTargetPercent() <= 0) return;
-
-    var h = yBottom - yTop;
-    var depth = getBorderSideWhiteInnerShadowDepth(b, h);
-    var filterUrl = "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_FILTER_ID + ")";
-    var leftGrad = "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_LEFT_GRAD_ID + ")";
-    var topGrad = "url(#" + BORDER_SIDE_WHITE_INNER_SHADOW_TOP_GRAD_ID + ")";
-
-    lines.push(
-      '<rect x="' +
-        x +
-        '" y="' +
-        yTop +
-        '" width="' +
-        depth +
-        '" height="' +
-        h +
-        '" fill="' +
-        leftGrad +
-        '" filter="' +
-        filterUrl +
-        '" stroke="none"/>'
-    );
-    lines.push(
-      '<rect x="' +
-        x +
-        '" y="' +
-        yTop +
-        '" width="' +
-        b +
-        '" height="' +
-        depth +
-        '" fill="' +
-        topGrad +
-        '" filter="' +
-        filterUrl +
-        '" stroke="none"/>'
-    );
-  }
-
   function isBodyAutonomyHomeChecked() {
     return true;
   }
@@ -4747,12 +5789,12 @@
   }
 
   /**
-   * Complementary rhombus fill: grey cell → yellow/beige, beige cell → grey.
+   * Rhombus fill above cell background — C7 (grey row), C8 (beige row) in palette sheet.
    * @param {"grey"|"beige"} cellType
    * @returns {string}
    */
   function getBorderSideRhombusFillForCellType(cellType) {
-    return sheetColor("C9");
+    return sheetColor(cellType === "beige" ? "C8" : "C7");
   }
 
   /**
@@ -4952,7 +5994,7 @@
    * @param {{ cx: number, cy: number, halfW: number, halfH: number }[]} marks
    */
   function pushHelplessnessMarkExportLines(lines, marks) {
-    var stroke = getPatternStrokeColor();
+    var stroke = getHelplessnessStrokeColor();
     var sw =
       typeof HELPLESSNESS_STROKE_WIDTH !== "undefined"
         ? HELPLESSNESS_STROKE_WIDTH
@@ -4999,7 +6041,7 @@
   function pushHelplessnessExportLines(lines) {
     var marks = getActiveHelplessnessMarks();
     if (!marks.length) return;
-    var stroke = getPatternStrokeColor();
+    var stroke = getHelplessnessStrokeColor();
     var sw =
       typeof HELPLESSNESS_STROKE_WIDTH !== "undefined"
         ? HELPLESSNESS_STROKE_WIDTH
@@ -5276,6 +6318,7 @@
     rect.setAttribute("width", String(w));
     rect.setAttribute("height", String(h));
     rect.setAttribute("fill", fill);
+    rect.setAttribute("stroke", "none");
     g.appendChild(rect);
   }
 
@@ -5310,6 +6353,7 @@
     }
     poly.setAttribute("points", parts.join(" "));
     poly.setAttribute("fill", fill);
+    poly.setAttribute("stroke", "none");
     g.appendChild(poly);
   }
 
@@ -5413,7 +6457,11 @@
         attr.push(String(pts[i][0]) + "," + String(pts[i][1]));
       }
       lines.push(
-        '<polygon points="' + attr.join(" ") + '" fill="' + fill + '"/>'
+        '<polygon points="' +
+          attr.join(" ") +
+          '" fill="' +
+          fill +
+          '" stroke="none"/>'
       );
     }
 
@@ -5538,18 +6586,16 @@
           yTop,
           b,
           h,
-          getCanvasBackgroundColor()
+          getBorderSideColorFadeFillColor()
         );
-        appendBorderSideWhitenedCellInnerShadowAtX(g, 0, b, yTop, yBottom);
         appendBorderSideSolidCellRect(
           g,
           rightX,
           yTop,
           b,
           h,
-          getCanvasBackgroundColor()
+          getBorderSideColorFadeFillColor()
         );
-        appendBorderSideWhitenedCellInnerShadowAtX(g, rightX, b, yTop, yBottom);
         continue;
       }
 
@@ -5618,15 +6664,15 @@
   }
 
   /**
-   * X strokes: outline-only when no checkboxes (home + outside rows);
-   * with Outside checked, also on outside rows alongside fills.
+   * Internal X / rhombus strokes: whitened cells always; otherwise only when no fills (outline-only mode).
+   * Colored cells keep division lines between rows but no inner triangle/rhombus outlines.
    * @param {SVGElement} g
    */
   function appendLeftRightBorderCellDiagonalsToGroup(g) {
     var home = isBodyAutonomyHomeChecked();
     var outside = isBodyAutonomyOutsideChecked();
     var outlineOnly = !home && !outside;
-    if (!outlineOnly && !outside && getBorderSideWhiteFillTargetPercent() <= 0) return;
+    if (!outlineOnly && getBorderSideWhiteFillTargetPercent() <= 0) return;
 
     var b = getCanvasBorderPx();
     var yBounds = getLeftRightBorderCellYBounds();
@@ -5656,9 +6702,10 @@
         continue;
       }
 
-      if (cellType === "grey" || cellType === "beige") continue;
-      if (!outlineOnly && cellType !== "outside") continue;
-      appendBorderSideCellDiagonals(g, b, rightX, yTop, yBottom);
+      if (outlineOnly) {
+        if (cellType === "grey" || cellType === "beige") continue;
+        appendBorderSideCellDiagonals(g, b, rightX, yTop, yBottom);
+      }
     }
   }
 
@@ -5714,14 +6761,17 @@
 
     var __overlayBaseRects = 0;
 
-    function appendOverlayCellBase(x, y, w, h) {
+    function appendOverlayCellBase(x, y, w, h, fill) {
       __overlayBaseRects++;
       var rect = elSvg("rect");
       rect.setAttribute("x", String(x));
       rect.setAttribute("y", String(y));
       rect.setAttribute("width", String(w));
       rect.setAttribute("height", String(h));
-      rect.setAttribute("fill", getCanvasBackgroundColor());
+      rect.setAttribute(
+        "fill",
+        fill || getCanvasBackgroundColor()
+      );
       rect.setAttribute("stroke", "none");
       rect.setAttribute("shape-rendering", "crispEdges");
       g.appendChild(rect);
@@ -5751,19 +6801,14 @@
         var cellIndex = isMirrored ? rowCount - 1 - j : j;
         var cellType = getBorderSideCellType(cellIndex);
 
-        // Ensure overlay cells match the white margin background (no grid bleed-through).
-        appendOverlayCellBase(leftX, yTop, b, h);
-        appendOverlayCellBase(rightX, yTop, b, h);
+        // Ensure overlay cells match the margin background (no grid bleed-through).
+        var overlayBaseFill = isBorderSideCellWhitened(c, j)
+          ? getBorderSideColorFadeFillColor()
+          : getCanvasBackgroundColor();
+        appendOverlayCellBase(leftX, yTop, b, h, overlayBaseFill);
+        appendOverlayCellBase(rightX, yTop, b, h, overlayBaseFill);
 
         if (isBorderSideCellWhitened(c, j)) {
-          appendBorderSideWhitenedCellInnerShadowAtX(g, leftX, b, yTop, yBottom);
-          appendBorderSideWhitenedCellInnerShadowAtX(
-            g,
-            rightX,
-            b,
-            yTop,
-            yBottom
-          );
           appendBorderSideWhitenedCellOutlinesAtX(
             g,
             leftX,
@@ -5794,7 +6839,7 @@
             appendBorderSideBrownCellXPatternFills(g, leftX, b, yTop, yBottom);
             appendBorderSideBrownCellXPatternFills(g, rightX, b, yTop, yBottom);
           }
-          if (outside || outlineOnly) {
+          if (outlineOnly) {
             appendBorderSideCellDiagonalsAtX(g, leftX, b, yTop, yBottom);
             appendBorderSideCellDiagonalsAtX(g, rightX, b, yTop, yBottom);
           }
@@ -5882,7 +6927,7 @@
 
           if (ct === "outside") {
             if (outside) appendBorderSideBrownCellXPatternFills(g, x, b, y0, y1);
-            if (outside || outlineOnly) appendBorderSideCellDiagonalsAtX(g, x, b, y0, y1);
+            if (outlineOnly) appendBorderSideCellDiagonalsAtX(g, x, b, y0, y1);
           } else if (ct === "grey") {
             if (home && outside)
               appendBorderSideSolidCellRect(g, x, y0, b, hh, BORDER_SIDE_CELL_COLOR_GREY);
@@ -5938,7 +6983,8 @@
     var home = isBodyAutonomyHomeChecked();
     var outside = isBodyAutonomyOutsideChecked();
     var outlineOnly = !home && !outside;
-    var whiteFill = getCanvasBackgroundColor();
+    var canvasFill = getCanvasBackgroundColor();
+    var colorFadeFill = getBorderSideColorFadeFillColor();
     var strokeColor = getBorderDivisionStrokeColor();
     var strokeWidth = BORDER_DIVISION_STROKE_WIDTH;
     var yBounds = getLeftRightBorderCellYBounds();
@@ -5959,7 +7005,7 @@
         '">'
     );
 
-    function pushOverlayCellBase(x, y, w, h) {
+    function pushOverlayCellBase(x, y, w, h, fill) {
       lines.push(
         '<rect x="' +
           x +
@@ -5970,7 +7016,7 @@
           '" height="' +
           h +
           '" fill="' +
-          whiteFill +
+          (fill || canvasFill) +
           '" stroke="none" shape-rendering="crispEdges"/>'
       );
     }
@@ -5988,24 +7034,13 @@
         var cellIndex = isMirrored ? rowCount - 1 - j : j;
         var cellType = getBorderSideCellType(cellIndex);
 
-        pushOverlayCellBase(leftX, yTop, b, h);
-        pushOverlayCellBase(rightX, yTop, b, h);
+        var overlayBaseFillExport = isBorderSideCellWhitened(c, j)
+          ? colorFadeFill
+          : canvasFill;
+        pushOverlayCellBase(leftX, yTop, b, h, overlayBaseFillExport);
+        pushOverlayCellBase(rightX, yTop, b, h, overlayBaseFillExport);
 
         if (isBorderSideCellWhitened(c, j)) {
-          pushBorderSideWhitenedCellInnerShadowAtXExport(
-            lines,
-            leftX,
-            b,
-            yTop,
-            yBottom
-          );
-          pushBorderSideWhitenedCellInnerShadowAtXExport(
-            lines,
-            rightX,
-            b,
-            yTop,
-            yBottom
-          );
           pushBorderSideWhitenedCellOutlinesAtXExport(
             lines,
             leftX,
@@ -6048,7 +7083,7 @@
               yBottom
             );
           }
-          if (outside || outlineOnly) {
+          if (outlineOnly) {
             pushBorderSideCellDiagonalsAtXExport(lines, leftX, b, yTop, yBottom);
             pushBorderSideCellDiagonalsAtXExport(
               lines,
@@ -6217,7 +7252,7 @@
             if (outside) {
               pushBorderSideBrownCellXPatternExport(lines, x, b, y0, y1);
             }
-            if (outside || outlineOnly) {
+            if (outlineOnly) {
               pushBorderSideCellDiagonalsAtXExport(lines, x, b, y0, y1);
             }
           } else if (ct === "grey") {
@@ -6295,14 +7330,22 @@
     return g;
   }
 
+  function ensureBorderDivisionOverlayOnTop() {
+    if (!designSvg) return;
+    var overlay = designSvg.querySelector("#layer-border-divisions-overlay");
+    var blendRoot = designSvg.querySelector("#color-divisions-blend-root");
+    if (!overlay || !blendRoot) return;
+    blendRoot.appendChild(overlay);
+  }
+
   function updateBorderDivisionOverlay() {
     if (!designSvg) return;
     syncBorderSideWhiteCells(false);
-    ensureBorderSideWhiteInnerShadowDefs(designSvg.querySelector("defs"));
     var g = designSvg.querySelector("#layer-border-divisions-overlay");
     if (!g) return;
     while (g.firstChild) g.removeChild(g.firstChild);
     appendBorderDivisionOverlayLayersToGroup(g);
+    ensureBorderDivisionOverlayOnTop();
   }
 
   /**
@@ -6404,7 +7447,12 @@
   }
 
   function getCanvasEdgeSerialFill() {
-    return sheetColor("G5");
+    return normalizeHexColor(
+      sheetColor("G5"),
+      typeof CANVAS_EDGE_SERIAL_FILL !== "undefined"
+        ? CANVAS_EDGE_SERIAL_FILL
+        : "#3c06a7"
+    );
   }
 
   function getCanvasEdgeSerialCircleGapPx() {
@@ -6690,7 +7738,7 @@
   function getBrownBarBannerFontFamily() {
     return typeof BROWN_BAR_BANNER_FONT_FAMILY !== "undefined"
       ? BROWN_BAR_BANNER_FONT_FAMILY
-      : "DIN Condensed";
+      : "OT2049";
   }
 
   function getBrownBarBannerFill() {
@@ -6706,7 +7754,7 @@
   function applyBrownBarBannerTextAttrs(text, metrics, anchor) {
     text.setAttribute("fill", getBrownBarBannerFill());
     text.setAttribute("font-family", getBrownBarBannerFontFamily());
-    text.setAttribute("font-weight", "700");
+    text.setAttribute("font-weight", "400");
     text.setAttribute("font-size", String(metrics.fontSize));
     text.setAttribute("letter-spacing", String(getBrownBarBannerLetterSpacing()));
     text.setAttribute("text-anchor", anchor || "middle");
@@ -6929,6 +7977,53 @@
     );
   }
 
+  /** Map tag/ paths and other aliases to LABEL_BAR_SVG_EMBEDDED keys. */
+  function resolveLabelBarSvgEmbeddedKey(filename) {
+    var embedded =
+      typeof window !== "undefined" ? window.LABEL_BAR_SVG_EMBEDDED : null;
+    if (!filename || !embedded) return null;
+    if (embedded[filename]) return filename;
+    var tagAliases = {
+      "tag/lion.svg": "lion.svg",
+      "tag/scissors.svg": "scissors.svg",
+      "tag/tag01.svg": "tag01.svg",
+      "tag/tag02.svg": "tag02.svg",
+      "tag/tag03.svg": "tag03.svg",
+      "tag/tag04.svg": "tag04.svg",
+      "tag/tag05.svg": "tag05.svg",
+    };
+    if (tagAliases[filename] && embedded[tagAliases[filename]]) {
+      return tagAliases[filename];
+    }
+    var slash = filename.lastIndexOf("/");
+    if (slash >= 0) {
+      var dir = filename.slice(0, slash);
+      var base = filename.slice(slash + 1);
+      // home/ icons are distinct from root svg/ assets — do not alias by basename.
+      if (dir !== "home" && embedded[base]) return base;
+    }
+    return null;
+  }
+
+  function primeLabelBarSvgCacheFromEmbedded(filename) {
+    if (!filename) return false;
+    if (labelBarSvgCache[filename]) return true;
+    var embeddedKey = resolveLabelBarSvgEmbeddedKey(filename);
+    if (!embeddedKey) return false;
+    var embedded =
+      typeof window !== "undefined" &&
+      window.LABEL_BAR_SVG_EMBEDDED &&
+      window.LABEL_BAR_SVG_EMBEDDED[embeddedKey];
+    if (!embedded) return false;
+    cacheLabelBarSvgAsset(
+      filename,
+      parseLabelBarSvgMarkup(
+        '<svg xmlns="http://www.w3.org/2000/svg">' + embedded + "</svg>"
+      )
+    );
+    return true;
+  }
+
   function hexToLabelBarIconFilter(hex) {
     var color = normalizeHexColor(hex, "#ffffff");
     if (color === "#ffffff") return "brightness(0) invert(1)";
@@ -6974,6 +8069,79 @@
     }
   }
 
+  function getLabelBarIconTintFilterId() {
+    return typeof LABEL_BAR_ICON_TINT_FILTER_ID !== "undefined"
+      ? LABEL_BAR_ICON_TINT_FILTER_ID
+      : "label-bar-icon-tint-filter";
+  }
+
+  function getLabelBarIconTintFilterRef() {
+    return "url(#" + getLabelBarIconTintFilterId() + ")";
+  }
+
+  /**
+   * Exact G4 tint for white SVG icons loaded via <image> (replaces CSS filter approximation).
+   * @param {SVGElement} defs
+   */
+  function ensureLabelBarIconTintFilter(defs) {
+    var filterId;
+    var existing;
+    var filter;
+    var flood;
+    var composite;
+    var merge;
+    var mergeNode;
+    if (!defs) return;
+    filterId = getLabelBarIconTintFilterId();
+    existing = defs.querySelector("#" + filterId);
+    if (existing) defs.removeChild(existing);
+
+    filter = elSvg("filter");
+    filter.setAttribute("id", filterId);
+    filter.setAttribute("color-interpolation-filters", "sRGB");
+    filter.setAttribute("x", "-20%");
+    filter.setAttribute("y", "-20%");
+    filter.setAttribute("width", "140%");
+    filter.setAttribute("height", "140%");
+
+    flood = elSvg("feFlood");
+    flood.setAttribute("flood-color", getLabelBarContentColor());
+    flood.setAttribute("result", "flood");
+
+    composite = elSvg("feComposite");
+    composite.setAttribute("in", "flood");
+    composite.setAttribute("in2", "SourceAlpha");
+    composite.setAttribute("operator", "in");
+    composite.setAttribute("result", "color");
+
+    merge = elSvg("feMerge");
+    mergeNode = elSvg("feMergeNode");
+    mergeNode.setAttribute("in", "color");
+    merge.appendChild(mergeNode);
+
+    filter.appendChild(flood);
+    filter.appendChild(composite);
+    filter.appendChild(merge);
+    defs.appendChild(filter);
+  }
+
+  /**
+   * @param {string[]} lines
+   */
+  function pushLabelBarIconTintFilterDefExport(lines) {
+    lines.push(
+      '<filter id="' +
+        getLabelBarIconTintFilterId() +
+        '" color-interpolation-filters="sRGB">' +
+        '<feFlood flood-color="' +
+        getLabelBarContentColor() +
+        '" result="flood"/>' +
+        '<feComposite in="flood" in2="SourceAlpha" operator="in" result="color"/>' +
+        '<feMerge><feMergeNode in="color"/></feMerge>' +
+        "</filter>"
+    );
+  }
+
   function getLabelBarIconFilterStyle() {
     return hexToLabelBarIconFilter(getLabelBarContentColor());
   }
@@ -6998,8 +8166,9 @@
     var i;
     var fill;
     var stroke;
+    var fillLower;
     var iconFill = normalizeHexColor(
-      tintColor,
+      tintColor || getLabelBarContentColor(),
       typeof LABEL_BAR_CONTENT_COLOR_DEFAULT !== "undefined"
         ? LABEL_BAR_CONTENT_COLOR_DEFAULT
         : "#ffffff"
@@ -7012,12 +8181,10 @@
     for (i = 0; i < shapes.length; i++) {
       fill = shapes[i].getAttribute("fill");
       stroke = shapes[i].getAttribute("stroke");
-      if (fill && fill !== "none" && fill !== "transparent") {
+      fillLower = fill ? fill.trim().toLowerCase() : "";
+      if (fillLower !== "none" && fillLower !== "transparent") {
         shapes[i].setAttribute("fill", iconFill);
-      } else if (
-        (!fill || fill === "inherit") &&
-        shapes[i].hasAttribute("class")
-      ) {
+      } else if (shapes[i].hasAttribute("class")) {
         shapes[i].setAttribute("fill", iconFill);
       }
       if (stroke && stroke !== "none" && stroke !== "transparent") {
@@ -7026,12 +8193,35 @@
     }
   }
 
+  function buildLabelBarSvgTintedInnerMarkupFromEmbedded(file) {
+    if (labelBarSvgUsesNativeColors(file)) return "";
+    var embeddedKey = resolveLabelBarSvgEmbeddedKey(file);
+    if (!embeddedKey) return "";
+    var embedded =
+      typeof window !== "undefined" &&
+      window.LABEL_BAR_SVG_EMBEDDED &&
+      window.LABEL_BAR_SVG_EMBEDDED[embeddedKey];
+    if (!embedded) return "";
+    var tintColor = getLabelBarContentColor();
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg">' + embedded + "</svg>",
+      "image/svg+xml"
+    );
+    applyLabelBarSvgTintFill(doc.documentElement, tintColor);
+    return doc.documentElement.innerHTML;
+  }
+
   function getLabelBarSvgTintedInnerMarkup(file) {
     if (labelBarSvgUsesNativeColors(file)) return "";
+    primeLabelBarSvgCacheFromEmbedded(file);
     var cached = labelBarSvgCache[file];
-    if (!cached) return "";
+    if (!cached) return buildLabelBarSvgTintedInnerMarkupFromEmbedded(file);
     var tintColor = getLabelBarContentColor();
-    if (cached.tintedInnerMarkup && cached.tintedColor === tintColor) {
+    if (
+      cached.tintedInnerMarkup &&
+      normalizeHexColor(cached.tintedColor, "") === tintColor
+    ) {
       return cached.tintedInnerMarkup;
     }
     var parser = new DOMParser();
@@ -7087,6 +8277,35 @@
   }
 
   /**
+   * @param {string} href
+   * @returns {Promise<string>}
+   */
+  function fetchLabelBarSvgMarkup(href) {
+    return fetch(href)
+      .then(function (res) {
+        if (!res.ok) throw new Error("svg fetch failed");
+        return res.text();
+      })
+      .catch(function () {
+        return new Promise(function (resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", href, true);
+          xhr.onload = function () {
+            if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) {
+              resolve(xhr.responseText);
+              return;
+            }
+            reject(new Error("xhr failed"));
+          };
+          xhr.onerror = function () {
+            reject(new Error("xhr error"));
+          };
+          xhr.send();
+        });
+      });
+  }
+
+  /**
    * @param {string} filename
    * @returns {Promise<{ width: number, height: number, innerMarkup: string, doc: Document }>}
    */
@@ -7098,26 +8317,16 @@
     if (labelBarSvgLoadPromises[filename]) {
       return labelBarSvgLoadPromises[filename];
     }
-    labelBarSvgLoadPromises[filename] = fetch(getLabelBarSvgHref(filename))
-      .then(function (res) {
-        if (!res.ok) throw new Error("svg fetch failed");
-        return res.text();
-      })
+    labelBarSvgLoadPromises[filename] = fetchLabelBarSvgMarkup(
+      getLabelBarSvgHref(filename)
+    )
       .then(function (markup) {
         return cacheLabelBarSvgAsset(filename, parseLabelBarSvgMarkup(markup));
       })
       .catch(function () {
-        var embedded =
-          typeof window !== "undefined" &&
-          window.LABEL_BAR_SVG_EMBEDDED &&
-          window.LABEL_BAR_SVG_EMBEDDED[filename];
-        if (embedded) {
-          return cacheLabelBarSvgAsset(
-            filename,
-            parseLabelBarSvgMarkup(
-              '<svg xmlns="http://www.w3.org/2000/svg">' + embedded + "</svg>"
-            )
-          );
+        delete labelBarSvgLoadPromises[filename];
+        if (primeLabelBarSvgCacheFromEmbedded(filename)) {
+          return labelBarSvgCache[filename];
         }
         throw new Error("svg unavailable: " + filename);
       });
@@ -7248,7 +8457,7 @@
   function applyLabelBarTextAttrs(text, fontSize) {
     text.setAttribute("fill", getLabelBarContentColor());
     text.setAttribute("font-family", getBrownBarBannerFontFamily());
-    text.setAttribute("font-weight", "700");
+    text.setAttribute("font-weight", "400");
     text.setAttribute("font-size", String(fontSize));
     text.setAttribute("letter-spacing", String(getBrownBarBannerLetterSpacing()));
     text.setAttribute("text-anchor", "start");
@@ -7286,20 +8495,39 @@
     return getLabelBarBandCenterY(area) + getLabelBarTextYOffsetPx();
   }
 
-  /** Top bar label rows: flip glyphs/text vertically vs the bottom bar. */
+  /** Top bar label rows: rotate 180° vs the bottom bar (not mirrored). */
   function labelBarEdgeContentFlippedVertically(edge) {
     return edge === "top";
   }
 
   /**
-   * SVG transform: vertical mirror around the content band midline (position unchanged).
+   * @param {{ spec: object, x: number }} placement
    * @param {ReturnType<typeof getLabelBarContentArea>} contentArea
+   * @returns {{ cx: number, cy: number }}
+   */
+  function getLabelBarPlacementRotate180Center(placement, contentArea) {
+    var spec = placement.spec;
+    var cx = placement.x + spec.width / 2;
+    var cy;
+    if (spec.type === "text") {
+      cy = getLabelBarTextY(contentArea);
+    } else if (spec.type === "square") {
+      cy = getLabelBarSquareSepY(contentArea) + spec.height / 2;
+    } else {
+      cy = contentArea.y + spec.height / 2;
+    }
+    return { cx: cx, cy: cy };
+  }
+
+  /**
+   * SVG transform: 180° rotation around a point (position unchanged).
+   * @param {number} cx
+   * @param {number} cy
    * @returns {string}
    */
-  function getLabelBarVerticalFlipTransform(contentArea) {
-    var cy = getLabelBarBandCenterY(contentArea);
+  function getLabelBarRotate180Transform(cx, cy) {
     return (
-      "translate(0," + cy + ") scale(1,-1) translate(0," + -cy + ")"
+      "translate(" + cx + "," + cy + ") scale(-1,-1) translate(" + -cx + "," + -cy + ")"
     );
   }
 
@@ -7341,8 +8569,8 @@
    * @returns {{ fontSize: number, width: number, height: number }}
    */
   function fitLabelBarTextMetrics(text, maxHeight, bandTopY, bandBottomY) {
-    var cellH = Math.max(1, maxHeight * getLabelBarTextHeightRatio());
-    var fontSize = cellH;
+    var cellH = Math.max(1, maxHeight);
+    var fontSize = Math.max(1, maxHeight * getLabelBarTextHeightRatio());
     var measured;
 
     if (!text) {
@@ -7540,6 +8768,7 @@
           spec: item.spec,
           svgArea: item.svgArea || defaultSvgArea,
           ageOverlayText: item.ageOverlayText,
+          mirror: item.mirror,
         });
       }
       if (!clusterItems.length) continue;
@@ -7606,7 +8835,7 @@
         placements.push({
           spec: rowItem.spec,
           x: x,
-          mirror: false,
+          mirror: !!rowItem.mirror,
           svgArea: rowItem.svgArea,
           ageOverlayText: rowItem.ageOverlayText,
         });
@@ -7679,10 +8908,36 @@
     return positions;
   }
 
+  function pickLabelBarEndCapSvgFile() {
+    var pool =
+      typeof LABEL_BAR_TAG_SVGS !== "undefined" && LABEL_BAR_TAG_SVGS.length
+        ? LABEL_BAR_TAG_SVGS
+        : [
+            typeof LABEL_BAR_END_CAP_SVG !== "undefined"
+              ? LABEL_BAR_END_CAP_SVG
+              : "tag/lion.svg",
+          ];
+    var storageKey =
+      typeof LABEL_BAR_TAG_ROTATION_STORAGE_KEY !== "undefined"
+        ? LABEL_BAR_TAG_ROTATION_STORAGE_KEY
+        : "undercover.labelBarTagIndex";
+    var index = 0;
+    try {
+      index = parseInt(localStorage.getItem(storageKey), 10);
+      if (isNaN(index) || index < 0) index = 0;
+    } catch (e) {}
+    var file = pool[index % pool.length];
+    try {
+      localStorage.setItem(storageKey, String((index + 1) % pool.length));
+    } catch (e) {}
+    return file;
+  }
+
   function getLabelBarEndCapSvgFile() {
-    return typeof LABEL_BAR_END_CAP_SVG !== "undefined"
-      ? LABEL_BAR_END_CAP_SVG
-      : "lion.svg";
+    if (labelBarEndCapSvgFile === null) {
+      labelBarEndCapSvgFile = pickLabelBarEndCapSvgFile();
+    }
+    return labelBarEndCapSvgFile;
   }
 
   function getLabelBarLivingInIranSvgFile() {
@@ -7697,6 +8952,42 @@
       : "OUTSIDE IRAN.svg";
   }
 
+  function getLabelBarHomeAtSvgFiles() {
+    if (typeof LABEL_BAR_HOME_AT_SVGS === "undefined") {
+      return ["home/IN IRAN home.svg", "home/WHERE I LIVE.svg", "home/NOWHERE.svg"];
+    }
+    return [
+      LABEL_BAR_HOME_AT_SVGS.inIran,
+      LABEL_BAR_HOME_AT_SVGS.whereILive,
+      LABEL_BAR_HOME_AT_SVGS.nowhere,
+    ];
+  }
+
+  /** Sign from Profile “where do you feel at home?” */
+  function getHomeAtLabelSvgFile() {
+    var choice;
+    var map;
+    if (
+      typeof window.IdentityControls === "undefined" ||
+      !window.IdentityControls.getHomeAt
+    ) {
+      return null;
+    }
+    choice = window.IdentityControls.getHomeAt();
+    map =
+      typeof LABEL_BAR_HOME_AT_SVGS !== "undefined"
+        ? LABEL_BAR_HOME_AT_SVGS
+        : {
+            inIran: "home/IN IRAN home.svg",
+            whereILive: "home/WHERE I LIVE.svg",
+            nowhere: "home/NOWHERE.svg",
+          };
+    if (choice === "inIran") return map.inIran;
+    if (choice === "whereILive") return map.whereILive;
+    if (choice === "nowhere") return map.nowhere;
+    return map.inIran;
+  }
+
   function getLabelBarFromSvgFile() {
     return typeof LABEL_BAR_FROM_SVG !== "undefined"
       ? LABEL_BAR_FROM_SVG
@@ -7709,10 +9000,16 @@
       : "now in.svg";
   }
 
-  function getLabelBarBarcodeSvgFile() {
-    return typeof LABEL_BAR_BARCODE_SVG !== "undefined"
-      ? LABEL_BAR_BARCODE_SVG
-      : "barcode.svg";
+  function getLabelBarCircleSvgFile() {
+    return typeof LABEL_BAR_CIRCLE_SVG !== "undefined"
+      ? LABEL_BAR_CIRCLE_SVG
+      : "sun.svg";
+  }
+
+  function getLabelBarUnionSvgFile() {
+    return typeof LABEL_BAR_UNION_SVG !== "undefined"
+      ? LABEL_BAR_UNION_SVG
+      : "Union.svg";
   }
 
   function getLabelBarLeftSvgFile() {
@@ -7752,7 +9049,7 @@
     return String(window.IdentityControls.getNowIn() || "").trim();
   }
 
-  /** Name on row 2 — between leaving year and women icon (mode from Profile → Name). */
+  /** Name on row 2 — between sun sign and undercover english (mode from Profile → Name). */
   function getProfileNameText() {
     if (
       typeof window.IdentityControls === "undefined" ||
@@ -7763,7 +9060,7 @@
     return String(window.IdentityControls.getNameLabelText() || "").trim();
   }
 
-  /** Year of leaving — row 1, only when Profile “Have I lived in Iran?” is Yes. */
+  /** Year of leaving — top row, between logo wordmark and home icon (Iran = Yes). */
   function getProfileLeavingYearText() {
     if (
       typeof window.IdentityControls === "undefined" ||
@@ -7779,7 +9076,7 @@
   function getLabelBarLeftLionInnerRow1SvgFile() {
     return typeof LABEL_BAR_LEFT_LION_INNER_ROW1_SVG !== "undefined"
       ? LABEL_BAR_LEFT_LION_INNER_ROW1_SVG
-      : "undercover english.svg";
+      : "logo placeholder.svg";
   }
 
   function getLabelBarLeftLionInnerRow1SunSvgFile() {
@@ -7858,8 +9155,9 @@
   function applyLabelBarAgeOverlayTextAttrs(text, fontSize) {
     text.setAttribute("fill", getLabelBarAgeOverlayFill());
     text.setAttribute("font-family", getBrownBarBannerFontFamily());
-    text.setAttribute("font-weight", "700");
+    text.setAttribute("font-weight", "400");
     text.setAttribute("font-size", String(fontSize));
+    text.setAttribute("letter-spacing", String(getBrownBarBannerLetterSpacing()));
     text.setAttribute("text-anchor", "middle");
     text.setAttribute("dominant-baseline", "middle");
     text.setAttribute("alignment-baseline", "middle");
@@ -7879,11 +9177,189 @@
     container.appendChild(text);
   }
 
+  function parseExportFontDataUriToArrayBuffer(dataUri) {
+    var base64;
+    var binary;
+    var bytes;
+    var i;
+    if (!dataUri) return null;
+    base64 = dataUri.replace(/^data:[^;]+;base64,/, "");
+    binary = atob(base64);
+    bytes = new Uint8Array(binary.length);
+    for (i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  function loadExportOpentypeFont(fontDataUri) {
+    var buf;
+    if (cachedExportOpentypeFont) {
+      return Promise.resolve(cachedExportOpentypeFont);
+    }
+    if (typeof opentype === "undefined") {
+      return Promise.resolve(null);
+    }
+    buf = parseExportFontDataUriToArrayBuffer(
+      fontDataUri || getEmbeddedExportFontDataUri()
+    );
+    if (!buf) return Promise.resolve(null);
+    try {
+      cachedExportOpentypeFont = opentype.parse(buf);
+      return Promise.resolve(cachedExportOpentypeFont);
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  }
+
+  function getBaselineYMatchingSvgText(textEl, font, fontSize) {
+    var y = parseFloat(textEl.getAttribute("y") || "0");
+    var content = textEl.textContent || "Hg";
+    var measureG = getLabelBarMeasureGroup();
+    var probe;
+    var attrs = textEl.attributes;
+    var ai;
+    var bb;
+    var path;
+    var pb;
+    var textCenter;
+    var pathCenter;
+    if (!measureG || !font) return y;
+    probe = elSvg("text");
+    for (ai = 0; ai < attrs.length; ai++) {
+      probe.setAttribute(attrs[ai].name, attrs[ai].value);
+    }
+    probe.textContent = content;
+    measureG.appendChild(probe);
+    bb = probe.getBBox();
+    measureG.removeChild(probe);
+    path = font.getPath(content, 0, y, fontSize);
+    pb = path.getBoundingBox();
+    textCenter = bb.y + bb.height / 2;
+    pathCenter = (pb.y1 + pb.y2) / 2;
+    return y + (textCenter - pathCenter);
+  }
+
+  function buildOutlinedPathDataForSvgText(
+    font,
+    text,
+    x,
+    baselineY,
+    fontSize,
+    letterSpacing,
+    anchor
+  ) {
+    var chars = String(text || "").split("");
+    var advances = [];
+    var totalWidth = 0;
+    var startX = x;
+    var pathParts = [];
+    var cursorX;
+    var i;
+    if (!font || !chars.length) return "";
+    for (i = 0; i < chars.length; i++) {
+      advances[i] = font.getAdvanceWidth(chars[i], fontSize);
+      totalWidth += advances[i];
+      if (i < chars.length - 1) totalWidth += letterSpacing;
+    }
+    if (anchor === "middle") startX = x - totalWidth / 2;
+    else if (anchor === "end") startX = x - totalWidth;
+    cursorX = startX;
+    for (i = 0; i < chars.length; i++) {
+      pathParts.push(font.getPath(chars[i], cursorX, baselineY, fontSize).toPathData(3));
+      cursorX += advances[i];
+      if (i < chars.length - 1) cursorX += letterSpacing;
+    }
+    return pathParts.join(" ");
+  }
+
+  function convertSvgTextElementToPath(textEl, font) {
+    var fontSize = parseFloat(textEl.getAttribute("font-size") || "12");
+    var fill = textEl.getAttribute("fill") || getLabelBarContentColor();
+    var letterSpacing = parseFloat(textEl.getAttribute("letter-spacing") || "0");
+    var anchor = textEl.getAttribute("text-anchor") || "start";
+    var content = textEl.textContent || "";
+    var x = parseFloat(textEl.getAttribute("x") || "0");
+    var baselineY;
+    var d;
+    var pathEl;
+    if (!content || !font) return null;
+    baselineY = getBaselineYMatchingSvgText(textEl, font, fontSize);
+    d = buildOutlinedPathDataForSvgText(
+      font,
+      content,
+      x,
+      baselineY,
+      fontSize,
+      letterSpacing,
+      anchor
+    );
+    if (!d) return null;
+    pathEl = elSvg("path");
+    pathEl.setAttribute("d", d);
+    pathEl.setAttribute("fill", fill);
+    return pathEl;
+  }
+
+  function serializeSvgElement(el) {
+    return new XMLSerializer().serializeToString(el);
+  }
+
+  function pushLabelBarTextPlacementExport(edgeLines, placement, contentArea) {
+    var spec = placement.spec;
+    var textEl;
+    var pathEl;
+    if (!spec || !spec.text) return;
+    textEl = elSvg("text");
+    textEl.setAttribute("x", String(placement.x));
+    textEl.setAttribute("y", String(getLabelBarTextY(contentArea)));
+    applyLabelBarTextAttrs(textEl, spec.fontSize);
+    textEl.textContent = spec.text;
+    if (cachedExportOpentypeFont) {
+      pathEl = convertSvgTextElementToPath(textEl, cachedExportOpentypeFont);
+      if (pathEl) {
+        edgeLines.push(serializeSvgElement(pathEl));
+        return;
+      }
+    }
+    edgeLines.push(
+      '<text x="' +
+        placement.x +
+        '" y="' +
+        getLabelBarTextY(contentArea) +
+        '" fill="' +
+        getBrownBarBannerFill() +
+        '" font-family="' +
+        getBrownBarBannerFontFamily() +
+        '" font-weight="400" font-size="' +
+        spec.fontSize +
+        '" letter-spacing="' +
+        getBrownBarBannerLetterSpacing() +
+        '" text-anchor="start" dominant-baseline="middle" alignment-baseline="middle">' +
+        spec.text +
+        "</text>"
+    );
+  }
+
   function pushLabelBarAgeOverlayTextExport(edgeLines, placement, contentArea) {
     var overlayText = placement.ageOverlayText;
     var metrics;
+    var textEl;
+    var pathEl;
     if (overlayText === undefined || !overlayText) return;
     metrics = getLabelBarAgeOverlayTextMetrics(placement, contentArea);
+    textEl = elSvg("text");
+    textEl.setAttribute("x", String(metrics.x));
+    textEl.setAttribute("y", String(metrics.y));
+    applyLabelBarAgeOverlayTextAttrs(textEl, metrics.fontSize);
+    textEl.textContent = overlayText;
+    if (cachedExportOpentypeFont) {
+      pathEl = convertSvgTextElementToPath(textEl, cachedExportOpentypeFont);
+      if (pathEl) {
+        edgeLines.push(serializeSvgElement(pathEl));
+        return;
+      }
+    }
     edgeLines.push(
       '<text x="' +
         metrics.x +
@@ -7893,8 +9369,10 @@
         getLabelBarAgeOverlayFill() +
         '" font-family="' +
         getBrownBarBannerFontFamily() +
-        ', sans-serif" font-weight="700" font-size="' +
+        '" font-weight="400" font-size="' +
         metrics.fontSize +
+        '" letter-spacing="' +
+        getBrownBarBannerLetterSpacing() +
         '" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle">' +
         overlayText +
         "</text>"
@@ -7904,7 +9382,7 @@
   function getLabelBarRightLionInnerRow2SvgFile() {
     return typeof LABEL_BAR_RIGHT_LION_INNER_ROW2_SVG !== "undefined"
       ? LABEL_BAR_RIGHT_LION_INNER_ROW2_SVG
-      : "undercover english.svg";
+      : "logo placeholder.svg";
   }
 
   function getLabelBarLostInnerSvgFile() {
@@ -7925,17 +9403,8 @@
       : "LOST/3 man.svg";
   }
 
-  /** Icon from Profile Lost slider (Inner / middle / Distant circle). */
+  /** Icon for Lost profile field — always Inner Circle (1/1). */
   function getLostLabelSvgFile() {
-    var value = 1;
-    if (
-      typeof window.IdentityControls !== "undefined" &&
-      window.IdentityControls.getLostCircle
-    ) {
-      value = window.IdentityControls.getLostCircle();
-    }
-    if (value === 2) return getLabelBarLostMiddleSvgFile();
-    if (value === 3) return getLabelBarLostDistantSvgFile();
     return getLabelBarLostInnerSvgFile();
   }
 
@@ -7967,7 +9436,8 @@
     var outsideIran = getLabelBarLivingOutsideIranSvgFile();
     var fromFile = getLabelBarFromSvgFile();
     var nowInFile = getLabelBarNowInSvgFile();
-    var barcodeFile = getLabelBarBarcodeSvgFile();
+    var circleFile = getLabelBarCircleSvgFile();
+    var unionFile = getLabelBarUnionSvgFile();
     var leftSignFile = getLabelBarLeftSvgFile();
     var womenFile = getLabelBarWomenSvgFile();
     var leftWord = getLabelBarLeftLionInnerRow1SvgFile();
@@ -7975,6 +9445,7 @@
     var ageFile = getLabelBarAgeSvgFile();
     var rightWord = getLabelBarRightLionInnerRow2SvgFile();
     var lostFiles = getLabelBarLostSvgFiles();
+    var homeAtFiles = getLabelBarHomeAtSvgFiles();
     return items.filter(function (item) {
       return !(
         item.type === "svg" &&
@@ -7983,14 +9454,16 @@
           item.svgFile === outsideIran ||
           item.svgFile === fromFile ||
           item.svgFile === nowInFile ||
-          item.svgFile === barcodeFile ||
+          item.svgFile === circleFile ||
+          item.svgFile === unionFile ||
           item.svgFile === leftSignFile ||
           item.svgFile === womenFile ||
           item.svgFile === leftWord ||
           item.svgFile === sunFile ||
           item.svgFile === ageFile ||
           item.svgFile === rightWord ||
-          lostFiles.indexOf(item.svgFile) >= 0)
+          lostFiles.indexOf(item.svgFile) >= 0 ||
+          homeAtFiles.indexOf(item.svgFile) >= 0)
       );
     });
   }
@@ -8011,7 +9484,7 @@
   function getLabelBarLostLabelText() {
     return typeof LABEL_BAR_LOST_LABEL_TEXT !== "undefined"
       ? LABEL_BAR_LOST_LABEL_TEXT
-      : "LOST";
+      : "1/1";
   }
 
   function buildLabelBarLostLabelSpec(area) {
@@ -8095,10 +9568,6 @@
       getLabelBarLeftLionInnerRow1SvgFile(),
       area.height
     );
-    var sunSpec = buildLabelBarSvgSpec(
-      getLabelBarLeftLionInnerRow1SunSvgFile(),
-      area.height
-    );
     var ageSpec = buildLabelBarSvgSpec(getLabelBarAgeSvgFile(), area.height);
     var ageLabelSpec = ageSpec ? buildLabelBarAgeLabelSpec(area) : null;
     var rightWordSpec = buildLabelBarSvgSpec(
@@ -8126,23 +9595,31 @@
       getProfileNowInText(),
       livingRowArea
     );
-    var barcodeSpec = buildLabelBarSvgSpec(
-      getLabelBarBarcodeSvgFile(),
+    var circleSpec = buildLabelBarSvgSpec(
+      getLabelBarCircleSvgFile(),
       livingRowArea.height
+    );
+    var unionSpec = buildLabelBarSvgSpec(
+      getLabelBarUnionSvgFile(),
+      area.height
     );
     var leftSignSpec = buildLabelBarSvgSpec(
       getLabelBarLeftSvgFile(),
-      livingRowArea.height
+      area.height
     );
     var womenSpec = buildLabelBarSvgSpec(
       getLabelBarWomenSvgFile(),
-      livingRowArea.height
+      area.height
     );
     var lostFile = getLostLabelSvgFile();
     var lostSpec = lostFile
       ? buildLabelBarSvgSpec(lostFile, area.height)
       : null;
     var lostLabelSpec = lostSpec ? buildLabelBarLostLabelSpec(area) : null;
+    var homeAtFile = getHomeAtLabelSvgFile();
+    var homeAtSpec = homeAtFile
+      ? buildLabelBarSvgSpec(homeAtFile, area.height)
+      : null;
     var centerSpecs = buildLabelBarItemSpecs(
       filterLabelBarCenterItems(items),
       area.width,
@@ -8180,6 +9657,15 @@
       if (cluster) list.push(cluster);
     }
 
+    var leavingYearText = getProfileLeavingYearText();
+    var leavingYearTextSpec = leavingYearText
+      ? buildLabelBarProfileFieldTextSpec(leavingYearText, area)
+      : null;
+    var showLeavingYear =
+      typeof window.IdentityControls !== "undefined" &&
+      window.IdentityControls.getLivingInIran &&
+      window.IdentityControls.getLivingInIran() === true;
+
     row1Clusters = [];
     pushRowCluster(
       row1Clusters,
@@ -8187,13 +9673,30 @@
         leftWordSpec ? { spec: leftWordSpec, svgArea: area } : null,
       ])
     );
+    if (showLeavingYear) {
+      pushRowCluster(
+        row1Clusters,
+        buildLabelBarCluster([
+          leftSignSpec ? { spec: leftSignSpec, svgArea: area } : null,
+          leavingYearTextSpec
+            ? { spec: leavingYearTextSpec, svgArea: area }
+            : null,
+        ])
+      );
+    }
     pushRowCluster(
       row1Clusters,
-      buildLabelBarCluster([sunSpec ? { spec: sunSpec, svgArea: area } : null])
+      buildLabelBarCluster([
+        homeAtSpec ? { spec: homeAtSpec, svgArea: area } : null,
+      ])
     );
     pushRowCluster(
       row1Clusters,
-      buildLabelBarCluster([barcodeSpec ? { spec: barcodeSpec, svgArea: area } : null])
+      buildLabelBarCluster([unionSpec ? { spec: unionSpec, svgArea: area } : null])
+    );
+    pushRowCluster(
+      row1Clusters,
+      buildLabelBarCluster([womenSpec ? { spec: womenSpec, svgArea: area } : null])
     );
     pushRowCluster(
       row1Clusters,
@@ -8241,25 +9744,10 @@
         nowInTextSpec ? { spec: nowInTextSpec, svgArea: livingRowArea } : null,
       ])
     );
-    var leavingYearText = getProfileLeavingYearText();
-    var leavingYearTextSpec = leavingYearText
-      ? buildLabelBarProfileFieldTextSpec(leavingYearText, livingRowArea)
-      : null;
-    var showLeavingYearRow =
-      typeof window.IdentityControls !== "undefined" &&
-      window.IdentityControls.getLivingInIran &&
-      window.IdentityControls.getLivingInIran() === true;
-    if (showLeavingYearRow) {
-      pushRowCluster(
-        row2Clusters,
-        buildLabelBarCluster([
-          leftSignSpec ? { spec: leftSignSpec, svgArea: livingRowArea } : null,
-          leavingYearTextSpec
-            ? { spec: leavingYearTextSpec, svgArea: livingRowArea }
-            : null,
-        ])
-      );
-    }
+    pushRowCluster(
+      row2Clusters,
+      buildLabelBarCluster([circleSpec ? { spec: circleSpec, svgArea: livingRowArea } : null])
+    );
     var nameText = getProfileNameText();
     var nameTextSpec = nameText
       ? buildLabelBarProfileFieldTextSpec(nameText, livingRowArea)
@@ -8272,11 +9760,9 @@
     }
     pushRowCluster(
       row2Clusters,
-      buildLabelBarCluster([womenSpec ? { spec: womenSpec, svgArea: livingRowArea } : null])
-    );
-    pushRowCluster(
-      row2Clusters,
-      buildLabelBarCluster([{ spec: rightWordSpec, svgArea: row2Area || area }])
+      buildLabelBarCluster([
+        { spec: rightWordSpec, svgArea: row2Area || area, mirror: true },
+      ])
     );
 
     placements.push({
@@ -8350,10 +9836,32 @@
     var img;
     var wrap;
 
-    if (
-      !labelBarSvgUsesNativeColors(spec.file) &&
-      appendLabelBarSvgTintedGroup(container, placement, area, mirror)
-    ) {
+    if (labelBarSvgUsesNativeColors(spec.file)) {
+      if (mirror) {
+        wrap = elSvg("g");
+        wrap.setAttribute(
+          "transform",
+          "translate(" + (ix + spec.width) + "," + area.y + ") scale(-1, 1)"
+        );
+        img = elSvg("image");
+        img.setAttribute("x", "0");
+        img.setAttribute("y", "0");
+      } else {
+        wrap = container;
+        img = elSvg("image");
+        img.setAttribute("x", String(ix));
+        img.setAttribute("y", String(area.y));
+      }
+      setSvgImageHref(img, getLabelBarSvgHref(spec.file));
+      img.setAttribute("width", String(spec.width));
+      img.setAttribute("height", String(spec.height));
+      img.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      wrap.appendChild(img);
+      if (mirror) container.appendChild(wrap);
+      return;
+    }
+
+    if (appendLabelBarSvgTintedGroup(container, placement, area, mirror)) {
       return;
     }
 
@@ -8377,9 +9885,7 @@
     img.setAttribute("width", String(spec.width));
     img.setAttribute("height", String(spec.height));
     img.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    if (!labelBarSvgUsesNativeColors(spec.file)) {
-      img.setAttribute("style", "filter:" + getLabelBarIconFilterStyle());
-    }
+    img.setAttribute("filter", getLabelBarIconTintFilterRef());
     wrap.appendChild(img);
     if (mirror) container.appendChild(wrap);
   }
@@ -8413,8 +9919,12 @@
     }
 
     if (flipVertical) {
+      var rotCenter = getLabelBarPlacementRotate180Center(placement, contentArea);
       mount = elSvg("g");
-      mount.setAttribute("transform", getLabelBarVerticalFlipTransform(contentArea));
+      mount.setAttribute(
+        "transform",
+        getLabelBarRotate180Transform(rotCenter.cx, rotCenter.cy)
+      );
       mount.appendChild(itemG);
     }
     rowG.appendChild(mount);
@@ -8424,11 +9934,14 @@
     var spec = placement.spec;
     var ix = placement.x;
     var mirror = placement.mirror;
-    var whiteMarkup = getLabelBarSvgTintedInnerMarkup(spec.file);
+    primeLabelBarSvgCacheFromEmbedded(spec.file);
+    var whiteMarkup =
+      getLabelBarSvgTintedInnerMarkup(spec.file) ||
+      buildLabelBarSvgTintedInnerMarkupFromEmbedded(spec.file);
     var scaleX = mirror ? -spec.scale : spec.scale;
-    var filterStyle = labelBarSvgUsesNativeColors(spec.file)
+    var tintFilterAttr = labelBarSvgUsesNativeColors(spec.file)
       ? ""
-      : ' style="filter:' + getLabelBarIconFilterStyle() + '"';
+      : ' filter="' + getLabelBarIconTintFilterRef() + '"';
 
     if (whiteMarkup) {
       edgeLines.push(
@@ -8447,6 +9960,40 @@
       return;
     }
 
+    if (labelBarSvgUsesNativeColors(spec.file)) {
+      if (mirror) {
+        edgeLines.push(
+          '<g transform="translate(' +
+            (ix + spec.width) +
+            "," +
+            area.y +
+            ') scale(-1,1)"><image href="' +
+            getLabelBarSvgHref(spec.file) +
+            '" x="0" y="0" width="' +
+            spec.width +
+            '" height="' +
+            spec.height +
+            '" preserveAspectRatio="xMidYMid meet"/></g>'
+        );
+        return;
+      }
+
+      edgeLines.push(
+        '<image href="' +
+          getLabelBarSvgHref(spec.file) +
+          '" x="' +
+          ix +
+          '" y="' +
+          area.y +
+          '" width="' +
+          spec.width +
+          '" height="' +
+          spec.height +
+          '" preserveAspectRatio="xMidYMid meet"/>'
+      );
+      return;
+    }
+
     if (mirror) {
       edgeLines.push(
         '<g transform="translate(' +
@@ -8460,7 +10007,7 @@
           '" height="' +
           spec.height +
           '" preserveAspectRatio="xMidYMid meet"' +
-          filterStyle +
+          tintFilterAttr +
           "/></g>"
       );
       return;
@@ -8478,7 +10025,7 @@
         '" height="' +
         spec.height +
         '" preserveAspectRatio="xMidYMid meet"' +
-        filterStyle +
+        tintFilterAttr +
         "/>"
     );
   }
@@ -8562,11 +10109,12 @@
       getLabelBarLivingOutsideIranSvgFile(),
       getLabelBarFromSvgFile(),
       getLabelBarNowInSvgFile(),
-      getLabelBarBarcodeSvgFile(),
+      getLabelBarCircleSvgFile(),
+      getLabelBarUnionSvgFile(),
       getLabelBarLeftSvgFile(),
       getLabelBarWomenSvgFile(),
       getLabelBarLeftLionInnerRow1SvgFile(),
-      getLabelBarLeftLionInnerRow1SunSvgFile(),
+      getHomeAtLabelSvgFile(),
       getLabelBarAgeSvgFile(),
       getLabelBarRightLionInnerRow2SvgFile(),
       getLabelBarLostInnerSvgFile(),
@@ -8583,13 +10131,21 @@
         files.push(items[i].svgFile);
       }
     }
+    var fi;
+    for (fi = 0; fi < files.length; fi++) {
+      primeLabelBarSvgCacheFromEmbedded(files[fi]);
+    }
     if (!files.length) return Promise.resolve();
-    return Promise.all(
+    return Promise.allSettled(
       files.map(function (name) {
-        return ensureLabelBarSvgAsset(name);
+        return ensureLabelBarSvgAsset(name).catch(function () {
+          return null;
+        });
       })
-    ).catch(function () {
-      return [];
+    ).then(function () {
+      for (fi = 0; fi < files.length; fi++) {
+        primeLabelBarSvgCacheFromEmbedded(files[fi]);
+      }
     });
   }
 
@@ -9146,27 +10702,21 @@
         var placementArea = placement.svgArea || area;
         var flipVertical = labelBarEdgeContentFlippedVertically(edge);
         if (flipVertical) {
+          var rotCenter = getLabelBarPlacementRotate180Center(
+            placement,
+            placementArea
+          );
           edgeLines.push(
-            '<g transform="' + getLabelBarVerticalFlipTransform(placementArea) + '">'
+            '<g transform="' +
+              getLabelBarRotate180Transform(rotCenter.cx, rotCenter.cy) +
+              '">'
           );
         }
         if (placement.spec.type === "text") {
-          edgeLines.push(
-            '<text x="' +
-              placement.x +
-              '" y="' +
-              getLabelBarTextY(placementArea) +
-              '" fill="' +
-              getBrownBarBannerFill() +
-              '" font-family="' +
-              getBrownBarBannerFontFamily() +
-              ', sans-serif" font-weight="700" font-size="' +
-              placement.spec.fontSize +
-              '" letter-spacing="' +
-              getBrownBarBannerLetterSpacing() +
-              '" text-anchor="start" dominant-baseline="middle" alignment-baseline="middle">' +
-              placement.spec.text +
-              "</text>"
+          pushLabelBarTextPlacementExport(
+            edgeLines,
+            placement,
+            placementArea
           );
         } else if (placement.spec.type === "svg") {
           pushLabelBarSvgPlacementExport(
@@ -9259,7 +10809,6 @@
   function updateBorderDivisionLines() {
     if (!designSvg) return;
     syncBorderSideWhiteCells(false);
-    ensureBorderSideWhiteInnerShadowDefs(designSvg.querySelector("defs"));
     var g = designSvg.querySelector("#layer-border-divisions");
     if (!g) return;
     while (g.firstChild) g.removeChild(g.firstChild);
@@ -9300,7 +10849,7 @@
         h = yBottom - yTop;
         cellType = getBorderSideCellType(j);
         if (isBorderSideCellWhitened(0, j)) {
-          var whiteFill = getCanvasBackgroundColor();
+          var colorFadeFillExport = getBorderSideColorFadeFillColor();
           lines.push(
             '<rect x="0" y="' +
               yTop +
@@ -9309,7 +10858,7 @@
               '" height="' +
               h +
               '" fill="' +
-              whiteFill +
+              colorFadeFillExport +
               '"/>'
           );
           lines.push(
@@ -9322,16 +10871,8 @@
               '" height="' +
               h +
               '" fill="' +
-              whiteFill +
+              colorFadeFillExport +
               '"/>'
-          );
-          pushBorderSideWhitenedCellInnerShadowAtXExport(lines, 0, b, yTop, yBottom);
-          pushBorderSideWhitenedCellInnerShadowAtXExport(
-            lines,
-            rightX,
-            b,
-            yTop,
-            yBottom
           );
           continue;
         }
@@ -9492,7 +11033,7 @@
     }
 
     var outlineOnly = !home && !outside;
-    if (outlineOnly || outside || getBorderSideWhiteFillTargetPercent() > 0) {
+    if (outlineOnly || getBorderSideWhiteFillTargetPercent() > 0) {
       for (j = 0; j < yBounds.length - 1; j++) {
         cellType = getBorderSideCellType(j);
         yTop = yBounds[j];
@@ -9513,8 +11054,8 @@
           continue;
         }
 
+        if (!outlineOnly) continue;
         if (cellType === "grey" || cellType === "beige") continue;
-        if (!outlineOnly && cellType !== "outside") continue;
         lines.push(
           '<line x1="0" y1="' +
             yTop +
@@ -9602,8 +11143,7 @@
     clip.appendChild(clipRect);
     defs.appendChild(clip);
     appendInnerContentClipPath(defs);
-    ensureAutoMergeShadowFilter(defs);
-    ensureBorderSideWhiteInnerShadowDefs(defs);
+    ensureLabelBarIconTintFilter(defs);
     svg.appendChild(defs);
 
     var borderFill = elSvg("rect");
@@ -9627,6 +11167,14 @@
     clippedBackground.appendChild(background);
     innerContent.appendChild(clippedBackground);
 
+    var clippedHopeMergeFill = createInnerContentClipGroup(
+      "inner-clipped-hope-merge-fill"
+    );
+    var hopeMergeFillLayer = elSvg("g");
+    hopeMergeFillLayer.setAttribute("id", "layer-hope-merge-fill");
+    clippedHopeMergeFill.appendChild(hopeMergeFillLayer);
+    innerContent.appendChild(clippedHopeMergeFill);
+
     var clippedStippleDots = createInnerContentClipGroup("inner-clipped-stipple-dots");
     var stippleDotsLayer = elSvg("g");
     stippleDotsLayer.setAttribute("id", "layer-stipple-dots");
@@ -9640,13 +11188,6 @@
     innerContent.appendChild(clippedGridMask);
 
     applyMergeReveal();
-
-    var clippedVertical = createInnerContentClipGroup("inner-clipped-vertical-grid");
-    var verticalLayer = elSvg("g");
-    verticalLayer.setAttribute("id", "layer-vertical-grid");
-    verticalLayer.setAttribute("clip-path", "url(#canvas-clip)");
-    clippedVertical.appendChild(verticalLayer);
-    innerContent.appendChild(clippedVertical);
 
     var clippedDiamonds = createInnerContentClipGroup("inner-clipped-diamond-fills");
     var diamondLayer = elSvg("g");
@@ -9664,14 +11205,19 @@
     clippedHollowDiamonds.appendChild(hollowDiamondLayer);
     innerContent.appendChild(clippedHollowDiamonds);
 
-    innerContent.appendChild(createGridBoundaryRect());
-
     var clippedPattern = createInnerContentClipGroup("inner-clipped-pattern");
     var pattern = elSvg("g");
     pattern.setAttribute("id", "layer-pattern");
     pattern.setAttribute("clip-path", "url(#canvas-clip)");
     clippedPattern.appendChild(pattern);
     innerContent.appendChild(clippedPattern);
+
+    var clippedVertical = createInnerContentClipGroup("inner-clipped-vertical-grid");
+    var verticalLayer = elSvg("g");
+    verticalLayer.setAttribute("id", "layer-vertical-grid");
+    verticalLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedVertical.appendChild(verticalLayer);
+    innerContent.appendChild(clippedVertical);
 
     var clippedVerticalOverlay = createInnerContentClipGroup(
       "inner-clipped-vertical-grid-overlay"
@@ -9691,6 +11237,15 @@
     clippedAutoMerge.appendChild(autoMergeLayer);
     innerContent.appendChild(clippedAutoMerge);
 
+    var clippedAngerTriangles = createInnerContentClipGroup(
+      "inner-clipped-anger-diamond-triangles"
+    );
+    var angerTriangleLayer = elSvg("g");
+    angerTriangleLayer.setAttribute("id", "layer-anger-diamond-triangles");
+    angerTriangleLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedAngerTriangles.appendChild(angerTriangleLayer);
+    innerContent.appendChild(clippedAngerTriangles);
+
     var clippedHalfCircle = createInnerContentClipGroup("inner-clipped-half-circle");
     var halfCircleLayer = elSvg("g");
     halfCircleLayer.setAttribute("id", "layer-half-circle");
@@ -9698,12 +11253,16 @@
     clippedHalfCircle.appendChild(halfCircleLayer);
     innerContent.appendChild(clippedHalfCircle);
 
-    svg.appendChild(innerContent);
+    var colorDivisionsBlendRoot = elSvg("g");
+    colorDivisionsBlendRoot.setAttribute("id", "color-divisions-blend-root");
+    colorDivisionsBlendRoot.setAttribute("style", "isolation:isolate");
+    colorDivisionsBlendRoot.appendChild(innerContent);
+    colorDivisionsBlendRoot.appendChild(createColorDivisionsLayer());
+    // Medium/Thick margin columns: last in blend root so they paint over grid + color tiles.
+    colorDivisionsBlendRoot.appendChild(createBorderDivisionOverlayGroup());
+    svg.appendChild(colorDivisionsBlendRoot);
 
-    svg.appendChild(createColorDivisionsLayer());
-
-    // Overlays that cover grid content inward from the border (thickness control).
-    svg.appendChild(createBorderDivisionOverlayGroup());
+    svg.appendChild(createGridBoundaryLayer());
 
     var edgeBrownBars = elSvg("g");
     edgeBrownBars.setAttribute("id", "layer-edge-brown-bars");
@@ -9743,20 +11302,72 @@
   }
 
   function getHalfCircleRibCount() {
-    return 34;
+    return 11;
+  }
+
+  function getFanInnerLeafSizeRatio() {
+    var min =
+      typeof FAN_LEAF_SIZE_MIN !== "undefined" ? FAN_LEAF_SIZE_MIN : 0;
+    var max =
+      typeof FAN_LEAF_SIZE_MAX !== "undefined" ? FAN_LEAF_SIZE_MAX : 100;
+    var defaultPct =
+      typeof FAN_LEAF_SIZE_DEFAULT !== "undefined" ? FAN_LEAF_SIZE_DEFAULT : 90;
+    var input = document.getElementById("fan-leaf-size");
+    var raw = input ? Number(input.value) : defaultPct;
+    if (!Number.isFinite(raw)) raw = defaultPct;
+    var pct = Math.max(min, Math.min(max, Math.round(raw)));
+    if (max <= min) return 0;
+    return (pct - min) / (max - min);
+  }
+
+  function fanLeafSizeLerp(atMin, atMax) {
+    var ratio = getFanInnerLeafSizeRatio();
+    return atMin + (atMax - atMin) * ratio;
   }
 
   function getHalfCircleInset() {
-    var input = document.getElementById("half-circle-inset");
-    var raw = input ? Number(input.value) : 0.2;
-    if (!Number.isFinite(raw)) raw = 0.2;
-    return Math.max(0.1, Math.min(0.4, Math.round(raw * 100) / 100));
+    var devInput = document.getElementById("half-circle-inset");
+    if (devInput) {
+      var devRaw = Number(devInput.value);
+      if (Number.isFinite(devRaw)) {
+        return Math.max(0.02, Math.min(0.4, Math.round(devRaw * 100) / 100));
+      }
+    }
+    var insetMin =
+      typeof FAN_LEAF_INSET_AT_MIN !== "undefined" ? FAN_LEAF_INSET_AT_MIN : 0.28;
+    var insetMax =
+      typeof FAN_LEAF_INSET_AT_MAX !== "undefined" ? FAN_LEAF_INSET_AT_MAX : 0.02;
+    return fanLeafSizeLerp(insetMin, insetMax);
+  }
+
+  function getHalfCircleInnerTipArcChordFactor() {
+    var arcMin =
+      typeof FAN_LEAF_TIP_ARC_AT_MIN !== "undefined"
+        ? FAN_LEAF_TIP_ARC_AT_MIN
+        : 0.48;
+    var arcMax =
+      typeof FAN_LEAF_TIP_ARC_AT_MAX !== "undefined"
+        ? FAN_LEAF_TIP_ARC_AT_MAX
+        : 0.85;
+    return fanLeafSizeLerp(arcMin, arcMax);
+  }
+
+  function getFanInnerLeafLengthScale() {
+    var scaleMin =
+      typeof FAN_LEAF_LENGTH_SCALE_AT_MIN !== "undefined"
+        ? FAN_LEAF_LENGTH_SCALE_AT_MIN
+        : 0.58;
+    var scaleMax =
+      typeof FAN_LEAF_LENGTH_SCALE_AT_MAX !== "undefined"
+        ? FAN_LEAF_LENGTH_SCALE_AT_MAX
+        : 1;
+    return fanLeafSizeLerp(scaleMin, scaleMax);
   }
 
   function getHalfCircleCuspGapPx() {
     var input = document.getElementById("half-circle-cusp-gap");
-    var raw = input ? Number(input.value) : 22;
-    if (!Number.isFinite(raw)) raw = 22;
+    var raw = input ? Number(input.value) : 0;
+    if (!Number.isFinite(raw)) raw = 0;
     return Math.max(0, Math.min(40, Math.round(raw)));
   }
 
@@ -9764,21 +11375,221 @@
     return Math.max(0, getHalfCircleRibCount() - 1);
   }
 
-  function getWearControlPetalCount(sliderId) {
+  var FAN_SHARED_LEAVES_ID = "fan-leaves";
+  var FAN_SHARED_LEAF_SIZE_ID = "fan-leaf-size";
+  var FAN_SHARED_ARC_ID = "fan-arc";
+  var FAN_SHARED_STARS_ID = "fan-stars";
+
+  /** @param {"top" | "bottom"} idPrefix */
+  function getFanSliderIds(idPrefix) {
+    return {
+      leaves: FAN_SHARED_LEAVES_ID,
+      arc: FAN_SHARED_ARC_ID,
+      stars: FAN_SHARED_STARS_ID,
+    };
+  }
+
+  function getFanLeavesOpeningStep(sliderId) {
     var input = document.getElementById(sliderId);
+    var maxStep =
+      typeof WEAR_CONTROL_OPENING_STEP_MAX !== "undefined"
+        ? WEAR_CONTROL_OPENING_STEP_MAX
+        : 10;
+    var defaultStep = 0;
+    var raw = input ? Number(input.value) : defaultStep;
+    if (!Number.isFinite(raw)) raw = defaultStep;
+    return Math.max(0, Math.min(maxStep, Math.round(raw)));
+  }
+
+  function getFanLeavesPetalCount(sliderId) {
     var maxPetals = getHalfCircleMaxPetals();
-    var raw = input ? Number(input.value) : 50;
-    if (!Number.isFinite(raw)) raw = 50;
-    var percent = Math.max(0, Math.min(100, Math.round(raw)));
-    return Math.round((percent / 100) * maxPetals);
+    var step = getFanLeavesOpeningStep(sliderId);
+    var maxStep =
+      typeof WEAR_CONTROL_OPENING_STEP_MAX !== "undefined"
+        ? WEAR_CONTROL_OPENING_STEP_MAX
+        : 10;
+    if (maxPetals <= 0 || step >= maxStep) return 0;
+    var openStep = maxStep - step;
+    if (openStep <= 0) return 0;
+    return Math.round((openStep / maxStep) * maxPetals);
+  }
+
+  /** @param {"top" | "bottom"} idPrefix */
+  function getFanInnerArcRadiusRatio(idPrefix) {
+    var sliderId = getFanSliderIds(idPrefix).arc;
+    var input = document.getElementById(sliderId);
+    var min =
+      typeof FAN_INNER_ARC_PERCENT_MIN !== "undefined"
+        ? FAN_INNER_ARC_PERCENT_MIN
+        : 20;
+    var max =
+      typeof FAN_INNER_ARC_PERCENT_MAX !== "undefined"
+        ? FAN_INNER_ARC_PERCENT_MAX
+        : 80;
+    var defaultPct =
+      typeof FAN_INNER_ARC_PERCENT_DEFAULT !== "undefined"
+        ? FAN_INNER_ARC_PERCENT_DEFAULT
+        : 50;
+    var raw = input ? Number(input.value) : defaultPct;
+    if (!Number.isFinite(raw)) raw = defaultPct;
+    var pct = Math.max(min, Math.min(max, Math.round(raw)));
+    return pct / 100;
+  }
+
+  function getFanOutsideExtraArcGapPx() {
+    var input = document.getElementById("fan-outside-extra-arc");
+    var min =
+      typeof FAN_OUTSIDE_EXTRA_ARC_GAP_MIN !== "undefined"
+        ? FAN_OUTSIDE_EXTRA_ARC_GAP_MIN
+        : 0;
+    var max =
+      typeof FAN_OUTSIDE_EXTRA_ARC_GAP_MAX !== "undefined"
+        ? FAN_OUTSIDE_EXTRA_ARC_GAP_MAX
+        : 80;
+    var defaultGap =
+      typeof FAN_OUTSIDE_EXTRA_ARC_GAP_DEFAULT !== "undefined"
+        ? FAN_OUTSIDE_EXTRA_ARC_GAP_DEFAULT
+        : 24;
+    var raw = input ? Number(input.value) : defaultGap;
+    if (!Number.isFinite(raw)) raw = defaultGap;
+    return Math.max(min, Math.min(max, Math.round(raw)));
+  }
+
+  /** @param {"top" | "bottom"} idPrefix @returns {number} */
+  function getFanStarPointCount(idPrefix) {
+    if (idPrefix === "bottom") {
+      return typeof FAN_BOTTOM_STAR_POINT_COUNT !== "undefined"
+        ? FAN_BOTTOM_STAR_POINT_COUNT
+        : 4;
+    }
+    return typeof FAN_TOP_STAR_POINT_COUNT !== "undefined"
+      ? FAN_TOP_STAR_POINT_COUNT
+      : 5;
+  }
+
+  /** @param {"top" | "bottom"} idPrefix */
+  function getFanStarInnerRadiusRatio(idPrefix) {
+    var sliderId = getFanSliderIds(idPrefix).stars;
+    var input = document.getElementById(sliderId);
+    var min =
+      typeof FAN_STAR_INNER_PERCENT_MIN !== "undefined"
+        ? FAN_STAR_INNER_PERCENT_MIN
+        : 50;
+    var max =
+      typeof FAN_STAR_INNER_PERCENT_MAX !== "undefined"
+        ? FAN_STAR_INNER_PERCENT_MAX
+        : 95;
+    var defaultPct =
+      typeof FAN_STAR_INNER_PERCENT_DEFAULT !== "undefined"
+        ? FAN_STAR_INNER_PERCENT_DEFAULT
+        : 75;
+    var raw = input ? Number(input.value) : defaultPct;
+    if (!Number.isFinite(raw)) raw = defaultPct;
+    var pct = Math.max(min, Math.min(max, Math.round(raw)));
+    return pct / 100;
+  }
+
+  function snapFanLeavesSlider(slider) {
+    if (!slider) return;
+    var maxStep =
+      typeof WEAR_CONTROL_OPENING_STEP_MAX !== "undefined"
+        ? WEAR_CONTROL_OPENING_STEP_MAX
+        : 10;
+    var step = Math.max(0, Math.min(maxStep, Math.round(Number(slider.value))));
+    if (Number(slider.value) !== step) slider.value = String(step);
+  }
+
+  function snapFanPercentSlider(slider, min, max) {
+    if (!slider) return;
+    var value = Math.max(min, Math.min(max, Math.round(Number(slider.value))));
+    if (Number(slider.value) !== value) slider.value = String(value);
+  }
+
+  function bindFanTuningSlider(slider, options) {
+    if (!slider) return;
+    var snap = options && options.snap;
+    if (snap === "leaves") {
+      snapFanLeavesSlider(slider);
+    } else if (snap === "percent" && options.min != null && options.max != null) {
+      snapFanPercentSlider(slider, options.min, options.max);
+    }
+    slider.addEventListener("input", function () {
+      if (snap === "leaves") snapFanLeavesSlider(slider);
+      else if (snap === "percent" && options.min != null && options.max != null) {
+        snapFanPercentSlider(slider, options.min, options.max);
+      }
+      renderHalfCircleLayer();
+    });
+    slider.addEventListener("change", function () {
+      if (snap === "leaves") snapFanLeavesSlider(slider);
+      else if (snap === "percent" && options.min != null && options.max != null) {
+        snapFanPercentSlider(slider, options.min, options.max);
+      }
+      renderHalfCircleLayer();
+    });
+  }
+
+  function bindFanTuningSliders() {
+    var arcMin =
+      typeof FAN_INNER_ARC_PERCENT_MIN !== "undefined"
+        ? FAN_INNER_ARC_PERCENT_MIN
+        : 20;
+    var arcMax =
+      typeof FAN_INNER_ARC_PERCENT_MAX !== "undefined"
+        ? FAN_INNER_ARC_PERCENT_MAX
+        : 80;
+    var starMin =
+      typeof FAN_STAR_INNER_PERCENT_MIN !== "undefined"
+        ? FAN_STAR_INNER_PERCENT_MIN
+        : 50;
+    var starMax =
+      typeof FAN_STAR_INNER_PERCENT_MAX !== "undefined"
+        ? FAN_STAR_INNER_PERCENT_MAX
+        : 95;
+
+    bindFanTuningSlider(document.getElementById(FAN_SHARED_LEAVES_ID), {
+      snap: "leaves",
+    });
+    var leafSizeMin =
+      typeof FAN_LEAF_SIZE_MIN !== "undefined" ? FAN_LEAF_SIZE_MIN : 0;
+    var leafSizeMax =
+      typeof FAN_LEAF_SIZE_MAX !== "undefined" ? FAN_LEAF_SIZE_MAX : 100;
+    bindFanTuningSlider(document.getElementById(FAN_SHARED_LEAF_SIZE_ID), {
+      snap: "percent",
+      min: leafSizeMin,
+      max: leafSizeMax,
+    });
+    bindFanTuningSlider(document.getElementById(FAN_SHARED_ARC_ID), {
+      snap: "percent",
+      min: arcMin,
+      max: arcMax,
+    });
+    bindFanTuningSlider(document.getElementById(FAN_SHARED_STARS_ID), {
+      snap: "percent",
+      min: starMin,
+      max: starMax,
+    });
+    var extraArcMin =
+      typeof FAN_OUTSIDE_EXTRA_ARC_GAP_MIN !== "undefined"
+        ? FAN_OUTSIDE_EXTRA_ARC_GAP_MIN
+        : 0;
+    var extraArcMax =
+      typeof FAN_OUTSIDE_EXTRA_ARC_GAP_MAX !== "undefined"
+        ? FAN_OUTSIDE_EXTRA_ARC_GAP_MAX
+        : 80;
+    bindFanTuningSlider(document.getElementById("fan-outside-extra-arc"), {
+      snap: "percent",
+      min: extraArcMin,
+      max: extraArcMax,
+    });
   }
 
   function getHalfCircleTopVisiblePetalCount() {
-    return getWearControlPetalCount("wear-control-home");
+    return getFanLeavesPetalCount(getFanSliderIds("top").leaves);
   }
 
   function getHalfCircleBottomVisiblePetalCount() {
-    return getWearControlPetalCount("wear-control-outside");
+    return getFanLeavesPetalCount(getFanSliderIds("bottom").leaves);
   }
 
   function getHalfCircleValleyCirclesVisible() {
@@ -9816,7 +11627,8 @@
     var dx = p1.x - p0.x;
     var dy = p1.y - p0.y;
     var chord = Math.sqrt(dx * dx + dy * dy);
-    var rs = Math.max(0.01, chord * 0.55);
+    var arcFactor = inward ? 0.55 : getHalfCircleInnerTipArcChordFactor();
+    var rs = Math.max(0.01, chord * arcFactor);
     var mx = (p0.x + p1.x) * 0.5;
     var my = (p0.y + p1.y) * 0.5;
     var halfChord = chord * 0.5;
@@ -9870,7 +11682,7 @@
     var rAtMin = (tLo + tHi) * 0.5;
     var minDist = innerApexDistance(rAtMin);
 
-    if (gap <= minDist) return rAtMin;
+    if (gap <= 0 || gap <= minDist) return hiLimit;
 
     var lo = rAtMin;
     var hi = hiLimit;
@@ -10277,6 +12089,15 @@
       " " +
       toPt.y
     );
+  }
+
+  function appendHalfCircleInnerPetalTipArc(d, fx, fy, rInner, p0, p1) {
+    var dx = p1.x - p0.x;
+    var dy = p1.y - p0.y;
+    var chord = Math.sqrt(dx * dx + dy * dy);
+    var rs = Math.max(0.01, chord * getHalfCircleInnerTipArcChordFactor());
+    var sweep = halfCircleOutwardCuspSweep(fx, fy, p0, p1);
+    return d + " A " + rs + " " + rs + " 0 0 " + (1 - sweep) + " " + p1.x + " " + p1.y;
   }
 
   function halfCircleAppendFocalArcBetween(d, fx, fy, radius, fromPt, toPt) {
@@ -10694,25 +12515,14 @@
     d = halfCircleAppendFocalArcBetween(d, fx, fy, shelfRadius, shelfL, shelfR);
     if (!d) return null;
     d += " L " + petal.inRight.x + " " + petal.inRight.y;
-
-    var dx = petal.inLeft.x - petal.inRight.x;
-    var dy = petal.inLeft.y - petal.inRight.y;
-    var chord = Math.sqrt(dx * dx + dy * dy);
-    var rs = Math.max(0.01, chord * 0.55);
-    var mx = (petal.inLeft.x + petal.inRight.x) * 0.5;
-    var my = (petal.inLeft.y + petal.inRight.y) * 0.5;
-    var sweep = halfCircleOutwardCuspSweep(fx, fy, petal.inRight, petal.inLeft);
-    d +=
-      " A " +
-      rs +
-      " " +
-      rs +
-      " 0 0 " +
-      sweep +
-      " " +
-      petal.inLeft.x +
-      " " +
-      petal.inLeft.y;
+    d = appendHalfCircleInnerPetalTipArc(
+      d,
+      fx,
+      fy,
+      petal.rInner,
+      petal.inRight,
+      petal.inLeft
+    );
     return d + " Z";
   }
 
@@ -10749,16 +12559,171 @@
     return d;
   }
 
-  function halfCirclePetalFaceFillPath(fx, fy, outerP0, outerP1, inLeft, inRight) {
+  function halfCirclePetalFaceFillPath(
+    fx,
+    fy,
+    outerP0,
+    outerP1,
+    inLeft,
+    inRight,
+    rInner
+  ) {
     var d = "M " + fx + " " + fy;
     d += " L " + outerP0.x + " " + outerP0.y;
     d = appendHalfCircleInwardCuspArc(d, outerP0, outerP1);
     d += " L " + fx + " " + fy + " Z";
     d += " M " + fx + " " + fy;
     d += " L " + inLeft.x + " " + inLeft.y;
-    d = appendHalfCircleOutwardCuspArc(d, inLeft, inRight, fx, fy);
+    d = appendHalfCircleInnerPetalTipArc(d, fx, fy, rInner, inLeft, inRight);
     d += " L " + fx + " " + fy + " Z";
     return d;
+  }
+
+  function getHalfCircleArcPairOuterRadius(innerRadius) {
+    var gap = HALF_CIRCLE_INNER_ARC_PAIR_GAP_PX * HALF_CIRCLE_RADIUS_SCALE;
+    return innerRadius + gap + HALF_CIRCLE_FAN_STROKE_WIDTH;
+  }
+
+  /**
+   * @returns {{ inner: number, outer: number } | null}
+   */
+  function getFanOutsideExtraArcPair(outerArcRadius, fanRadius) {
+    var offsetPx = getFanOutsideExtraArcGapPx();
+    if (offsetPx <= 0) return null;
+    var offset = offsetPx * HALF_CIRCLE_RADIUS_SCALE;
+    var innerRadius =
+      outerArcRadius + offset + HALF_CIRCLE_FAN_STROKE_WIDTH;
+    var outerRadius = getHalfCircleArcPairOuterRadius(innerRadius);
+    if (innerRadius <= outerArcRadius || outerRadius >= fanRadius - 0.5) {
+      return null;
+    }
+    return { inner: innerRadius, outer: outerRadius };
+  }
+
+  function appendHalfCircleFocalArcStroke(
+    parent,
+    id,
+    cx,
+    focalY,
+    radius,
+    startAngle,
+    endAngle,
+    stroke,
+    strokeWidth
+  ) {
+    var arc = elSvg("path");
+    arc.setAttribute("id", id);
+    arc.setAttribute(
+      "d",
+      halfCircleFocalArcPath(cx, focalY, radius, startAngle, endAngle)
+    );
+    arc.setAttribute("fill", "none");
+    arc.setAttribute("stroke", stroke);
+    arc.setAttribute("stroke-width", String(strokeWidth));
+    parent.appendChild(arc);
+  }
+
+  function appendHalfCircleInnerArcPairStrokes(
+    parent,
+    idPrefix,
+    idSuffix,
+    cx,
+    focalY,
+    innerRadius,
+    outerRadius,
+    startAngle,
+    endAngle,
+    stroke,
+    strokeWidth
+  ) {
+    appendHalfCircleFocalArcStroke(
+      parent,
+      "half-circle-inner-arc-" + idPrefix + idSuffix,
+      cx,
+      focalY,
+      innerRadius,
+      startAngle,
+      endAngle,
+      stroke,
+      strokeWidth
+    );
+    appendHalfCircleFocalArcStroke(
+      parent,
+      "half-circle-inner-arc-outer-" + idPrefix + idSuffix,
+      cx,
+      focalY,
+      outerRadius,
+      startAngle,
+      endAngle,
+      stroke,
+      strokeWidth
+    );
+  }
+
+  /**
+   * @returns {number} next cell index for alternating diagonals
+   */
+  function appendHalfCircleInnerArcBandDiagonals(
+    parentGroup,
+    cx,
+    focalY,
+    innerRadius,
+    outerRadius,
+    petals,
+    stroke,
+    strokeWidth,
+    startCellIndex
+  ) {
+    var cellIndex = startCellIndex;
+    var pi;
+    for (pi = 0; pi < petals.length; pi++) {
+      var diagonalPetal = petals[pi];
+      if (!diagonalPetal) continue;
+
+      var pointA = halfCirclePolarPoint(
+        cx,
+        focalY,
+        innerRadius,
+        diagonalPetal.inLeftAngle
+      );
+      var pointB = halfCirclePolarPoint(
+        cx,
+        focalY,
+        innerRadius,
+        diagonalPetal.inRightAngle
+      );
+      var pointC = halfCirclePolarPoint(
+        cx,
+        focalY,
+        outerRadius,
+        diagonalPetal.inLeftAngle
+      );
+      var pointD = halfCirclePolarPoint(
+        cx,
+        focalY,
+        outerRadius,
+        diagonalPetal.inRightAngle
+      );
+
+      var diagonal = elSvg("line");
+      if (cellIndex % 2 === 0) {
+        diagonal.setAttribute("x1", String(pointA.x));
+        diagonal.setAttribute("y1", String(pointA.y));
+        diagonal.setAttribute("x2", String(pointD.x));
+        diagonal.setAttribute("y2", String(pointD.y));
+      } else {
+        diagonal.setAttribute("x1", String(pointB.x));
+        diagonal.setAttribute("y1", String(pointB.y));
+        diagonal.setAttribute("x2", String(pointC.x));
+        diagonal.setAttribute("y2", String(pointC.y));
+      }
+      diagonal.setAttribute("fill", "none");
+      diagonal.setAttribute("stroke", stroke);
+      diagonal.setAttribute("stroke-width", String(strokeWidth));
+      parentGroup.appendChild(diagonal);
+      cellIndex++;
+    }
+    return cellIndex;
   }
 
   function halfCircleInnerArcBandCellPath(
@@ -10830,7 +12795,7 @@
     var dx = p1.x - p0.x;
     var dy = p1.y - p0.y;
     var chord = Math.sqrt(dx * dx + dy * dy);
-    var rs = Math.max(0.01, chord * 0.55);
+    var rs = Math.max(0.01, chord * getHalfCircleInnerTipArcChordFactor());
     var mx = (p0.x + p1.x) * 0.5;
     var my = (p0.y + p1.y) * 0.5;
     var halfChord = chord * 0.5;
@@ -10871,7 +12836,7 @@
     var dy = p1.y - p0.y;
     var chord = Math.sqrt(dx * dx + dy * dy);
     if (chord < 1e-9) return 0;
-    var rs = Math.max(0.01, chord * 0.55);
+    var rs = Math.max(0.01, chord * getHalfCircleInnerTipArcChordFactor());
     var mx = (p0.x + p1.x) * 0.5;
     var my = (p0.y + p1.y) * 0.5;
     var halfChord = chord * 0.5;
@@ -10941,12 +12906,22 @@
     };
   }
 
-  function halfCircleStarSilhouettePath(cx, cy, outerRadius, tipAngle, innerRadius) {
-    var n = 5;
+  function halfCircleStarSilhouettePath(
+    cx,
+    cy,
+    outerRadius,
+    tipAngle,
+    innerRadius,
+    pointCount
+  ) {
+    var n =
+      typeof pointCount === "number" && pointCount >= 3
+        ? Math.round(pointCount)
+        : 5;
     var innerR =
       typeof innerRadius === "number" && Number.isFinite(innerRadius)
         ? innerRadius
-        : outerRadius * getHalfCircleStarInnerRadiusRatio();
+        : outerRadius * 0.75;
     var d = "";
     var k;
     for (k = 0; k < n; k++) {
@@ -10969,8 +12944,38 @@
     return d + " Z";
   }
 
-  function halfCircleStarInnerPentagonPath(cx, cy, innerConcaveRadius, tipAngle) {
-    var n = 5;
+  /** Outer tips only — for stroke without crossing the star interior. */
+  function halfCircleStarTipsOutlinePath(cx, cy, outerRadius, tipAngle, pointCount) {
+    var n =
+      typeof pointCount === "number" && pointCount >= 3
+        ? Math.round(pointCount)
+        : 5;
+    var d = "";
+    var k;
+    for (k = 0; k < n; k++) {
+      var tip = halfCirclePolarPoint(
+        cx,
+        cy,
+        outerRadius,
+        tipAngle - k * 2 * Math.PI / n
+      );
+      if (k === 0) d = "M " + tip.x + " " + tip.y;
+      else d += " L " + tip.x + " " + tip.y;
+    }
+    return d + " Z";
+  }
+
+  function halfCircleStarInnerPentagonPath(
+    cx,
+    cy,
+    innerConcaveRadius,
+    tipAngle,
+    pointCount
+  ) {
+    var n =
+      typeof pointCount === "number" && pointCount >= 3
+        ? Math.round(pointCount)
+        : 5;
     var d = "";
     var k;
     for (k = 0; k < n; k++) {
@@ -10986,8 +12991,18 @@
     return d + " Z";
   }
 
-  function halfCircleStarArmTrianglesPath(cx, cy, outerRadius, innerConcaveRadius, tipAngle) {
-    var n = 5;
+  function halfCircleStarArmTrianglesPath(
+    cx,
+    cy,
+    outerRadius,
+    innerConcaveRadius,
+    tipAngle,
+    pointCount
+  ) {
+    var n =
+      typeof pointCount === "number" && pointCount >= 3
+        ? Math.round(pointCount)
+        : 5;
     var d = "";
     var k;
     for (k = 0; k < n; k++) {
@@ -11028,7 +13043,7 @@
     return d.trim();
   }
 
-  function computeHalfCircleValleyCircles(fx, fy, ribs, endpoints, petals) {
+  function computeHalfCircleValleyCircles(fx, fy, ribs, endpoints, petals, idPrefix) {
     var valleyCount = ribs - 2;
     if (valleyCount <= 0) return [];
 
@@ -11143,6 +13158,9 @@
         cuspGap,
         r
       );
+      var lengthScale = getFanInnerLeafLengthScale();
+      var rInnerMin = 4;
+      rInner = rInnerMin + (rInner - rInnerMin) * lengthScale;
 
       var inLeft = halfCirclePolarPoint(cx, y, rInner, leftInsetAngle);
       var inRight = halfCirclePolarPoint(cx, y, rInner, rightInsetAngle);
@@ -11225,7 +13243,8 @@
         focalY,
         ribs,
         fullFan.endpoints,
-        fullPetals
+        fullPetals,
+        idPrefix
       );
       var vci;
       for (vci = 0; vci < allValleyCircles.length; vci++) {
@@ -11260,6 +13279,8 @@
     var fanStrokePentagon = sheetColor("E8");
     var fanFillStarArms = sheetColor("E9");
     var fanStrokeStarArms = sheetColor("E10");
+
+    var drawCircleShelfFrame = false;
 
     var bgFill = elSvg("path");
     bgFill.setAttribute("id", "half-circle-background-" + idPrefix);
@@ -11299,46 +13320,41 @@
     rightBoundary.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
     parentGroup.appendChild(rightBoundary);
 
-    var innerArcRadius = r * getHalfCircleInnerArcRadiusRatio();
-    var innerArcGap = HALF_CIRCLE_INNER_ARC_PAIR_GAP_PX * HALF_CIRCLE_RADIUS_SCALE;
-    var outerArcRadius =
-      innerArcRadius + innerArcGap + HALF_CIRCLE_FAN_STROKE_WIDTH;
+    var innerArcRadius = r * getFanInnerArcRadiusRatio(idPrefix);
+    var outerArcRadius = getHalfCircleArcPairOuterRadius(innerArcRadius);
+    var extraArcPair = getFanOutsideExtraArcPair(outerArcRadius, r);
     var innerArcPair = elSvg("g");
     innerArcPair.setAttribute("id", "half-circle-inner-arc-pair-" + idPrefix);
 
-    var innerArc = elSvg("path");
-    innerArc.setAttribute("id", "half-circle-inner-arc-" + idPrefix);
-    innerArc.setAttribute(
-      "d",
-      halfCircleFocalArcPath(
-        cx,
-        focalY,
-        innerArcRadius,
-        layout.startAngle,
-        layout.endAngle
-      )
+    appendHalfCircleInnerArcPairStrokes(
+      innerArcPair,
+      idPrefix,
+      "",
+      cx,
+      focalY,
+      innerArcRadius,
+      outerArcRadius,
+      layout.startAngle,
+      layout.endAngle,
+      fanStrokeInnerArc,
+      HALF_CIRCLE_FAN_STROKE_WIDTH
     );
-    innerArc.setAttribute("fill", "none");
-    innerArc.setAttribute("stroke", fanStrokeInnerArc);
-    innerArc.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-    innerArcPair.appendChild(innerArc);
 
-    var outerInnerArc = elSvg("path");
-    outerInnerArc.setAttribute("id", "half-circle-inner-arc-outer-" + idPrefix);
-    outerInnerArc.setAttribute(
-      "d",
-      halfCircleFocalArcPath(
+    if (extraArcPair) {
+      appendHalfCircleInnerArcPairStrokes(
+        innerArcPair,
+        idPrefix,
+        "-extra",
         cx,
         focalY,
-        outerArcRadius,
+        extraArcPair.inner,
+        extraArcPair.outer,
         layout.startAngle,
-        layout.endAngle
-      )
-    );
-    outerInnerArc.setAttribute("fill", "none");
-    outerInnerArc.setAttribute("stroke", fanStrokeInnerArc);
-    outerInnerArc.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-    innerArcPair.appendChild(outerInnerArc);
+        layout.endAngle,
+        fanStrokeInnerArc,
+        HALF_CIRCLE_FAN_STROKE_WIDTH
+      );
+    }
 
     parentGroup.appendChild(innerArcPair);
 
@@ -11369,7 +13385,8 @@
           endpoints[pfi],
           endpoints[pfi + 1],
           fillPetal.inLeft,
-          fillPetal.inRight
+          fillPetal.inRight,
+          fillPetal.rInner
         )
       );
       petalFace.setAttribute("fill", fanFillPetalFace);
@@ -11392,60 +13409,53 @@
       bandCell.setAttribute("fill", fanFillArcBand);
       bandCell.setAttribute("stroke", "none");
       petalFillsGroup.appendChild(bandCell);
+
+      if (extraArcPair) {
+        var extraBandCell = elSvg("path");
+        extraBandCell.setAttribute(
+          "d",
+          halfCircleInnerArcBandCellPath(
+            cx,
+            focalY,
+            extraArcPair.inner,
+            extraArcPair.outer,
+            fillPetal.inLeftAngle,
+            fillPetal.inRightAngle
+          )
+        );
+        extraBandCell.setAttribute("fill", fanFillArcBand);
+        extraBandCell.setAttribute("stroke", "none");
+        petalFillsGroup.appendChild(extraBandCell);
+      }
     }
     parentGroup.insertBefore(petalFillsGroup, outer);
 
     if (getHalfCircleInnerArcDiagonalsVisible()) {
       var diagonalGroup = elSvg("g");
       diagonalGroup.setAttribute("id", "half-circle-inner-arc-diagonals-" + idPrefix);
-      var cellIndex = 0;
-      var pi;
-      for (pi = 0; pi < petals.length; pi++) {
-        var diagonalPetal = petals[pi];
-        if (!diagonalPetal) continue;
-
-        var pointA = halfCirclePolarPoint(
+      var cellIndex = appendHalfCircleInnerArcBandDiagonals(
+        diagonalGroup,
+        cx,
+        focalY,
+        innerArcRadius,
+        outerArcRadius,
+        petals,
+        fanStrokeDiagonal,
+        HALF_CIRCLE_FAN_STROKE_WIDTH,
+        0
+      );
+      if (extraArcPair) {
+        appendHalfCircleInnerArcBandDiagonals(
+          diagonalGroup,
           cx,
           focalY,
-          innerArcRadius,
-          diagonalPetal.inLeftAngle
+          extraArcPair.inner,
+          extraArcPair.outer,
+          petals,
+          fanStrokeDiagonal,
+          HALF_CIRCLE_FAN_STROKE_WIDTH,
+          cellIndex
         );
-        var pointB = halfCirclePolarPoint(
-          cx,
-          focalY,
-          innerArcRadius,
-          diagonalPetal.inRightAngle
-        );
-        var pointC = halfCirclePolarPoint(
-          cx,
-          focalY,
-          outerArcRadius,
-          diagonalPetal.inLeftAngle
-        );
-        var pointD = halfCirclePolarPoint(
-          cx,
-          focalY,
-          outerArcRadius,
-          diagonalPetal.inRightAngle
-        );
-
-        var diagonal = elSvg("line");
-        if (cellIndex % 2 === 0) {
-          diagonal.setAttribute("x1", String(pointA.x));
-          diagonal.setAttribute("y1", String(pointA.y));
-          diagonal.setAttribute("x2", String(pointD.x));
-          diagonal.setAttribute("y2", String(pointD.y));
-        } else {
-          diagonal.setAttribute("x1", String(pointB.x));
-          diagonal.setAttribute("y1", String(pointB.y));
-          diagonal.setAttribute("x2", String(pointC.x));
-          diagonal.setAttribute("y2", String(pointC.y));
-        }
-        diagonal.setAttribute("fill", "none");
-        diagonal.setAttribute("stroke", fanStrokeDiagonal);
-        diagonal.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-        diagonalGroup.appendChild(diagonal);
-        cellIndex++;
       }
       parentGroup.appendChild(diagonalGroup);
     }
@@ -11492,7 +13502,7 @@
       rightStripFill.setAttribute("stroke", "none");
       innerGroup.appendChild(rightStripFill);
 
-      if (getHalfCircleValleyCirclesVisible() && valleyCircles.length > 0) {
+      if (drawCircleShelfFrame && getHalfCircleValleyCirclesVisible() && valleyCircles.length > 0) {
         var capShelfRadius = halfCircleValleyShelfRadius(cx, focalY, valleyCircles);
         if (capShelfRadius > 0) {
           var petalCapPath = halfCirclePetalShelfCuspCapPath(
@@ -11530,12 +13540,13 @@
       innerGroup.appendChild(innerRightRib);
 
       var dInnerCusp = "M " + inLeft.x + " " + inLeft.y;
-      dInnerCusp = appendHalfCircleOutwardCuspArc(
+      dInnerCusp = appendHalfCircleInnerPetalTipArc(
         dInnerCusp,
-        inLeft,
-        inRight,
         cx,
-        focalY
+        focalY,
+        petal.rInner,
+        inLeft,
+        inRight
       );
       var innerCusp = elSvg("path");
       innerCusp.setAttribute("d", dInnerCusp);
@@ -11549,7 +13560,7 @@
     if (valleyCircles.length > 0) {
       var shelfRadius = halfCircleValleyShelfRadius(cx, focalY, valleyCircles);
       var valleyGapGroup = null;
-      if (shelfRadius > 0) {
+      if (drawCircleShelfFrame && shelfRadius > 0) {
         valleyGapGroup = elSvg("g");
         valleyGapGroup.setAttribute("id", "half-circle-valley-gaps-" + idPrefix);
         var gi;
@@ -11612,18 +13623,21 @@
       var vc;
       for (vc = 0; vc < valleyCircles.length; vc++) {
         var valleyCircle = valleyCircles[vc];
-        var circle = elSvg("circle");
-        circle.setAttribute("cx", String(valleyCircle.cx));
-        circle.setAttribute("cy", String(valleyCircle.cy));
-        circle.setAttribute("r", String(valleyCircle.r));
-        circle.setAttribute("fill", fanFillValleyCircle);
-        circle.setAttribute("stroke", fanStrokeValleyCircle);
-        circle.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-        valleyGroup.appendChild(circle);
+        if (drawCircleShelfFrame) {
+          var circle = elSvg("circle");
+          circle.setAttribute("cx", String(valleyCircle.cx));
+          circle.setAttribute("cy", String(valleyCircle.cy));
+          circle.setAttribute("r", String(valleyCircle.r));
+          circle.setAttribute("fill", fanFillValleyCircle);
+          circle.setAttribute("stroke", fanStrokeValleyCircle);
+          circle.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
+          valleyGroup.appendChild(circle);
+        }
 
-        var starRatio = getHalfCircleStarInnerRadiusRatio();
+        var starRatio = getFanStarInnerRadiusRatio(idPrefix);
+        var starPoints = getFanStarPointCount(idPrefix);
         var outerStarInnerR = valleyCircle.r * starRatio;
-        var innerStarTipAngle = valleyCircle.tipAngle - Math.PI / 5;
+        var innerStarTipAngle = valleyCircle.tipAngle - Math.PI / starPoints;
 
         var star = elSvg("path");
         star.setAttribute(
@@ -11632,14 +13646,31 @@
             valleyCircle.cx,
             valleyCircle.cy,
             valleyCircle.r,
-            valleyCircle.tipAngle
+            valleyCircle.tipAngle,
+            outerStarInnerR,
+            starPoints
           )
         );
         star.setAttribute("fill", fanFillOuterStar);
-        star.setAttribute("stroke", fanStrokeOuterStar);
-        star.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-        star.setAttribute("stroke-linejoin", "round");
+        star.setAttribute("stroke", "none");
         valleyGroup.appendChild(star);
+
+        var starOutline = elSvg("path");
+        starOutline.setAttribute(
+          "d",
+          halfCircleStarTipsOutlinePath(
+            valleyCircle.cx,
+            valleyCircle.cy,
+            valleyCircle.r,
+            valleyCircle.tipAngle,
+            starPoints
+          )
+        );
+        starOutline.setAttribute("fill", "none");
+        starOutline.setAttribute("stroke", fanStrokeOuterStar);
+        starOutline.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
+        starOutline.setAttribute("stroke-linejoin", "round");
+        valleyGroup.appendChild(starOutline);
 
         var innerStar = elSvg("path");
         innerStar.setAttribute(
@@ -11649,14 +13680,33 @@
             valleyCircle.cy,
             outerStarInnerR,
             innerStarTipAngle,
-            outerStarInnerR * starRatio
+            outerStarInnerR * starRatio,
+            starPoints
           )
         );
         innerStar.setAttribute("fill", fanFillInnerStar);
-        innerStar.setAttribute("stroke", fanStrokeInnerStar);
-        innerStar.setAttribute("stroke-width", String(HALF_CIRCLE_FAN_STROKE_WIDTH));
-        innerStar.setAttribute("stroke-linejoin", "round");
+        innerStar.setAttribute("stroke", "none");
         valleyGroup.appendChild(innerStar);
+
+        var innerStarOutline = elSvg("path");
+        innerStarOutline.setAttribute(
+          "d",
+          halfCircleStarTipsOutlinePath(
+            valleyCircle.cx,
+            valleyCircle.cy,
+            outerStarInnerR,
+            innerStarTipAngle,
+            starPoints
+          )
+        );
+        innerStarOutline.setAttribute("fill", "none");
+        innerStarOutline.setAttribute("stroke", fanStrokeInnerStar);
+        innerStarOutline.setAttribute(
+          "stroke-width",
+          String(HALF_CIRCLE_FAN_STROKE_WIDTH)
+        );
+        innerStarOutline.setAttribute("stroke-linejoin", "round");
+        valleyGroup.appendChild(innerStarOutline);
 
         var innerStarInnerR = outerStarInnerR * starRatio;
         var starArms = elSvg("path");
@@ -11667,7 +13717,8 @@
             valleyCircle.cy,
             outerStarInnerR,
             innerStarInnerR,
-            innerStarTipAngle
+            innerStarTipAngle,
+            starPoints
           )
         );
         starArms.setAttribute("fill", fanFillStarArms);
@@ -11683,7 +13734,8 @@
             valleyCircle.cx,
             valleyCircle.cy,
             innerStarInnerR,
-            innerStarTipAngle
+            innerStarTipAngle,
+            starPoints
           )
         );
         pentagon.setAttribute("fill", fanFillPentagon);
@@ -11695,7 +13747,7 @@
 
       parentGroup.appendChild(valleyGroup);
 
-      if (valleyCircles.length > 0) {
+      if (drawCircleShelfFrame && valleyCircles.length > 0) {
         var shelfSpec = halfCircleValleyShelfArcSpec(cx, focalY, valleyCircles);
         if (shelfSpec && shelfSpec.radius > 0) {
           var shelfArc = elSvg("path");
@@ -11808,6 +13860,19 @@
     if (filled.length) diamondLayer.appendChild(diamondsToGroup(filled));
   }
 
+  function renderAngerDiamondTrianglesLayer() {
+    if (!designSvg) return;
+    var layer = designSvg.querySelector("#layer-anger-diamond-triangles");
+    if (!layer) return;
+
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+    if (!supportsAngerDiamondTriangles()) return;
+
+    var triangles = getAngerTriangleDiamonds();
+    if (triangles.length) layer.appendChild(angerTrianglesToGroup(triangles));
+  }
+
   function renderHollowDiamondFillsLayer() {
     if (!designSvg) return;
     var hollowLayer = designSvg.querySelector("#layer-hollow-diamond-fills");
@@ -11830,8 +13895,10 @@
       while (patternLayer.firstChild) {
         patternLayer.removeChild(patternLayer.firstChild);
       }
-      if (cachedStarFills.length) {
-        patternLayer.appendChild(starFillsToGroup(cachedStarFills));
+      // Fills under lines so inner-star edges keep full grid stroke (fill was covering strokes).
+      var visibleStarFills = getVisibleStarFillsForPattern();
+      if (visibleStarFills.length) {
+        patternLayer.appendChild(starFillsToGroup(visibleStarFills));
       }
       patternLayer.appendChild(
         segmentsToGroup(getVisibleSegments(getAllSegmentsForTracing()))
@@ -11852,6 +13919,49 @@
       if (starGriefCircles.length) {
         patternLayer.appendChild(griefCirclesToGroup(starGriefCircles));
       }
+      var starStrengthMarks = getActiveStrengthMarks();
+      if (starStrengthMarks.length) {
+        patternLayer.appendChild(strengthMarksToGroup(starStrengthMarks));
+      }
+      renderAngerDiamondTrianglesLayer();
+      return;
+    }
+
+    if (isGirihGrid()) {
+      renderDiamondFillsLayer();
+      renderHollowDiamondFillsLayer();
+      while (patternLayer.firstChild) {
+        patternLayer.removeChild(patternLayer.firstChild);
+      }
+      patternLayer.appendChild(
+        segmentsToGroup(getVisibleSegments(cachedAllSegments))
+      );
+      var girihPatternGroup = patternLayer.lastElementChild;
+      if (girihPatternGroup) {
+        girihPatternGroup.setAttribute("stroke-linecap", "round");
+        girihPatternGroup.setAttribute("stroke-linejoin", "round");
+      }
+      var girihHelplessnessMarks = getActiveHelplessnessMarks();
+      if (girihHelplessnessMarks.length) {
+        patternLayer.appendChild(helplessnessToGroup(girihHelplessnessMarks));
+      }
+      var girihCircles = getActiveCircles();
+      if (girihCircles.length) {
+        patternLayer.appendChild(circlesToGroup(girihCircles));
+      }
+      var girihLongingCircles = getActiveLongingCircles();
+      if (girihLongingCircles.length) {
+        patternLayer.appendChild(longingCirclesToGroup(girihLongingCircles));
+      }
+      var girihGriefCircles = getActiveGriefCircles();
+      if (girihGriefCircles.length) {
+        patternLayer.appendChild(griefCirclesToGroup(girihGriefCircles));
+      }
+      var girihStrengthMarks = getActiveStrengthMarks();
+      if (girihStrengthMarks.length) {
+        patternLayer.appendChild(strengthMarksToGroup(girihStrengthMarks));
+      }
+      renderAngerDiamondTrianglesLayer();
       return;
     }
 
@@ -11877,14 +13987,36 @@
     if (griefCircles.length) {
       patternLayer.appendChild(griefCirclesToGroup(griefCircles));
     }
+    var strengthMarks = getActiveStrengthMarks();
+    if (strengthMarks.length) {
+      patternLayer.appendChild(strengthMarksToGroup(strengthMarks));
+    }
+    renderAngerDiamondTrianglesLayer();
   }
 
   /**
    * Star grid: pattern, Hope stipple, merge mask, border, Anger lines, Pride auto-merge.
    */
+  function syncStrengthCircleLayoutOnSignatureChange(circleSig) {
+    if (circleSig !== lastStrengthCircleLayoutSignature) {
+      lastStrengthCircleLayoutSignature = circleSig;
+      syncStrengthSelection(true);
+    }
+  }
+
+  function updateStrengthDensityOutput() {
+    var strengthDensityOut = document.getElementById("strength-density-out");
+    if (strengthDensityOut) {
+      strengthDensityOut.textContent = String(getStrengthDensity()) + "%";
+    }
+  }
+
   function renderStarGrid() {
-    applyStarGridLayerVisibility();
+    applyAlternateGridLayerVisibility();
     updateInnerContentTransformForGridType();
+
+    var outInner = document.getElementById("inner-scale-out");
+    if (outInner) outInner.textContent = String(getInnerScale());
 
     var starLayout = getStarLayout();
     var slider = document.getElementById("octagons-n");
@@ -11937,6 +14069,7 @@
       lastGriefCircleLayoutSignature = circleSig;
       syncGriefCircleSelection(true);
     }
+    syncStrengthCircleLayoutOnSignatureChange(circleSig);
     var helplessnessSig = buildHelplessnessLayoutSignature();
     if (helplessnessSig !== lastHelplessnessLayoutSignature) {
       lastHelplessnessLayoutSignature = helplessnessSig;
@@ -11948,6 +14081,7 @@
       lastDiamondLayoutSignature = diamondSig;
       syncDiamondFill(false);
       syncGuiltShameDiamondFill(false);
+      syncAngerTriangleSelection(false);
     }
 
     var densityOut = document.getElementById("circle-density-out");
@@ -11962,6 +14096,7 @@
     if (griefDensityOut) {
       griefDensityOut.textContent = String(getGriefCircleDensity()) + "%";
     }
+    updateStrengthDensityOutput();
 
     var helplessnessOut = document.getElementById("helplessness-percent-out");
     if (helplessnessOut) {
@@ -11976,6 +14111,11 @@
     var guiltShameFillOut = document.getElementById("guilt-shame-fill-percent-out");
     if (guiltShameFillOut) {
       guiltShameFillOut.textContent = String(getGuiltShameFillPercent()) + "%";
+    }
+
+    var angerTriangleOut = document.getElementById("anger-triangle-density-out");
+    if (angerTriangleOut) {
+      angerTriangleOut.textContent = String(getAngerTriangleDensity()) + "%";
     }
 
     var fill = designSvg.querySelector("#canvas-background-fill");
@@ -11996,14 +14136,137 @@
     updateGridBoundaryRect();
     updateColorDivisionsLayer();
     layoutStage();
-    updateResetButton();
+    updateHopeResetButton();
+  }
+
+  /**
+   * Girih grid: pattern, Hope stipple, merge mask, border, Anger lines, Pride auto-merge.
+   */
+  function renderGirihGrid() {
+    applyAlternateGridLayerVisibility();
+    updateInnerContentTransformForGridType();
+
+    var girihLayout = getGirihLayout();
+    var actualEdge =
+      typeof GirihGeometry !== "undefined" && GirihGeometry.roundCoord
+        ? GirihGeometry.roundCoord(girihLayout.edgeLength)
+        : Math.round(girihLayout.edgeLength * 100) / 100;
+
+    var info = document.getElementById("tile-info");
+    if (info) {
+      info.textContent =
+        girihLayout.densityN +
+        " density · " +
+        actualEdge +
+        " px edge · " +
+        cachedGirihTileCount +
+        " tiles";
+    }
+
+    var borderSideOut = document.getElementById("border-side-segments-out");
+    if (borderSideOut) {
+      borderSideOut.textContent = borderSideThicknessLabel(
+        getBorderSideThicknessColumns()
+      );
+    }
+    syncBorderSideWhiteFillOutput();
+
+    var angerLengthOut = document.getElementById("anger-vertical-length-out");
+    if (angerLengthOut) {
+      angerLengthOut.textContent = String(getAngerVerticalLengthPercent()) + "%";
+    }
+    syncAnxietyVerticalStrokeOutput();
+
+    var circleSig = buildCircleLayoutSignature();
+    if (circleSig !== lastCircleLayoutSignature) {
+      lastCircleLayoutSignature = circleSig;
+      syncCircleSelection(true);
+    }
+    if (circleSig !== lastLongingCircleLayoutSignature) {
+      lastLongingCircleLayoutSignature = circleSig;
+      syncLongingCircleSelection(true);
+    }
+    if (circleSig !== lastGriefCircleLayoutSignature) {
+      lastGriefCircleLayoutSignature = circleSig;
+      syncGriefCircleSelection(true);
+    }
+    syncStrengthCircleLayoutOnSignatureChange(circleSig);
+    var helplessnessSig = buildHelplessnessLayoutSignature();
+    if (helplessnessSig !== lastHelplessnessLayoutSignature) {
+      lastHelplessnessLayoutSignature = helplessnessSig;
+      syncHelplessnessSelection(true);
+    }
+
+    var diamondSig = buildDiamondLayoutSignature();
+    if (diamondSig !== lastDiamondLayoutSignature) {
+      lastDiamondLayoutSignature = diamondSig;
+      syncDiamondFill(false);
+      syncGuiltShameDiamondFill(false);
+      syncAngerTriangleSelection(false);
+    }
+
+    var densityOut = document.getElementById("circle-density-out");
+    if (densityOut) densityOut.textContent = String(getCircleDensity()) + "%";
+
+    var longingDensityOut = document.getElementById("longing-circle-density-out");
+    if (longingDensityOut) {
+      longingDensityOut.textContent = String(getLongingCircleDensity()) + "%";
+    }
+
+    var griefDensityOut = document.getElementById("grief-circle-density-out");
+    if (griefDensityOut) {
+      griefDensityOut.textContent = String(getGriefCircleDensity()) + "%";
+    }
+    updateStrengthDensityOutput();
+
+    var helplessnessOut = document.getElementById("helplessness-percent-out");
+    if (helplessnessOut) {
+      helplessnessOut.textContent = String(getHelplessnessPercent()) + "%";
+    }
+
+    var prideFillOut = document.getElementById("pride-fill-percent-out");
+    if (prideFillOut) {
+      prideFillOut.textContent = String(getPrideFillPercent()) + "%";
+    }
+
+    var guiltShameFillOut = document.getElementById("guilt-shame-fill-percent-out");
+    if (guiltShameFillOut) {
+      guiltShameFillOut.textContent = String(getGuiltShameFillPercent()) + "%";
+    }
+
+    var angerTriangleOut = document.getElementById("anger-triangle-density-out");
+    if (angerTriangleOut) {
+      angerTriangleOut.textContent = String(getAngerTriangleDensity()) + "%";
+    }
+
+    var fill = designSvg.querySelector("#canvas-background-fill");
+    if (fill) fill.setAttribute("fill", getCanvasBackgroundColor());
+
+    updateAutoMergeIntensityOutput();
+
+    refreshBorderFrameAndLabelBars();
+    syncVerticalGridLines(false);
+    renderVerticalGridLayer();
+    renderBackgroundLayer();
+    renderPatternLayer();
+    renderHalfCircleLayer();
+    renderGridMaskLayer("render");
+    renderStippleDotsLayer();
+    applyMergeReveal();
+    renderAutoMergeFillsLayer();
+    updateGridBoundaryRect();
+    updateColorDivisionsLayer();
+    layoutStage();
+    updateHopeResetButton();
   }
 
   function applySheetPaletteToDom() {
     if (!designSvg) return;
     updateCanvasBackgroundColor();
     invalidateLabelBarSvgTintCache();
+    ensureLabelBarIconTintFilter(designSvg.querySelector("defs"));
     refreshHopeColoredExportDataUri();
+    renderHopeMergeFillLayer();
     syncMagnifierBorderColor();
   }
 
@@ -12025,6 +14288,11 @@
 
     if (isStarGrid()) {
       renderStarGrid();
+      return;
+    }
+
+    if (isGirihGrid()) {
+      renderGirihGrid();
       return;
     }
 
@@ -12065,6 +14333,7 @@
       lastGriefCircleLayoutSignature = layoutSig;
       syncGriefCircleSelection(true);
     }
+    syncStrengthCircleLayoutOnSignatureChange(layoutSig);
     var helplessnessSig = buildHelplessnessLayoutSignature();
     if (helplessnessSig !== lastHelplessnessLayoutSignature) {
       lastHelplessnessLayoutSignature = helplessnessSig;
@@ -12076,6 +14345,7 @@
       lastDiamondLayoutSignature = diamondSig;
       syncDiamondFill(false);
       syncGuiltShameDiamondFill(false);
+      syncAngerTriangleSelection(false);
     }
 
     var densityOut = document.getElementById("circle-density-out");
@@ -12090,6 +14360,7 @@
     if (griefDensityOut) {
       griefDensityOut.textContent = String(getGriefCircleDensity()) + "%";
     }
+    updateStrengthDensityOutput();
 
     var helplessnessOut = document.getElementById("helplessness-percent-out");
     if (helplessnessOut) {
@@ -12104,6 +14375,11 @@
     var guiltShameFillOut = document.getElementById("guilt-shame-fill-percent-out");
     if (guiltShameFillOut) {
       guiltShameFillOut.textContent = String(getGuiltShameFillPercent()) + "%";
+    }
+
+    var angerTriangleOut = document.getElementById("anger-triangle-density-out");
+    if (angerTriangleOut) {
+      angerTriangleOut.textContent = String(getAngerTriangleDensity()) + "%";
     }
 
     updateAutoMergeIntensityOutput();
@@ -12139,10 +14415,10 @@
     renderHalfCircleLayer();
     updateFrameInsetOverlayLayer();
     layoutStage();
-    updateResetButton();
+    updateHopeResetButton();
   }
 
-  function renderAfterSliderChange() {
+  function renderAfterSliderChangeNow() {
     var hadAutoMerge = autoMergeEdgeKeys.size > 0;
     clearMergeState();
     clearAutoMergeState();
@@ -12150,6 +14426,21 @@
     if (hadAutoMerge) {
       runAutoMerge();
     }
+  }
+
+  function renderAfterSliderChange() {
+    if (isGirihGrid()) {
+      var outN = document.getElementById("octagons-n-out");
+      var slider = document.getElementById("octagons-n");
+      if (outN && slider) outN.textContent = String(slider.value);
+      if (girihSliderRenderTimer) clearTimeout(girihSliderRenderTimer);
+      girihSliderRenderTimer = setTimeout(function () {
+        girihSliderRenderTimer = null;
+        renderAfterSliderChangeNow();
+      }, 250);
+      return;
+    }
+    renderAfterSliderChangeNow();
   }
 
   function randomIntInRange(min, max) {
@@ -12191,6 +14482,8 @@
           btn.addEventListener("click", function () {
             var key = btn.getAttribute("data-palette-key");
             if (key && window.SheetPalettes.setActivePalette(key)) {
+              clearBlendAreaColorOverrides();
+              syncBlendAreaSwatchInputs();
               applySheetPaletteToDom();
               render();
             }
@@ -12202,7 +14495,14 @@
     var randomBtn = document.getElementById("sheet-palette-random-btn");
     if (randomBtn) {
       randomBtn.addEventListener("click", function () {
-        window.SheetPalettes.pickRandomPalette();
+        if (window.SheetPalettes.toggleSheetPalette) {
+          window.SheetPalettes.toggleSheetPalette();
+        } else {
+          window.SheetPalettes.pickRandomPalette();
+        }
+        clearBlendAreaColorOverrides();
+        syncBlendAreaSwatchInputs();
+        applySheetPaletteToDom();
         render();
       });
     }
@@ -12210,72 +14510,186 @@
     window.SheetPalettes.updatePaletteButtonStates();
   }
 
+  /** Re-apply every layer that reads palette slots (after sheet load / reload). */
+  function refreshUiFromSheetPalettes() {
+    if (!window.SheetPalettes) return;
+    window.SheetPalettes.syncBorderGlobals();
+    syncBlendAreaSwatchInputs();
+    applySheetPaletteToDom();
+    if (designSvg) render();
+  }
+
+  var sheetPaletteInitComplete = false;
+  var sheetPaletteReloadTimer = null;
+  var sheetPaletteWasHidden = false;
+
+  function scheduleSheetPaletteReload() {
+    if (!window.SheetPalettes || !sheetPaletteInitComplete) return;
+    clearTimeout(sheetPaletteReloadTimer);
+    sheetPaletteReloadTimer = setTimeout(function () {
+      window.SheetPalettes.loadSheetPalettes();
+    }, 200);
+  }
+
+  function initSheetPaletteAutoRefresh() {
+    initBlendAreaColorSwatches();
+    if (!window.SheetPalettes || !window.SheetPalettes.onPalettesLoaded) return;
+    window.SheetPalettes.onPalettesLoaded(function (_palettes, source) {
+      if (typeof console !== "undefined" && console.info) {
+        console.info(
+          "SheetPalettes: UI refresh (" + (source || "unknown") + ")."
+        );
+      }
+      refreshUiFromSheetPalettes();
+    });
+  }
+
   function applyRandomPaletteColorsAndRender() {
     applyRandomPaletteColors();
     render();
   }
 
-  function randomizeAllDesignControls() {
-    applyRandomPaletteColors();
-    setSliderValue("octagons-n", randomIntInRange(OCTAGONS_N_MIN, OCTAGONS_N_MAX));
-    setSliderValue(
-      "inner-scale",
-      randomSteppedValue(INNER_SCALE_MIN, INNER_SCALE_MAX, 0.01)
-    );
-    setSliderValue(
-      "border-side-segments",
-      randomIntInRange(1, 3)
-    );
-    setSliderValue(
-      "border-side-white-fill",
-      randomIntInRange(
-        BORDER_SIDE_WHITE_FILL_MIN,
-        BORDER_SIDE_WHITE_FILL_MAX
-      )
-    );
-    setSliderValue(
-      "anger-vertical-length",
-      randomIntInRange(ANGER_VERTICAL_LENGTH_MIN, ANGER_VERTICAL_LENGTH_MAX)
-    );
-    setSliderValue(
-      "anxiety-vertical-stroke",
-      randomIntInRange(ANXIETY_VERTICAL_STROKE_MIN, ANXIETY_VERTICAL_STROKE_MAX)
-    );
-    setSliderValue(
-      "circle-density",
-      randomIntInRange(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
-    );
-    setSliderValue(
-      "longing-circle-density",
-      randomIntInRange(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
-    );
-    setSliderValue(
-      "grief-circle-density",
-      randomIntInRange(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
-    );
-    setSliderValue(
-      "pride-fill-percent",
-      randomIntInRange(PRIDE_FILL_PERCENT_MIN, PRIDE_FILL_PERCENT_MAX)
-    );
-    setSliderValue(
-      "guilt-shame-fill-percent",
-      randomIntInRange(GUILT_SHAME_FILL_PERCENT_MIN, GUILT_SHAME_FILL_PERCENT_MAX)
-    );
-    setSliderValue(
-      "helplessness-percent",
-      randomIntInRange(HELPLESSNESS_PERCENT_MIN, HELPLESSNESS_PERCENT_MAX)
-    );
+  function syncFeelingsSliderOutputs() {
+    var angerLengthOut = document.getElementById("anger-vertical-length-out");
+    if (angerLengthOut) {
+      angerLengthOut.textContent = String(getAngerVerticalLengthPercent()) + "%";
+    }
+    syncAnxietyVerticalStrokeOutput();
 
-    regenerateBorderSideSegmentRatios();
-    syncBorderSideWhiteCells(true);
-    clearMergeState();
+    var densityOut = document.getElementById("circle-density-out");
+    if (densityOut) densityOut.textContent = String(getCircleDensity()) + "%";
+
+    var longingDensityOut = document.getElementById("longing-circle-density-out");
+    if (longingDensityOut) {
+      longingDensityOut.textContent = String(getLongingCircleDensity()) + "%";
+    }
+
+    var griefDensityOut = document.getElementById("grief-circle-density-out");
+    if (griefDensityOut) {
+      griefDensityOut.textContent = String(getGriefCircleDensity()) + "%";
+    }
+    updateStrengthDensityOutput();
+
+    var helplessnessOut = document.getElementById("helplessness-percent-out");
+    if (helplessnessOut) {
+      helplessnessOut.textContent = String(getHelplessnessPercent()) + "%";
+    }
+
+    var prideFillOut = document.getElementById("pride-fill-percent-out");
+    if (prideFillOut) {
+      prideFillOut.textContent = String(getPrideFillPercent()) + "%";
+    }
+
+    var guiltShameFillOut = document.getElementById("guilt-shame-fill-percent-out");
+    if (guiltShameFillOut) {
+      guiltShameFillOut.textContent = String(getGuiltShameFillPercent()) + "%";
+    }
+
+    var angerTriangleOut = document.getElementById("anger-triangle-density-out");
+    if (angerTriangleOut) {
+      angerTriangleOut.textContent = String(getAngerTriangleDensity()) + "%";
+    }
+
+    updateAutoMergeIntensityOutput();
+  }
+
+  function applyFeelingsControlState(options) {
+    options = options || {};
+    var randomHelplessness = options.randomHelplessness === true;
+
     syncCircleSelection(true);
     syncLongingCircleSelection(true);
     syncGriefCircleSelection(true);
-    syncHelplessnessSelection(true);
+    syncStrengthSelection(true);
+    syncHelplessnessSelection(true, randomHelplessness);
     syncPrideShapes();
     syncGuiltShameShapes();
-    render();
+    syncAngerShapes();
+
+    if (getAutoMergeIntensity() > 0) {
+      runAutoMerge();
+      return;
+    }
+
+    clearAutoMergeState();
+    syncVerticalGridLines(false);
+    renderVerticalGridLayer();
+    renderPatternLayer();
+    applyMergeReveal();
+    renderAutoMergeFillsLayer();
+    if (isAlternateGrid()) {
+      renderGridMaskLayer("applyFeelingsControlState");
+      renderStippleDotsLayer();
+    }
+  }
+
+  /** Randomize mark placement on canvas; slider values stay unchanged. */
+  function randomizeFeelingsPlacement() {
+    applyFeelingsControlState({ randomHelplessness: true });
+  }
+
+  function randomizeFeelingsControls() {
+    setSliderValue(
+      "anger-vertical-length",
+      randomFeelingsStepValue(ANGER_VERTICAL_LENGTH_MIN, ANGER_VERTICAL_LENGTH_MAX)
+    );
+    setSliderValue(
+      "anxiety-vertical-stroke",
+      randomFeelingsStepValue(ANXIETY_VERTICAL_STROKE_MIN, ANXIETY_VERTICAL_STROKE_MAX)
+    );
+    setSliderValue(
+      "circle-density",
+      randomFeelingsStepValue(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
+    );
+    setSliderValue(
+      "longing-circle-density",
+      randomFeelingsStepValue(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
+    );
+    setSliderValue(
+      "grief-circle-density",
+      randomFeelingsStepValue(CIRCLE_DENSITY_MIN, CIRCLE_DENSITY_MAX)
+    );
+    setSliderValue(
+      "strength-density",
+      randomFeelingsStepValue(
+        typeof STRENGTH_DENSITY_MIN !== "undefined"
+          ? STRENGTH_DENSITY_MIN
+          : CIRCLE_DENSITY_MIN,
+        typeof STRENGTH_DENSITY_MAX !== "undefined"
+          ? STRENGTH_DENSITY_MAX
+          : CIRCLE_DENSITY_MAX
+      )
+    );
+    setSliderValue(
+      "auto-merge-intensity",
+      randomFeelingsStepValue(
+        typeof AUTO_MERGE_INTENSITY_MIN !== "undefined"
+          ? AUTO_MERGE_INTENSITY_MIN
+          : 0,
+        typeof AUTO_MERGE_INTENSITY_MAX !== "undefined"
+          ? AUTO_MERGE_INTENSITY_MAX
+          : 7
+      )
+    );
+    setSliderValue(
+      "pride-fill-percent",
+      randomFeelingsStepValue(PRIDE_FILL_PERCENT_MIN, PRIDE_FILL_PERCENT_MAX)
+    );
+    setSliderValue(
+      "guilt-shame-fill-percent",
+      randomFeelingsStepValue(GUILT_SHAME_FILL_PERCENT_MIN, GUILT_SHAME_FILL_PERCENT_MAX)
+    );
+    setSliderValue(
+      "anger-triangle-density",
+      randomFeelingsStepValue(ANGER_TRIANGLE_DENSITY_MIN, ANGER_TRIANGLE_DENSITY_MAX)
+    );
+    setSliderValue(
+      "helplessness-percent",
+      randomFeelingsStepValue(HELPLESSNESS_PERCENT_MIN, HELPLESSNESS_PERCENT_MAX)
+    );
+
+    syncFeelingsSliderOutputs();
+    applyFeelingsControlState();
   }
 
   function layoutStage() {
@@ -12371,14 +14785,23 @@
     }
   }
 
+  function getEmbeddedExportFontDataUri() {
+    return typeof window !== "undefined" &&
+      typeof window.OT2049_EXPORT_FONT_DATA_URI === "string" &&
+      window.OT2049_EXPORT_FONT_DATA_URI
+      ? window.OT2049_EXPORT_FONT_DATA_URI
+      : null;
+  }
+
   function getExportFontFaceCss(fontDataUri) {
-    var src = fontDataUri
-      ? 'url("' + fontDataUri + '") format("truetype")'
-      : 'url("../fonts/DIN%20Condensed%20Bold.ttf") format("truetype")';
+    var resolvedUri = fontDataUri || getEmbeddedExportFontDataUri();
+    var src = resolvedUri
+      ? 'url("' + resolvedUri + '") format("opentype")'
+      : 'url("../fonts/OT2049-Regular.otf") format("opentype")';
     return (
-      '@font-face{font-family:"DIN Condensed";src:' +
+      '@font-face{font-family:"OT2049";src:' +
       src +
-      ";font-weight:700;font-style:normal;}"
+      ";font-weight:400;font-style:normal;}"
     );
   }
 
@@ -12386,7 +14809,12 @@
     if (cachedExportFontDataUri) {
       return Promise.resolve(cachedExportFontDataUri);
     }
-    return fetch("fonts/DIN%20Condensed%20Bold.ttf")
+    var embedded = getEmbeddedExportFontDataUri();
+    if (embedded) {
+      cachedExportFontDataUri = embedded;
+      return Promise.resolve(embedded);
+    }
+    return fetch("fonts/OT2049-Regular.otf")
       .then(function (res) {
         if (!res.ok) throw new Error("font fetch failed");
         return res.arrayBuffer();
@@ -12399,7 +14827,7 @@
           binary += String.fromCharCode(bytes[i]);
         }
         cachedExportFontDataUri =
-          "data:font/ttf;base64," + btoa(binary);
+          "data:font/otf;base64," + btoa(binary);
         return cachedExportFontDataUri;
       });
   }
@@ -12443,10 +14871,10 @@
         getExportFontFaceCss(fontDataUri) +
         "]]></style>"
     );
-    if (autoMergeFillRegions && autoMergeFillRegions.length) {
+    pushLabelBarIconTintFilterDefExport(lines);
+    if (hasActivePrideAutoMergeRegions()) {
       pushAutoMergeShadowFilterDefLines(lines);
     }
-    pushBorderSideWhiteInnerShadowDefLines(lines);
     lines.push("</defs>");
     lines.push(
       '<rect x="0" y="0" width="' +
@@ -12458,12 +14886,16 @@
         '"/>'
     );
     pushBorderDivisionExportLines(lines);
+    lines.push(
+      '<g id="color-divisions-blend-root" style="isolation:isolate">'
+    );
     lines.push('<g transform="' + getInnerContentTransformAttr() + '">');
     lines.push('<g clip-path="url(#inner-content-clip)">');
     pushBackgroundExportLines(lines);
     lines.push("</g>");
 
     pushGridMaskExportLines(lines);
+    pushHopeMergeFillExportLines(lines);
     if (hopeDotsVectorLines && hopeDotsVectorLines.length) {
       for (var hd = 0; hd < hopeDotsVectorLines.length; hd++) {
         lines.push(hopeDotsVectorLines[hd]);
@@ -12471,8 +14903,6 @@
     } else {
       pushStippleDotsExportLines(lines);
     }
-
-    pushVerticalGridExportLines(lines);
 
     if (diamonds.length) {
       var fillColor = getDiamondFillColor();
@@ -12516,7 +14946,6 @@
       lines.push("</g>");
     }
 
-    pushGridBoundaryExportLine(lines, gridBounds);
     var gridStroke = getGridStrokeWidth();
     var circleStroke = getCircleStrokeWidth();
     lines.push('<g clip-path="url(#inner-content-clip)">');
@@ -12580,7 +15009,7 @@
       var longingCircleStroke = getLongingCircleStrokeWidth();
       lines.push(
         '<g id="layer-longing-circles" fill="none" stroke="' +
-          getPatternStrokeColor() +
+          getLongingCircleStrokeColor() +
           '" stroke-width="' +
           longingCircleStroke +
           '">'
@@ -12607,7 +15036,7 @@
       var griefCircleStroke = getGriefCircleStrokeWidth();
       lines.push(
         '<g id="layer-grief-circles" fill="none" stroke="' +
-          getPatternStrokeColor() +
+          getGriefCircleStrokeColor() +
           '" stroke-width="' +
           griefCircleStroke +
           '">'
@@ -12642,7 +15071,61 @@
       lines.push("</g>");
     }
 
-    pushAutoMergeFillExportLines(lines);
+    var strengthMarks = getActiveStrengthMarks();
+    if (strengthMarks.length) {
+      var strengthStroke = getCircleStrokeWidth();
+      var strengthSquareFill = getStrengthSquareFillColor();
+      var strengthCircleFill = getStrengthCircleFillColor();
+      var strengthStrokeColor = getStrengthStrokeColor();
+      lines.push('<g id="layer-strength">');
+      var strengthStrokeInset = strengthStroke / 2;
+      for (var sm = 0; sm < strengthMarks.length; sm++) {
+        var strengthMark = strengthMarks[sm];
+        var strengthHalf = strengthMark.halfSide;
+        var strengthSide = strengthHalf * 2;
+        lines.push(
+          '<rect x="' +
+            (strengthMark.cx - strengthHalf) +
+            '" y="' +
+            (strengthMark.cy - strengthHalf) +
+            '" width="' +
+            strengthSide +
+            '" height="' +
+            strengthSide +
+            '" fill="' +
+            strengthSquareFill +
+            '" stroke="' +
+            strengthStrokeColor +
+            '" stroke-width="' +
+            strengthStroke +
+            '" paint-order="stroke fill"/>'
+        );
+        var strengthDrawR = Math.max(0, strengthMark.r - strengthStrokeInset);
+        lines.push(
+          '<circle cx="' +
+            strengthMark.cx +
+            '" cy="' +
+            strengthMark.cy +
+            '" r="' +
+            strengthDrawR +
+            '" fill="' +
+            strengthCircleFill +
+            '" stroke="' +
+            strengthStrokeColor +
+            '" stroke-width="' +
+            strengthStroke +
+            '"/>'
+        );
+      }
+      lines.push("</g>");
+    }
+
+    pushVerticalGridExportLines(lines);
+
+    pushAutoMergeShadowExportLines(lines);
+    pushAutoMergeFillOnlyExportLines(lines);
+
+    pushAngerTriangleExportLines(lines);
 
     pushHalfCircleExportLines(lines);
 
@@ -12650,6 +15133,14 @@
     lines.push("</g>");
     pushColorDivisionsExportLines(lines);
     pushBorderDivisionOverlayExportLines(lines);
+    lines.push("</g>");
+    lines.push(
+      '<g id="layer-grid-boundary" transform="' +
+        getInnerContentTransformAttr() +
+        '">'
+    );
+    pushGridBoundaryExportLine(lines, gridBounds);
+    lines.push("</g>");
     lines.push('<g id="layer-edge-brown-bars">');
     pushCanvasEdgeBrownBarExportLines(lines);
     lines.push("</g>");
@@ -12680,9 +15171,13 @@
 
     Promise.all([
       fontReady,
-      loadExportFontDataUri(),
+      loadExportFontDataUri().then(function (fontDataUri) {
+        return loadExportOpentypeFont(fontDataUri).then(function () {
+          return fontDataUri;
+        });
+      }),
       preloadLabelBarSvgAssetsForExport(),
-      buildHopeDotsCirclesExportLines(),
+      buildHopeStippleExportLines(),
     ])
       .then(function (results) {
         var fontDataUri = results[1];
@@ -12719,7 +15214,7 @@
             getActiveCircles(),
             getFilledDiamonds(),
             getFilledHollowDiamonds(),
-            null,
+            getEmbeddedExportFontDataUri(),
             null
           );
           var blob = new Blob([markup], {
@@ -12786,10 +15281,10 @@
   }
 
   function applyDanglingPrune() {
-    if (isStarGrid()) return false;
+    if (isAlternateGrid()) return false;
     var changed = false;
     var pruneKeys = TopkapiGeometry.findDanglingPruneKeys(
-      getSegmentsForMergeRegionDetection(),
+      getSegmentsForHopeMerge(),
       removedEdges,
       { bounds: getGridContentBounds() }
     );
@@ -12815,62 +15310,27 @@
 
     if (changed) {
       renderPatternAndVerticalLayers();
-      updateResetButton();
-    }
-  }
-
-  function restoreEdgesByKeys(keys) {
-    var validKeys = TopkapiGeometry.filterValidRestoreKeys(
-      getAllSegmentsForTracing(),
-      removedEdges,
-      keys
-    );
-    var changed = false;
-    for (var i = 0; i < validKeys.length; i++) {
-      var key = validKeys[i];
-      if (!removedEdges.has(key)) continue;
-      removedEdges.delete(key);
-      changed = true;
-    }
-
-    if (changed) {
-      stickyMergedCutoutFaces = null;
-      renderPatternAndVerticalLayers();
-      updateResetButton();
+      updateHopeResetButton();
     }
   }
 
   function processDragHitTest() {
     if (!designSvg || dragPath.length === 0) return;
+    if (hopeInteractionMode !== "merge") return;
     var threshold = getHitThreshold(designSvg);
-
-    if (interactionMode === "merge") {
-      var allSegments = getAllSegmentsForTracing();
-      var visible = getVisibleSegments(allSegments);
-      var keys = TopkapiGeometry.findSegmentsNearPolyline(
-        visible,
-        dragPath,
-        threshold,
-        removedEdges
-      );
-      removeEdgesByKeys(keys);
-    } else if (interactionMode === "restore") {
-      if (!removedEdges.size) return;
-      var allSegments = getAllSegmentsForTracing();
-      var visible = getVisibleSegments(allSegments);
-      var restoreKeys = TopkapiGeometry.findRestoreCandidateKeys(
-        allSegments,
-        visible,
-        removedEdges,
-        dragPath,
-        threshold
-      );
-      restoreEdgesByKeys(restoreKeys);
-    }
+    var mergeSegments = getSegmentsForHopeMerge();
+    var visible = getVisibleSegments(mergeSegments);
+    var keys = TopkapiGeometry.findSegmentsNearPolyline(
+      visible,
+      dragPath,
+      threshold,
+      removedEdges
+    );
+    removeEdgesByKeys(keys);
   }
 
   function onPointerDown(e) {
-    if (!isDragInteractionMode() || !designSvg) return;
+    if (!isHopeDragInteractionMode() || !designSvg) return;
     if (e.button !== 0) return;
     isDragging = true;
     dragPath = [];
@@ -12932,51 +15392,40 @@
     if (wrap) wrap.classList.remove("is-dragging");
   }
 
-  function updateModeUi() {
-    var viewBtn = document.getElementById("mode-view-btn");
-    var mergeBtn = document.getElementById("mode-merge-btn");
-    var restoreBtn = document.getElementById("mode-restore-btn");
-    var mergeHint = document.getElementById("merge-hint");
-    var restoreHint = document.getElementById("restore-hint");
+  function updateHopeInteractionModeUi() {
+    var viewBtn = document.getElementById("hope-mode-view-btn");
+    var mergeBtn = document.getElementById("hope-mode-merge-btn");
+    var mergeHint = document.getElementById("hope-merge-hint");
 
     if (viewBtn) {
-      viewBtn.classList.toggle("is-active", interactionMode === "view");
-      viewBtn.setAttribute("aria-pressed", String(interactionMode === "view"));
+      viewBtn.classList.toggle("is-active", hopeInteractionMode === "view");
+      viewBtn.setAttribute("aria-pressed", String(hopeInteractionMode === "view"));
     }
     if (mergeBtn) {
-      mergeBtn.classList.toggle("is-active", interactionMode === "merge");
-      mergeBtn.setAttribute("aria-pressed", String(interactionMode === "merge"));
+      mergeBtn.classList.toggle("is-active", hopeInteractionMode === "merge");
+      mergeBtn.setAttribute("aria-pressed", String(hopeInteractionMode === "merge"));
     }
-    if (restoreBtn) {
-      restoreBtn.classList.toggle("is-active", interactionMode === "restore");
-      restoreBtn.setAttribute(
-        "aria-pressed",
-        String(interactionMode === "restore")
-      );
-    }
-    if (mergeHint) mergeHint.hidden = interactionMode !== "merge";
-    if (restoreHint) restoreHint.hidden = interactionMode !== "restore";
+    if (mergeHint) mergeHint.hidden = hopeInteractionMode !== "merge";
     if (designSvg) {
-      designSvg.classList.toggle("is-merge-mode", interactionMode === "merge");
       designSvg.classList.toggle(
-        "is-restore-mode",
-        interactionMode === "restore"
+        "is-hope-merge-mode",
+        hopeInteractionMode === "merge"
       );
     }
   }
 
-  function setMode(mode) {
-    if (mode !== "view" && mode !== "merge" && mode !== "restore") return;
-    interactionMode = mode;
-    updateModeUi();
-    if (isDragInteractionMode()) {
+  function setHopeInteractionMode(mode) {
+    if (mode !== "view" && mode !== "merge") return;
+    hopeInteractionMode = mode;
+    updateHopeInteractionModeUi();
+    if (isHopeDragInteractionMode()) {
       bindInteractionPointerListeners();
     } else {
       unbindInteractionPointerListeners();
     }
   }
 
-  function onResetGrid() {
+  function onHopeResetGrid() {
     clearMergeState();
     clearAutoMergeState();
     renderPatternAndVerticalLayers();
@@ -13075,6 +15524,12 @@
       slider.max = String(OCTAGONS_N_MAX);
       slider.value = String(OCTAGONS_N_DEFAULT);
       slider.addEventListener("input", renderAfterSliderChange);
+      slider.addEventListener("change", function () {
+        if (!isGirihGrid()) return;
+        if (girihSliderRenderTimer) clearTimeout(girihSliderRenderTimer);
+        girihSliderRenderTimer = null;
+        renderAfterSliderChangeNow();
+      });
     }
 
     var innerSlider = document.getElementById("inner-scale");
@@ -13142,23 +15597,38 @@
 
     var borderSideWhiteFillSlider = document.getElementById("border-side-white-fill");
     if (borderSideWhiteFillSlider) {
-      borderSideWhiteFillSlider.min = String(
+      var whiteFillMin =
         typeof BORDER_SIDE_WHITE_FILL_MIN !== "undefined"
           ? BORDER_SIDE_WHITE_FILL_MIN
-          : 0
-      );
-      borderSideWhiteFillSlider.max = String(
+          : 0;
+      var whiteFillMax =
         typeof BORDER_SIDE_WHITE_FILL_MAX !== "undefined"
           ? BORDER_SIDE_WHITE_FILL_MAX
-          : 100
-      );
+          : 100;
+      var whiteFillSteps =
+        typeof BORDER_SIDE_WHITE_FILL_STEPS !== "undefined"
+          ? BORDER_SIDE_WHITE_FILL_STEPS
+          : 5;
+      var whiteFillStepSize =
+        whiteFillSteps < 2 ? 1 : (whiteFillMax - whiteFillMin) / (whiteFillSteps - 1);
+      borderSideWhiteFillSlider.min = String(whiteFillMin);
+      borderSideWhiteFillSlider.max = String(whiteFillMax);
+      borderSideWhiteFillSlider.step = String(whiteFillStepSize);
       borderSideWhiteFillSlider.value = String(
-        typeof BORDER_SIDE_WHITE_FILL_DEFAULT !== "undefined"
-          ? BORDER_SIDE_WHITE_FILL_DEFAULT
-          : 0
+        snapBorderSideWhiteFillSliderValue(
+          typeof BORDER_SIDE_WHITE_FILL_DEFAULT !== "undefined"
+            ? BORDER_SIDE_WHITE_FILL_DEFAULT
+            : 0
+        )
       );
       syncBorderSideWhiteFillOutput();
       borderSideWhiteFillSlider.addEventListener("input", function () {
+        var snapped = snapBorderSideWhiteFillSliderValue(
+          Number(borderSideWhiteFillSlider.value)
+        );
+        if (Number(borderSideWhiteFillSlider.value) !== snapped) {
+          borderSideWhiteFillSlider.value = String(snapped);
+        }
         syncBorderSideWhiteFillOutput();
         updateBorderDivisionLines();
         updateBorderDivisionOverlay();
@@ -13186,18 +15656,7 @@
         renderHalfCircleLayer();
       });
     }
-    var wearControlHome = document.getElementById("wear-control-home");
-    if (wearControlHome) {
-      wearControlHome.addEventListener("input", function () {
-        renderHalfCircleLayer();
-      });
-    }
-    var wearControlOutside = document.getElementById("wear-control-outside");
-    if (wearControlOutside) {
-      wearControlOutside.addEventListener("input", function () {
-        renderHalfCircleLayer();
-      });
-    }
+    bindFanTuningSliders();
 
     var halfCircleInnerArcPosition = document.getElementById(
       "half-circle-inner-arc-position"
@@ -13223,9 +15682,9 @@
 
     var halfCircleInset = document.getElementById("half-circle-inset");
     if (halfCircleInset) {
-      halfCircleInset.min = "0.1";
+      halfCircleInset.min = "0.02";
       halfCircleInset.max = "0.4";
-      halfCircleInset.value = "0.2";
+      halfCircleInset.value = "0.03";
       halfCircleInset.step = "0.01";
       var insetOut = document.getElementById("half-circle-inset-out");
       if (insetOut) insetOut.textContent = String(getHalfCircleInset());
@@ -13240,7 +15699,7 @@
     if (halfCircleCuspGap) {
       halfCircleCuspGap.min = "0";
       halfCircleCuspGap.max = "40";
-      halfCircleCuspGap.value = "22";
+      halfCircleCuspGap.value = "0";
       var cuspGapOut = document.getElementById("half-circle-cusp-gap-out");
       if (cuspGapOut) {
         cuspGapOut.textContent = String(getHalfCircleCuspGapPx()) + "px";
@@ -13308,126 +15767,119 @@
       });
     }
 
-    var circleDensitySlider = document.getElementById("circle-density");
-    if (circleDensitySlider) {
-      circleDensitySlider.min = String(CIRCLE_DENSITY_MIN);
-      circleDensitySlider.max = String(CIRCLE_DENSITY_MAX);
-      circleDensitySlider.value = String(CIRCLE_DENSITY_DEFAULT);
-      circleDensitySlider.addEventListener("input", function () {
-        syncCircleSelection(true);
+    initFeelingsSteppedSlider(
+      "circle-density",
+      CIRCLE_DENSITY_MIN,
+      CIRCLE_DENSITY_MAX,
+      CIRCLE_DENSITY_DEFAULT,
+      function () {
+        syncCircleSelection(false);
         var densityOut = document.getElementById("circle-density-out");
         if (densityOut) densityOut.textContent = String(getCircleDensity()) + "%";
         renderPatternLayer();
-      });
-    }
+      }
+    );
 
-    var longingCircleDensitySlider = document.getElementById("longing-circle-density");
-    if (longingCircleDensitySlider) {
-      longingCircleDensitySlider.min = String(CIRCLE_DENSITY_MIN);
-      longingCircleDensitySlider.max = String(CIRCLE_DENSITY_MAX);
-      longingCircleDensitySlider.value = String(CIRCLE_DENSITY_DEFAULT);
-      longingCircleDensitySlider.addEventListener("input", function () {
-        syncLongingCircleSelection(true);
+    initFeelingsSteppedSlider(
+      "longing-circle-density",
+      CIRCLE_DENSITY_MIN,
+      CIRCLE_DENSITY_MAX,
+      CIRCLE_DENSITY_DEFAULT,
+      function () {
+        syncLongingCircleSelection(false);
         var longingDensityOut = document.getElementById("longing-circle-density-out");
         if (longingDensityOut) {
           longingDensityOut.textContent = String(getLongingCircleDensity()) + "%";
         }
         renderPatternLayer();
-      });
-    }
+      }
+    );
 
-    var griefCircleDensitySlider = document.getElementById("grief-circle-density");
-    if (griefCircleDensitySlider) {
-      griefCircleDensitySlider.min = String(CIRCLE_DENSITY_MIN);
-      griefCircleDensitySlider.max = String(CIRCLE_DENSITY_MAX);
-      griefCircleDensitySlider.value = String(CIRCLE_DENSITY_DEFAULT);
-      griefCircleDensitySlider.addEventListener("input", function () {
-        syncGriefCircleSelection(true);
+    initFeelingsSteppedSlider(
+      "grief-circle-density",
+      CIRCLE_DENSITY_MIN,
+      CIRCLE_DENSITY_MAX,
+      CIRCLE_DENSITY_DEFAULT,
+      function () {
+        syncGriefCircleSelection(false);
         var griefDensityOut = document.getElementById("grief-circle-density-out");
         if (griefDensityOut) {
           griefDensityOut.textContent = String(getGriefCircleDensity()) + "%";
         }
         renderPatternLayer();
-      });
-    }
+      }
+    );
 
-    var angerVerticalLengthSlider = document.getElementById("anger-vertical-length");
-    if (angerVerticalLengthSlider) {
-      angerVerticalLengthSlider.min = String(ANGER_VERTICAL_LENGTH_MIN);
-      angerVerticalLengthSlider.max = String(ANGER_VERTICAL_LENGTH_MAX);
-      angerVerticalLengthSlider.value = String(ANGER_VERTICAL_LENGTH_DEFAULT);
-      angerVerticalLengthSlider.addEventListener("input", function () {
+    initFeelingsSteppedSlider(
+      "strength-density",
+      typeof STRENGTH_DENSITY_MIN !== "undefined"
+        ? STRENGTH_DENSITY_MIN
+        : CIRCLE_DENSITY_MIN,
+      typeof STRENGTH_DENSITY_MAX !== "undefined"
+        ? STRENGTH_DENSITY_MAX
+        : CIRCLE_DENSITY_MAX,
+      typeof STRENGTH_DENSITY_DEFAULT !== "undefined"
+        ? STRENGTH_DENSITY_DEFAULT
+        : CIRCLE_DENSITY_DEFAULT,
+      function () {
+        syncStrengthSelection(false);
+        updateStrengthDensityOutput();
+        renderPatternLayer();
+      }
+    );
+
+    initFeelingsSteppedSlider(
+      "anger-vertical-length",
+      ANGER_VERTICAL_LENGTH_MIN,
+      ANGER_VERTICAL_LENGTH_MAX,
+      ANGER_VERTICAL_LENGTH_DEFAULT,
+      function () {
         var angerLengthOut = document.getElementById("anger-vertical-length-out");
         if (angerLengthOut) {
           angerLengthOut.textContent =
             String(getAngerVerticalLengthPercent()) + "%";
         }
         renderVerticalGridLayer();
-      });
-    }
+      }
+    );
 
-    var anxietyVerticalStrokeSlider = document.getElementById("anxiety-vertical-stroke");
-    if (anxietyVerticalStrokeSlider) {
-      anxietyVerticalStrokeSlider.min = String(ANXIETY_VERTICAL_STROKE_MIN);
-      anxietyVerticalStrokeSlider.max = String(ANXIETY_VERTICAL_STROKE_MAX);
-      anxietyVerticalStrokeSlider.value = String(ANXIETY_VERTICAL_STROKE_DEFAULT);
-      anxietyVerticalStrokeSlider.addEventListener("input", function () {
+    initFeelingsSteppedSlider(
+      "anxiety-vertical-stroke",
+      ANXIETY_VERTICAL_STROKE_MIN,
+      ANXIETY_VERTICAL_STROKE_MAX,
+      ANXIETY_VERTICAL_STROKE_DEFAULT,
+      function () {
         syncAnxietyVerticalStrokeOutput();
         renderVerticalGridLayer();
-      });
-    }
-
-    var randomizeAllControlsBtn = document.getElementById(
-      "randomize-all-controls-btn"
+      }
     );
-    if (randomizeAllControlsBtn) {
-      randomizeAllControlsBtn.addEventListener("click", randomizeAllDesignControls);
-    }
 
     var randomizeCirclesBtn = document.getElementById("randomize-circles-btn");
     if (randomizeCirclesBtn) {
-      randomizeCirclesBtn.addEventListener("click", function () {
-        syncCircleSelection(true);
-        syncLongingCircleSelection(true);
-        syncGriefCircleSelection(true);
-        syncHelplessnessSelection(true);
-        syncPrideShapes();
-        syncGuiltShameShapes();
-        renderPatternLayer();
-      });
+      randomizeCirclesBtn.addEventListener("click", randomizeFeelingsPlacement);
     }
 
-    var prideFillPercentSlider = document.getElementById("pride-fill-percent");
-    if (prideFillPercentSlider) {
-      prideFillPercentSlider.min = String(PRIDE_FILL_PERCENT_MIN);
-      prideFillPercentSlider.max = String(PRIDE_FILL_PERCENT_MAX);
-      prideFillPercentSlider.value = String(PRIDE_FILL_PERCENT_DEFAULT);
-      prideFillPercentSlider.addEventListener("input", function () {
+    initFeelingsSteppedSlider(
+      "pride-fill-percent",
+      PRIDE_FILL_PERCENT_MIN,
+      PRIDE_FILL_PERCENT_MAX,
+      PRIDE_FILL_PERCENT_DEFAULT,
+      function () {
         var prideFillOut = document.getElementById("pride-fill-percent-out");
         if (prideFillOut) {
           prideFillOut.textContent = String(getPrideFillPercent()) + "%";
         }
-        syncPrideShapes();
+        syncDiamondFill(false);
         renderPatternLayer();
-      });
-    }
-
-    var prideColorShapesBtn = document.getElementById("pride-color-shapes-btn");
-    if (prideColorShapesBtn) {
-      prideColorShapesBtn.addEventListener("click", function () {
-        syncPrideShapes();
-        renderPatternLayer();
-      });
-    }
-
-    var guiltShameFillPercentSlider = document.getElementById(
-      "guilt-shame-fill-percent"
+      }
     );
-    if (guiltShameFillPercentSlider) {
-      guiltShameFillPercentSlider.min = String(GUILT_SHAME_FILL_PERCENT_MIN);
-      guiltShameFillPercentSlider.max = String(GUILT_SHAME_FILL_PERCENT_MAX);
-      guiltShameFillPercentSlider.value = String(GUILT_SHAME_FILL_PERCENT_DEFAULT);
-      guiltShameFillPercentSlider.addEventListener("input", function () {
+
+    initFeelingsSteppedSlider(
+      "guilt-shame-fill-percent",
+      GUILT_SHAME_FILL_PERCENT_MIN,
+      GUILT_SHAME_FILL_PERCENT_MAX,
+      GUILT_SHAME_FILL_PERCENT_DEFAULT,
+      function () {
         var guiltShameFillOut = document.getElementById(
           "guilt-shame-fill-percent-out"
         );
@@ -13435,42 +15887,40 @@
           guiltShameFillOut.textContent =
             String(getGuiltShameFillPercent()) + "%";
         }
-        syncGuiltShameShapes();
+        syncGuiltShameDiamondFill(false);
         renderPatternLayer();
-      });
-    }
-
-    var guiltShameColorShapesBtn = document.getElementById(
-      "guilt-shame-color-shapes-btn"
+      }
     );
-    if (guiltShameColorShapesBtn) {
-      guiltShameColorShapesBtn.addEventListener("click", function () {
-        syncGuiltShameShapes();
-        renderPatternLayer();
-      });
-    }
 
-    var helplessnessPercentSlider = document.getElementById("helplessness-percent");
-    if (helplessnessPercentSlider) {
-      helplessnessPercentSlider.min = String(HELPLESSNESS_PERCENT_MIN);
-      helplessnessPercentSlider.max = String(HELPLESSNESS_PERCENT_MAX);
-      helplessnessPercentSlider.value = String(HELPLESSNESS_PERCENT_DEFAULT);
-      helplessnessPercentSlider.addEventListener("input", function () {
-        syncHelplessnessSelection(true);
+    initFeelingsSteppedSlider(
+      "anger-triangle-density",
+      ANGER_TRIANGLE_DENSITY_MIN,
+      ANGER_TRIANGLE_DENSITY_MAX,
+      ANGER_TRIANGLE_DENSITY_DEFAULT,
+      function () {
+        var angerTriangleOut = document.getElementById("anger-triangle-density-out");
+        if (angerTriangleOut) {
+          angerTriangleOut.textContent = String(getAngerTriangleDensity()) + "%";
+        }
+        syncAngerTriangleSelection(false);
+        renderPatternLayer();
+      }
+    );
+
+    initFeelingsSteppedSlider(
+      "helplessness-percent",
+      HELPLESSNESS_PERCENT_MIN,
+      HELPLESSNESS_PERCENT_MAX,
+      HELPLESSNESS_PERCENT_DEFAULT,
+      function () {
+        syncHelplessnessSelection(false);
         var helplessnessOut = document.getElementById("helplessness-percent-out");
         if (helplessnessOut) {
           helplessnessOut.textContent = String(getHelplessnessPercent()) + "%";
         }
         renderPatternLayer();
-      });
-    }
-
-    var helplessnessLayerToggle = document.getElementById("helplessness-layer-toggle");
-    if (helplessnessLayerToggle) {
-      helplessnessLayerToggle.addEventListener("change", function () {
-        renderPatternLayer();
-      });
-    }
+      }
+    );
 
     var frameOverlayToggle = document.getElementById("frame-overlay-toggle-btn");
     if (frameOverlayToggle) {
@@ -13480,66 +15930,85 @@
     var exportBtn = document.getElementById("export-svg-btn");
     if (exportBtn) exportBtn.addEventListener("click", onExportSvg);
 
-    var viewBtn = document.getElementById("mode-view-btn");
-    if (viewBtn) viewBtn.addEventListener("click", function () {
-      setMode("view");
+    var hopeViewBtn = document.getElementById("hope-mode-view-btn");
+    if (hopeViewBtn) hopeViewBtn.addEventListener("click", function () {
+      setHopeInteractionMode("view");
     });
 
-    var mergeBtn = document.getElementById("mode-merge-btn");
-    if (mergeBtn) mergeBtn.addEventListener("click", function () {
-      setMode("merge");
+    var hopeMergeBtn = document.getElementById("hope-mode-merge-btn");
+    if (hopeMergeBtn) hopeMergeBtn.addEventListener("click", function () {
+      setHopeInteractionMode("merge");
     });
 
-    var restoreBtn = document.getElementById("mode-restore-btn");
-    if (restoreBtn) restoreBtn.addEventListener("click", function () {
-      setMode("restore");
-    });
+    var hopeResetBtn = document.getElementById("hope-reset-grid-btn");
+    if (hopeResetBtn) hopeResetBtn.addEventListener("click", onHopeResetGrid);
 
-    var resetBtn = document.getElementById("reset-grid-btn");
-    if (resetBtn) resetBtn.addEventListener("click", onResetGrid);
-
-    var autoMergeIntensitySlider = document.getElementById("auto-merge-intensity");
-    if (autoMergeIntensitySlider) {
-      autoMergeIntensitySlider.min = String(
+    (function () {
+      var autoMergeMin =
         typeof AUTO_MERGE_INTENSITY_MIN !== "undefined"
           ? AUTO_MERGE_INTENSITY_MIN
-          : 0
-      );
-      autoMergeIntensitySlider.max = String(
+          : 0;
+      var autoMergeMax =
         typeof AUTO_MERGE_INTENSITY_MAX !== "undefined"
           ? AUTO_MERGE_INTENSITY_MAX
-          : 100
-      );
-      autoMergeIntensitySlider.value = String(
+          : 7;
+      var autoMergeDefault =
         typeof AUTO_MERGE_INTENSITY_DEFAULT !== "undefined"
           ? AUTO_MERGE_INTENSITY_DEFAULT
-          : 50
-      );
+          : 0;
       function onAutoMergeIntensityInteract() {
         updateAutoMergeIntensityOutput();
         runAutoMerge();
       }
-      autoMergeIntensitySlider.addEventListener("pointerdown", onAutoMergeIntensityInteract);
-      autoMergeIntensitySlider.addEventListener("input", onAutoMergeIntensityInteract);
-    }
+      initFeelingsSteppedSlider(
+        "auto-merge-intensity",
+        autoMergeMin,
+        autoMergeMax,
+        autoMergeDefault,
+        onAutoMergeIntensityInteract
+      );
+      var autoMergeIntensitySlider = document.getElementById("auto-merge-intensity");
+      if (autoMergeIntensitySlider) {
+        autoMergeIntensitySlider.addEventListener(
+          "pointerdown",
+          onAutoMergeIntensityInteract
+        );
+      }
+    })();
     updateAutoMergeIntensityOutput();
 
     loadHopeStippleImage();
 
+    initSheetPaletteAutoRefresh();
+
     if (window.SheetPalettes) {
       await window.SheetPalettes.loadSheetPalettes();
-      window.SheetPalettes.pickRandomPalette();
+      window.SheetPalettes.setActivePalette("palette1");
       initSheetPaletteControls();
     }
+
+    sheetPaletteInitComplete = true;
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") {
+        sheetPaletteWasHidden = true;
+        return;
+      }
+      if (sheetPaletteWasHidden) {
+        sheetPaletteWasHidden = false;
+        scheduleSheetPaletteReload();
+      }
+    });
+
+    window.addEventListener("pageshow", function (ev) {
+      if (ev.persisted) scheduleSheetPaletteReload();
+    });
 
     if (window.IdentityControls && window.IdentityControls.setOnLivingInIranChange) {
       window.IdentityControls.setOnLivingInIranChange(refreshLabelBarContent);
     }
     if (window.IdentityControls && window.IdentityControls.setOnLeavingYearChange) {
       window.IdentityControls.setOnLeavingYearChange(refreshLabelBarContent);
-    }
-    if (window.IdentityControls && window.IdentityControls.setOnLostCircleChange) {
-      window.IdentityControls.setOnLostCircleChange(refreshLabelBarContent);
     }
     if (window.IdentityControls && window.IdentityControls.setOnAgeChange) {
       window.IdentityControls.setOnAgeChange(refreshLabelBarContent);
@@ -13553,19 +16022,22 @@
     if (window.IdentityControls && window.IdentityControls.setOnNameChange) {
       window.IdentityControls.setOnNameChange(refreshLabelBarContent);
     }
+    if (window.IdentityControls && window.IdentityControls.setOnHomeAtChange) {
+      window.IdentityControls.setOnHomeAtChange(refreshLabelBarContent);
+    }
 
     window.addEventListener("resize", layoutStage);
-    initFeelingsCanvasToggles();
     lastCircleLayoutSignature = "";
     lastLongingCircleLayoutSignature = "";
     lastGriefCircleLayoutSignature = "";
+    lastStrengthCircleLayoutSignature = "";
     lastHelplessnessLayoutSignature = "";
     lastDiamondLayoutSignature = "";
     render();
     syncFrameOverlayToggleButton();
     initMagnifier();
     initSidebarScrollFocus();
-    setMode("view");
+    setHopeInteractionMode("view");
   }
 
   if (document.readyState === "loading") {

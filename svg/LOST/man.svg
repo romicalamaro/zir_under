@@ -1,7 +1,16 @@
-<svg width="89" height="115" viewBox="0 0 89 115" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M10 83.356L12.4736 97.8562H79.0959L83.8782 83.356L79.0959 78.6599H70.3558L65.9034 77.4241L63.0999 71.7394L67.2226 61.6881L70.3558 57.6511V46.9407V42.9037L63.0999 28.7331L54.2774 20H43.9708H39.5183L28.552 28.7331L22.2855 30.628L19.3997 42.9037V52.955L22.2855 57.6511L25.6661 64.9012L28.552 71.7394L24.0995 73.6343L22.2855 78.6599H16.5963L10 83.356Z" fill="#685450"/>
-<rect x="42" width="10" height="10" fill="#685450"/>
-<rect x="42" y="105" width="10" height="10" fill="#685450"/>
-<rect x="79" y="44" width="10" height="10" fill="#685450"/>
-<rect y="44" width="10" height="10" fill="#685450"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 89 115">
+  <!-- Generator: Adobe Illustrator 30.4.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 226)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #685450;
+      }
+    </style>
+  </defs>
+  <rect class="st0" x="42" y="0" width="10" height="10"/>
+  <rect class="st0" x="42" y="105" width="10" height="10"/>
+  <rect class="st0" x="79" y="44" width="10" height="10"/>
+  <rect class="st0" y="44" width="10" height="10"/>
+  <polygon class="st0" points="79.22 77.23 70.48 77.23 66.03 76 63.22 70.31 74.08 69.04 70.48 56.22 70.48 45.51 70.48 41.48 63.22 27.3 54.4 18.57 44.09 18.57 39.64 18.57 28.67 27.3 24.33 35.18 19.52 44.65 11.7 67.58 18.83 72.33 23.47 69.42 28.67 70.31 24.22 72.21 22.41 77.23 16.72 77.23 10.12 81.93 12.6 96.43 79.22 96.43 84 81.93 79.22 77.23"/>
 </svg>
