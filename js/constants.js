@@ -2,6 +2,17 @@
 var CANVAS_W = 803;
 var CANVAS_H = 2126;
 
+/** Outer colored frame outside the canvas (print hem), width in cm */
+var HANDKERCHIEF_FRAME_CM = 1;
+/** Logical px per cm derived from canvas width (803 ÷ 68 ≈ 11.81) */
+var HANDKERCHIEF_CM_TO_PX = CANVAS_W / 68;
+/** 1 cm outer frame in logical px */
+var HANDKERCHIEF_OUTER_FRAME_PX = HANDKERCHIEF_CM_TO_PX * HANDKERCHIEF_FRAME_CM;
+/** Dashed brown outline around the outer frame perimeter */
+var HANDKERCHIEF_OUTER_FRAME_DASH_STROKE_WIDTH = 1;
+var HANDKERCHIEF_OUTER_FRAME_DASH_COLOR = "#685450";
+var HANDKERCHIEF_OUTER_FRAME_DASH_ARRAY = "4 3";
+
 /** White margin ring area as a fraction of full canvas area (symmetric sides) */
 var CANVAS_BORDER_AREA_RATIO = 0.15;
 
@@ -261,7 +272,6 @@ var LABEL_BAR_TAG_SVGS = [
   "tag/tag03.svg",
   "tag/tag04.svg",
   "tag/tag05.2.svg",
-  "tag/reshet.svg",
 ];
 var LABEL_BAR_TAG_ROTATION_STORAGE_KEY = "undercover.labelBarTagIndex";
 /** Fallback end-cap SVG when rotation pool is unavailable */
@@ -295,7 +305,7 @@ var LABEL_BAR_EXPORT_OUTLINE_Y_NUDGE_PX = -3;
 /** Knockout fraction badges (1/1) — tiny downward vs coordinates */
 var LABEL_BAR_EXPORT_FRACTION_BADGE_OUTLINE_Y_NUDGE_PX = -4;
 /** Knockout coordinates badge — sits lower than fraction text in export */
-var LABEL_BAR_EXPORT_COORDINATES_OUTLINE_Y_NUDGE_PX = -1;
+var LABEL_BAR_EXPORT_COORDINATES_OUTLINE_Y_NUDGE_PX = -3;
 
 /** Random 8-digit serial in white margin above/below brown bars (same number top + bottom) */
 var CANVAS_EDGE_SERIAL_EDGE_INSET_PX = 50;
@@ -521,6 +531,8 @@ var STRENGTH_DENSITY_DEFAULT = CIRCLE_DENSITY_DEFAULT;
 var BORDER_SIDE_DIVISION_INSET_PX = 30;
 /** Filled dots at border-frame grid line crossings (diameter, px) */
 var BORDER_DIVISION_JUNCTION_CIRCLE_DIAMETER_PX = 5;
+/** Overlap (px) to hide anti-aliasing gaps at 1 cm frame + division cell seams */
+var BORDER_FRAME_SEAM_BLEED_PX = 1;
 
 /** Inset frame overlay inside grid content bounds (px from grid frame edges) */
 var GRID_FRAME_INSET_OVERLAY_HORIZONTAL_PX = 90;
@@ -828,6 +840,8 @@ var PRIDE_AUTO_MERGE_DENSITY_AREA_SCALE_MAX = 8;
 /** refTile/currentTile at/above this → fast simple merge path (no prune/orphans) */
 var PRIDE_AUTO_MERGE_SIMPLE_MODE_DENSITY_RATIO = 3;
 /** Octagon grid only: Pride auto-merge edge budget scale (0.85 ≈ 15% smaller regions). */
+/** Octagon grid: switch to coarse Pride auto-merge at moderate density (step ~9+). */
+var OCTAGON_GRID_PRIDE_SIMPLE_MODE_DENSITY_RATIO = 1.5;
 var OCTAGON_GRID_PRIDE_EDGE_SCALE = 0.85;
 /** Octagon grid + low inner-scale: min Hope stipple region area (× tileSize²) */
 var HOPE_LOW_INNER_SCALE_MIN_AREA_TILE_FRACTION = 1.5;

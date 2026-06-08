@@ -187,6 +187,251 @@
     return "translate(" + off.x + "," + off.y + ") scale(" + s + ")";
   }
 
+  /** 1 cm outer frame width in logical px (803 ÷ 68 ≈ 11.81). */
+  function getHandkerchiefOuterFramePx() {
+    return typeof HANDKERCHIEF_OUTER_FRAME_PX !== "undefined"
+      ? HANDKERCHIEF_OUTER_FRAME_PX
+      : CANVAS_W / 68;
+  }
+
+  /** viewBox string including the outer frame ring outside 0,0. */
+  function getExpandedViewBoxString() {
+    var f = getHandkerchiefOuterFramePx();
+    return -f + " " + -f + " " + (CANVAS_W + 2 * f) + " " + (CANVAS_H + 2 * f);
+  }
+
+  /** Outer hem frame fill — sheet palette slot A3. */
+  function getHandkerchiefOuterFrameColor() {
+    return sheetColor("A3");
+  }
+
+  function getHandkerchiefOuterFrameDashColor() {
+    return typeof HANDKERCHIEF_OUTER_FRAME_DASH_COLOR !== "undefined"
+      ? HANDKERCHIEF_OUTER_FRAME_DASH_COLOR
+      : typeof CANVAS_EDGE_BROWN_BAR_COLOR !== "undefined"
+        ? CANVAS_EDGE_BROWN_BAR_COLOR
+        : "#685450";
+  }
+
+  function getHandkerchiefOuterFrameDashStrokeWidth() {
+    return typeof HANDKERCHIEF_OUTER_FRAME_DASH_STROKE_WIDTH !== "undefined"
+      ? HANDKERCHIEF_OUTER_FRAME_DASH_STROKE_WIDTH
+      : 1;
+  }
+
+  function getHandkerchiefOuterFrameDashArray() {
+    return typeof HANDKERCHIEF_OUTER_FRAME_DASH_ARRAY !== "undefined"
+      ? HANDKERCHIEF_OUTER_FRAME_DASH_ARRAY
+      : "4 3";
+  }
+
+  /** Dashed 1 px brown stroke on the outer perimeter of the 1 cm frame. */
+  function appendHandkerchiefOuterFrameDashOutline(parent) {
+    var f = getHandkerchiefOuterFramePx();
+    var rect = elSvg("rect");
+    rect.setAttribute("id", "handkerchief-outer-frame-dash");
+    rect.setAttribute("x", String(-f));
+    rect.setAttribute("y", String(-f));
+    rect.setAttribute("width", String(CANVAS_W + 2 * f));
+    rect.setAttribute("height", String(CANVAS_H + 2 * f));
+    rect.setAttribute("fill", "none");
+    rect.setAttribute("stroke", getHandkerchiefOuterFrameDashColor());
+    rect.setAttribute("stroke-width", String(getHandkerchiefOuterFrameDashStrokeWidth()));
+    rect.setAttribute("stroke-dasharray", getHandkerchiefOuterFrameDashArray());
+    rect.setAttribute("shape-rendering", "crispEdges");
+    parent.appendChild(rect);
+  }
+
+  function getBorderFrameSeamBleedPx() {
+    return typeof BORDER_FRAME_SEAM_BLEED_PX !== "undefined"
+      ? BORDER_FRAME_SEAM_BLEED_PX
+      : 1;
+  }
+
+  /**
+   * Expand a margin cell rect so shared edges overlap by 1 px (hides canvas bleed).
+   * @param {number} x
+   * @param {number} yTop
+   * @param {number} w
+   * @param {number} h
+   * @param {{ bleedLeft?: boolean, bleedRight?: boolean, bleedBottom?: boolean }} opts
+   */
+  function expandBorderCellRectForSeams(x, yTop, w, h, opts) {
+    var bleed = getBorderFrameSeamBleedPx();
+    var o = opts || {};
+    var out = { x: x, y: yTop, width: w, height: h };
+    if (o.bleedLeft) {
+      out.x -= bleed;
+      out.width += bleed;
+    }
+    if (o.bleedRight) out.width += bleed;
+    if (o.bleedBottom) out.height += bleed;
+    return out;
+  }
+
+  /** @returns {{ x: number, yTop: number, w: number, yBottom: number }} */
+  function expandBorderCellSpanForSeams(x, yTop, w, yBottom, opts) {
+    var h = yBottom - yTop;
+    var r = expandBorderCellRectForSeams(x, yTop, w, h, opts);
+    return {
+      x: r.x,
+      yTop: r.y,
+      w: r.width,
+      yBottom: r.y + r.height,
+    };
+  }
+
+  /**
+   * Four rects forming the 1 cm ring outside the canvas (negative coords on top/left).
+   * Side/top/bottom bars bleed 1 px inward to cover anti-aliasing at canvas edge.
+   * @returns {SVGElement}
+   */
+  function handkerchiefOuterFrameToGroup() {
+    var f = getHandkerchiefOuterFramePx();
+    var bleed = getBorderFrameSeamBleedPx();
+    var fill = getHandkerchiefOuterFrameColor();
+    var g = elSvg("g");
+    g.setAttribute("id", "handkerchief-outer-frame");
+
+    function appendBar(x, y, w, h) {
+      var rect = elSvg("rect");
+      rect.setAttribute("x", String(x));
+      rect.setAttribute("y", String(y));
+      rect.setAttribute("width", String(w));
+      rect.setAttribute("height", String(h));
+      rect.setAttribute("fill", fill);
+      rect.setAttribute("stroke", "none");
+      rect.setAttribute("shape-rendering", "crispEdges");
+      g.appendChild(rect);
+    }
+
+    appendBar(-f, -f, CANVAS_W + 2 * f, f + bleed);
+    appendBar(-f, CANVAS_H - bleed, CANVAS_W + 2 * f, f + bleed);
+    appendBar(-f, 0, f + bleed, CANVAS_H);
+    appendBar(CANVAS_W - bleed, 0, f + bleed, CANVAS_H);
+    appendHandkerchiefOuterFrameDashOutline(g);
+    return g;
+  }
+
+  /** Paint 1 cm hem above canvas fill so x=0 / y=0 seams stay covered. */
+  function ensureHandkerchiefOuterFrameLayerOrder() {
+    if (!designSvg) return;
+    var outerLayer = designSvg.querySelector("#layer-handkerchief-outer-frame");
+    var canvasBg = designSvg.querySelector("#canvas-background-fill");
+    var borderLayer = designSvg.querySelector("#layer-border-divisions");
+    if (!outerLayer || !canvasBg) return;
+    var anchor = borderLayer || canvasBg.nextSibling;
+    if (outerLayer.nextSibling === anchor) return;
+    if (anchor) {
+      designSvg.insertBefore(outerLayer, anchor);
+    } else {
+      designSvg.appendChild(outerLayer);
+    }
+  }
+
+  function createHandkerchiefOuterFrameLayer() {
+    var layer = elSvg("g");
+    layer.setAttribute("id", "layer-handkerchief-outer-frame");
+    layer.appendChild(handkerchiefOuterFrameToGroup());
+    return layer;
+  }
+
+  function updateHandkerchiefOuterFrame() {
+    if (!designSvg) return;
+    var layer = designSvg.querySelector("#layer-handkerchief-outer-frame");
+    if (!layer) return;
+    var existing = layer.querySelector("#handkerchief-outer-frame");
+    if (existing) layer.removeChild(existing);
+    layer.appendChild(handkerchiefOuterFrameToGroup());
+    ensureHandkerchiefOuterFrameLayerOrder();
+  }
+
+  /** @param {string[]} lines */
+  function pushHandkerchiefOuterFrameExportLines(lines) {
+    var f = getHandkerchiefOuterFramePx();
+    var bleed = getBorderFrameSeamBleedPx();
+    var fill = getHandkerchiefOuterFrameColor();
+    lines.push('<g id="layer-handkerchief-outer-frame">');
+    lines.push(
+      '<rect x="' +
+        -f +
+        '" y="' +
+        -f +
+        '" width="' +
+        (CANVAS_W + 2 * f) +
+        '" height="' +
+        (f + bleed) +
+        '" fill="' +
+        fill +
+        '"/>'
+    );
+    lines.push(
+      '<rect x="' +
+        -f +
+        '" y="' +
+        (CANVAS_H - bleed) +
+        '" width="' +
+        (CANVAS_W + 2 * f) +
+        '" height="' +
+        (f + bleed) +
+        '" fill="' +
+        fill +
+        '"/>'
+    );
+    lines.push(
+      '<rect x="' +
+        -f +
+        '" y="0" width="' +
+        (f + bleed) +
+        '" height="' +
+        CANVAS_H +
+        '" fill="' +
+        fill +
+        '"/>'
+    );
+    lines.push(
+      '<rect x="' +
+        (CANVAS_W - bleed) +
+        '" y="0" width="' +
+        (f + bleed) +
+        '" height="' +
+        CANVAS_H +
+        '" fill="' +
+        fill +
+        '"/>'
+    );
+    lines.push(
+      '<rect x="' +
+        -f +
+        '" y="' +
+        -f +
+        '" width="' +
+        (CANVAS_W + 2 * f) +
+        '" height="' +
+        (CANVAS_H + 2 * f) +
+        '" fill="none" stroke="' +
+        getHandkerchiefOuterFrameDashColor() +
+        '" stroke-width="' +
+        getHandkerchiefOuterFrameDashStrokeWidth() +
+        '" stroke-dasharray="' +
+        getHandkerchiefOuterFrameDashArray() +
+        '"/>'
+    );
+    lines.push("</g>");
+  }
+
+  function getExportCanvasWidthCm() {
+    var frameCm =
+      typeof HANDKERCHIEF_FRAME_CM !== "undefined" ? HANDKERCHIEF_FRAME_CM : 1;
+    return 68 + 2 * frameCm;
+  }
+
+  function getExportCanvasHeightCm() {
+    var frameCm =
+      typeof HANDKERCHIEF_FRAME_CM !== "undefined" ? HANDKERCHIEF_FRAME_CM : 1;
+    return 180 + 2 * frameCm;
+  }
+
   function elSvg(name) {
     return document.createElementNS(NS, name);
   }
@@ -1394,7 +1639,13 @@
     if (fanRoot) {
       fanRoot.setAttribute("transform", transformAttr);
     }
+    var emotionRoot = designSvg.querySelector("#emotion-markers-root");
+    if (emotionRoot) {
+      emotionRoot.setAttribute("transform", transformAttr);
+    }
+    ensureEmotionMarkersMounted();
     ensurePrideAutoMergeMounted();
+    ensureGridFrameChromeMounted();
     ensureFanLayerMounted();
   }
 
@@ -1794,12 +2045,18 @@
 
   /** Fast Pride path: skip dangling prune, orphan fills, midpoint segment tests. */
   function shouldUseSimplePrideAutoMergeMode() {
-    // Circles/diamonds/octagon need full merge passes for consistent canvas fill area.
-    if (isCirclesLikeGrid() || isOctagonGrid()) return false;
+    if (isCirclesLikeGrid()) return false;
     var threshold =
       typeof PRIDE_AUTO_MERGE_SIMPLE_MODE_DENSITY_RATIO !== "undefined"
         ? PRIDE_AUTO_MERGE_SIMPLE_MODE_DENSITY_RATIO
         : 3;
+    if (isOctagonGrid()) {
+      var octThreshold =
+        typeof OCTAGON_GRID_PRIDE_SIMPLE_MODE_DENSITY_RATIO !== "undefined"
+          ? OCTAGON_GRID_PRIDE_SIMPLE_MODE_DENSITY_RATIO
+          : 1.5;
+      return getPrideAutoMergeDensityRatio() >= octThreshold;
+    }
     return getPrideAutoMergeDensityRatio() >= threshold;
   }
 
@@ -2986,6 +3243,58 @@
     return Math.abs(dist - 1) <= eps;
   }
 
+  function distancePointToStructuralEllipse(px, py, circle) {
+    var ang = Math.atan2(
+      (py - circle.cy) / circle.ry,
+      (px - circle.cx) / circle.rx
+    );
+    var nx = circle.cx + circle.rx * Math.cos(ang);
+    var ny = circle.cy + circle.ry * Math.sin(ang);
+    return Math.hypot(px - nx, py - ny);
+  }
+
+  function getPrideEdgeMatchTolerance(edgeLen) {
+    var tileTol =
+      typeof lastTileSize === "number" && lastTileSize > 0
+        ? lastTileSize * 0.04
+        : 4;
+    var lenTol = typeof edgeLen === "number" ? edgeLen * 0.18 : 0;
+    return Math.max(tileTol, lenTol, 2.5);
+  }
+
+  function matchStructuralCircleForPrideEdgeInList(p1, p2, circles) {
+    if (!circles.length) return null;
+    var eps =
+      typeof CIRCLES_GRID_PRIDE_ELLIPSE_EDGE_EPS !== "undefined"
+        ? CIRCLES_GRID_PRIDE_ELLIPSE_EDGE_EPS
+        : 0.12;
+    var mid = { x: (p1.x + p2.x) * 0.5, y: (p1.y + p2.y) * 0.5 };
+    var edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    var maxDist = getPrideEdgeMatchTolerance(edgeLen);
+    var i;
+    var c;
+    for (i = 0; i < circles.length; i++) {
+      c = circles[i];
+      if (
+        pridePointNearEllipse(p1.x, p1.y, c, eps) &&
+        pridePointNearEllipse(p2.x, p2.y, c, eps)
+      ) {
+        return c;
+      }
+    }
+    for (i = 0; i < circles.length; i++) {
+      c = circles[i];
+      if (
+        distancePointToStructuralEllipse(p1.x, p1.y, c) <= maxDist &&
+        distancePointToStructuralEllipse(p2.x, p2.y, c) <= maxDist &&
+        distancePointToStructuralEllipse(mid.x, mid.y, c) <= maxDist * 1.35
+      ) {
+        return c;
+      }
+    }
+    return null;
+  }
+
   function getPrideOutlineStructuralCircles() {
     if (!isCirclesGrid()) return [];
     var sig =
@@ -3013,22 +3322,18 @@
   }
 
   function getStructuralCircleForPrideEdge(p1, p2) {
-    var circles = getPrideOutlineStructuralCircles();
-    if (!circles.length) return null;
-    var eps =
-      typeof CIRCLES_GRID_PRIDE_ELLIPSE_EDGE_EPS !== "undefined"
-        ? CIRCLES_GRID_PRIDE_ELLIPSE_EDGE_EPS
-        : 0.12;
-    var i;
-    var c;
-    for (i = 0; i < circles.length; i++) {
-      c = circles[i];
-      if (
-        pridePointNearEllipse(p1.x, p1.y, c, eps) &&
-        pridePointNearEllipse(p2.x, p2.y, c, eps)
-      ) {
-        return c;
-      }
+    var match = matchStructuralCircleForPrideEdgeInList(
+      p1,
+      p2,
+      getPrideOutlineStructuralCircles()
+    );
+    if (match) return match;
+    if (isCirclesGrid() && cachedStructuralCircles.length) {
+      return matchStructuralCircleForPrideEdgeInList(
+        p1,
+        p2,
+        cachedStructuralCircles
+      );
     }
     return null;
   }
@@ -4302,6 +4607,7 @@
   function renderAutoMergeFillsLayer() {
     if (!designSvg) return;
     ensurePrideAutoMergeMounted();
+    ensureGridFrameChromeMounted();
     var layer = designSvg.querySelector("#layer-auto-merge-fills");
     if (!layer) return;
 
@@ -4911,9 +5217,237 @@
     return null;
   }
 
+  function isStructuralCircleChordVisible(s, hopeMergeRegions) {
+    var key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
+    return !isSegmentRemoved(key, s, hopeMergeRegions);
+  }
+
+  /**
+   * @param {{ id?: string, cx: number, cy: number, rx: number, ry: number }} circle
+   * @param {{ points: { x: number, y: number }[] }[] | null} hopeMergeRegions
+   * @returns {"full" | "partial" | "none"}
+   */
+  function getStructuralCircleOutlineRenderMode(circle, hopeMergeRegions) {
+    if (!circle) return "none";
+    var chords = getCirclesLikeGridGeometry().buildEllipseBoundarySegments([circle]);
+    if (!chords.length) return "none";
+    var visibleCount = 0;
+    var i;
+    for (i = 0; i < chords.length; i++) {
+      if (isStructuralCircleChordVisible(chords[i], hopeMergeRegions)) {
+        visibleCount++;
+      }
+    }
+    if (visibleCount === 0) return "none";
+    if (visibleCount === chords.length) return "full";
+    return "partial";
+  }
+
+  /**
+   * @param {boolean[]} visible
+   * @returns {{ start: number, end: number }[]}
+   */
+  function findVisibleEllipseChordRuns(visible) {
+    var n = visible.length;
+    if (!n) return [];
+    var allVisible = true;
+    var i;
+    for (i = 0; i < n; i++) {
+      if (!visible[i]) {
+        allVisible = false;
+        break;
+      }
+    }
+    if (allVisible) return [{ start: 0, end: n - 1 }];
+
+    var start = 0;
+    for (i = 0; i < n; i++) {
+      if (!visible[i]) {
+        start = (i + 1) % n;
+        break;
+      }
+    }
+
+    var runs = [];
+    var idx = start;
+    var steps = 0;
+    while (steps < n) {
+      while (steps < n && !visible[idx % n]) {
+        idx = (idx + 1) % n;
+        steps++;
+      }
+      if (steps >= n) break;
+      var runStart = idx % n;
+      while (steps < n && visible[idx % n]) {
+        idx = (idx + 1) % n;
+        steps++;
+      }
+      runs.push({ start: runStart, end: (idx - 1 + n) % n });
+    }
+    return runs;
+  }
+
+  /**
+   * Smooth SVG path for visible arc spans on a partially merged structural circle.
+   * @param {{ id?: string, cx: number, cy: number, rx: number, ry: number }} circle
+   * @param {{ points: { x: number, y: number }[] }[] | null} hopeMergeRegions
+   * @returns {string}
+   */
+  function buildPartialStructuralCirclePathD(circle, hopeMergeRegions) {
+    var chords = getCirclesLikeGridGeometry().buildEllipseBoundarySegments([circle]);
+    if (!chords.length) return "";
+    var visible = [];
+    var i;
+    for (i = 0; i < chords.length; i++) {
+      visible.push(isStructuralCircleChordVisible(chords[i], hopeMergeRegions));
+    }
+    var runs = findVisibleEllipseChordRuns(visible);
+    if (!runs.length) return "";
+
+    var parts = [];
+    var run;
+    var from;
+    var to;
+    var arcFlags;
+    for (i = 0; i < runs.length; i++) {
+      run = runs[i];
+      from = { x: chords[run.start].x1, y: chords[run.start].y1 };
+      to = { x: chords[run.end].x2, y: chords[run.end].y2 };
+      arcFlags = prideEllipseArcFlags(circle, from, to);
+      parts.push(
+        "M" +
+          prideOutlineCoord(from.x) +
+          "," +
+          prideOutlineCoord(from.y) +
+          " A" +
+          prideOutlineCoord(circle.rx) +
+          "," +
+          prideOutlineCoord(circle.ry) +
+          " 0 " +
+          arcFlags.largeArc +
+          " " +
+          arcFlags.sweep +
+          " " +
+          prideOutlineCoord(to.x) +
+          "," +
+          prideOutlineCoord(to.y)
+      );
+    }
+    return parts.join(" ");
+  }
+
+  /**
+   * @param {{ id?: string, cx: number, cy: number, rx: number, ry: number }[]} circles
+   * @returns {SVGElement}
+   */
+  function partialStructuralCirclesToGroup(circles) {
+    var g = elSvg("g");
+    g.setAttribute("id", "layer-structural-circles-partial");
+    g.setAttribute("fill", "none");
+    g.setAttribute("stroke", getPatternStrokeColor());
+    g.setAttribute("stroke-width", String(getGridStrokeWidth()));
+    g.setAttribute("stroke-linecap", "round");
+    var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var i;
+    var pathD;
+    var path;
+    for (i = 0; i < circles.length; i++) {
+      pathD = buildPartialStructuralCirclePathD(circles[i], hopeMergeRegions);
+      if (!pathD) continue;
+      path = elSvg("path");
+      path.setAttribute("d", pathD);
+      g.appendChild(path);
+    }
+    return g;
+  }
+
+  function getFullVisibleStructuralCirclesForPattern() {
+    if (!cachedStructuralCircles.length) return [];
+    var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var out = [];
+    var i;
+    for (i = 0; i < cachedStructuralCircles.length; i++) {
+      if (
+        getStructuralCircleOutlineRenderMode(
+          cachedStructuralCircles[i],
+          hopeMergeRegions
+        ) === "full"
+      ) {
+        out.push(cachedStructuralCircles[i]);
+      }
+    }
+    return out;
+  }
+
+  function getPartialStructuralCirclesForPattern() {
+    if (!isCirclesGrid() || !cachedStructuralCircles.length) return [];
+    var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var out = [];
+    var i;
+    for (i = 0; i < cachedStructuralCircles.length; i++) {
+      if (
+        getStructuralCircleOutlineRenderMode(
+          cachedStructuralCircles[i],
+          hopeMergeRegions
+        ) === "partial"
+      ) {
+        out.push(cachedStructuralCircles[i]);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * @param {SVGElement} patternLayer
+   */
+  function syncCirclesGridStructuralOutlineLayers(patternLayer) {
+    var fullCircles = getFullVisibleStructuralCirclesForPattern();
+    var partialCircles = getPartialStructuralCirclesForPattern();
+    var oldCircles = patternLayer.querySelector("#layer-structural-circles");
+    var oldPartial = patternLayer.querySelector(
+      "#layer-structural-circles-partial"
+    );
+
+    if (!fullCircles.length) {
+      if (oldCircles) patternLayer.removeChild(oldCircles);
+    } else if (oldCircles) {
+      patternLayer.replaceChild(
+        structuralCirclesToGroup(fullCircles),
+        oldCircles
+      );
+    } else {
+      mountPatternLayerChildBeforeEmotions(
+        patternLayer,
+        structuralCirclesToGroup(fullCircles)
+      );
+    }
+
+    if (!partialCircles.length) {
+      if (oldPartial) patternLayer.removeChild(oldPartial);
+    } else if (oldPartial) {
+      patternLayer.replaceChild(
+        partialStructuralCirclesToGroup(partialCircles),
+        oldPartial
+      );
+    } else {
+      mountPatternLayerChildBeforeEmotions(
+        patternLayer,
+        partialStructuralCirclesToGroup(partialCircles)
+      );
+    }
+  }
+
   /** True when every ellipse chord is still visible (smooth outline, not broken). */
   function isStructuralCircleOutlineIntact(circle) {
     if (!circle) return false;
+    if (isCirclesGrid()) {
+      return (
+        getStructuralCircleOutlineRenderMode(
+          circle,
+          getHopeMergeCutoutRegionsForRendering()
+        ) === "full"
+      );
+    }
     var chords = getCirclesLikeGridGeometry().buildEllipseBoundarySegments([circle]);
     var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
     var i;
@@ -4929,6 +5463,9 @@
 
   function getIntactStructuralCirclesForPattern() {
     if (!cachedStructuralCircles.length) return [];
+    if (isCirclesGrid()) {
+      return getFullVisibleStructuralCirclesForPattern();
+    }
     var out = [];
     var i;
     for (i = 0; i < cachedStructuralCircles.length; i++) {
@@ -4981,6 +5518,34 @@
   /**
    * @param {SVGElement} g
    */
+  function getFirstPatternEmotionChild(patternLayer) {
+    if (!patternLayer) return null;
+    var nodes = patternLayer.querySelectorAll(
+      "#layer-helplessness,#layer-circles,#layer-longing-circles,#layer-grief-circles,#layer-strength"
+    );
+    var first = null;
+    var firstIndex = Infinity;
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i].parentNode !== patternLayer) continue;
+      var idx = Array.prototype.indexOf.call(patternLayer.childNodes, nodes[i]);
+      if (idx >= 0 && idx < firstIndex) {
+        firstIndex = idx;
+        first = nodes[i];
+      }
+    }
+    return first;
+  }
+
+  function mountPatternLayerChildBeforeEmotions(patternLayer, node) {
+    var before = getFirstPatternEmotionChild(patternLayer);
+    if (before) {
+      patternLayer.insertBefore(node, before);
+    } else {
+      patternLayer.appendChild(node);
+    }
+  }
+
   function appendCirclesGridFrameJunctionDots(g) {
     if (!isCirclesLikeGrid()) return;
     var points = collectCirclesGridFrameJunctionPoints();
@@ -5000,7 +5565,11 @@
       circle.setAttribute("r", String(r));
       dotG.appendChild(circle);
     }
-    g.appendChild(dotG);
+    if (g.getAttribute && g.getAttribute("id") === "layer-pattern") {
+      mountPatternLayerChildBeforeEmotions(g, dotG);
+    } else {
+      g.appendChild(dotG);
+    }
   }
 
   /**
@@ -5053,7 +5622,11 @@
         circle = getStructuralCircleById(
           cachedCirclesGridChordKeyToCircleId[key]
         );
-        if (isStructuralCircleOutlineIntact(circle)) continue;
+        var outlineMode = getStructuralCircleOutlineRenderMode(
+          circle,
+          hopeMergeRegions
+        );
+        if (outlineMode === "full" || outlineMode === "partial") continue;
       }
       visible.push(s);
     }
@@ -5285,18 +5858,7 @@
     patternLayer.replaceChild(segmentsToGroup(visible), oldGroup);
     if (isCirclesLikeGrid()) {
       if (isCirclesGrid()) {
-        var oldCircles = patternLayer.querySelector("#layer-structural-circles");
-        var intactCircles = getIntactStructuralCirclesForPattern();
-        if (!intactCircles.length) {
-          if (oldCircles) patternLayer.removeChild(oldCircles);
-        } else if (oldCircles) {
-          patternLayer.replaceChild(
-            structuralCirclesToGroup(intactCircles),
-            oldCircles
-          );
-        } else {
-          patternLayer.appendChild(structuralCirclesToGroup(intactCircles));
-        }
+        syncCirclesGridStructuralOutlineLayers(patternLayer);
       } else {
         var oldDiamonds = patternLayer.querySelector("#layer-structural-diamonds");
         var intactDiamonds = getIntactStructuralCirclesForPattern();
@@ -5308,7 +5870,10 @@
             oldDiamonds
           );
         } else {
-          patternLayer.appendChild(structuralDiamondsToGroup(intactDiamonds));
+          mountPatternLayerChildBeforeEmotions(
+            patternLayer,
+            structuralDiamondsToGroup(intactDiamonds)
+          );
         }
       }
       var oldDots = patternLayer.querySelector(".circles-grid-frame-junction-dots");
@@ -7032,7 +7597,10 @@
   function pushStructuralCirclesExportLines(lines) {
     if (!isCirclesLikeGrid()) return;
     var shapes = getIntactStructuralCirclesForPattern();
-    if (!shapes.length) return;
+    var partialShapes = isCirclesGrid()
+      ? getPartialStructuralCirclesForPattern()
+      : [];
+    if (!shapes.length && !partialShapes.length) return;
     if (isDiamondsGrid()) {
       lines.push(
         '<g id="layer-structural-diamonds" fill="none" stroke="' +
@@ -7092,6 +7660,27 @@
       );
     }
     lines.push("</g>");
+    if (partialShapes.length) {
+      var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+      lines.push(
+        '<g id="layer-structural-circles-partial" fill="none" stroke="' +
+          getPatternStrokeColor() +
+          '" stroke-width="' +
+          getGridStrokeWidth() +
+          '" stroke-linecap="round">'
+      );
+      var pi;
+      var partialPathD;
+      for (pi = 0; pi < partialShapes.length; pi++) {
+        partialPathD = buildPartialStructuralCirclePathD(
+          partialShapes[pi],
+          hopeMergeRegions
+        );
+        if (!partialPathD) continue;
+        lines.push('<path d="' + partialPathD + '"/>');
+      }
+      lines.push("</g>");
+    }
   }
 
   /**
@@ -7211,6 +7800,7 @@
 
   function updateGridBoundaryRect() {
     if (!designSvg) return;
+    ensureGridFrameChromeMounted();
     var layer = designSvg.querySelector("#layer-grid-boundary");
     if (!layer) return;
     var existing = layer.querySelector("#grid-boundary");
@@ -7219,18 +7809,7 @@
   }
 
   function ensureGridBoundaryLayerOnTop() {
-    if (!designSvg) return;
-    var layer = designSvg.querySelector("#layer-grid-boundary");
-    if (!layer) return;
-    var blendRoot = designSvg.querySelector("#color-divisions-blend-root");
-    var overlay = designSvg.querySelector("#layer-border-divisions-overlay");
-    if (blendRoot && overlay && overlay.parentNode === blendRoot) {
-      blendRoot.insertBefore(layer, overlay);
-    }
-    var anchor = designSvg.querySelector("#layer-edge-brown-bars");
-    if (anchor && anchor.parentNode === designSvg && layer.parentNode === designSvg) {
-      designSvg.insertBefore(layer, anchor);
-    }
+    ensureGridFrameChromeMounted();
   }
 
   /**
@@ -7492,6 +8071,98 @@
     return layer;
   }
 
+  /** Grid boundary + inset frame — mounted above Pride, below the fan overlay. */
+  function createGridFrameChromeBranch() {
+    var root = elSvg("g");
+    root.setAttribute("id", "grid-frame-chrome-root");
+    root.setAttribute("style", "mix-blend-mode:normal");
+    root.appendChild(createGridBoundaryLayer());
+
+    var insetRoot = elSvg("g");
+    insetRoot.setAttribute("id", "frame-inset-overlay-root");
+    insetRoot.setAttribute("transform", getInnerContentTransformAttr());
+    insetRoot.appendChild(createFrameInsetOverlayLayer());
+    root.appendChild(insetRoot);
+
+    return root;
+  }
+
+  /** Keep grid boundary + inset frame above Pride and below the fan overlay. */
+  function ensureGridFrameChromeMounted() {
+    if (!designSvg) return;
+
+    var chromeRoot = designSvg.querySelector("#grid-frame-chrome-root");
+    var gridBoundaryLayer = designSvg.querySelector("#layer-grid-boundary");
+    var frameLayer = designSvg.querySelector("#layer-frame-inset-overlay");
+
+    if (!chromeRoot) {
+      chromeRoot = elSvg("g");
+      chromeRoot.setAttribute("id", "grid-frame-chrome-root");
+      chromeRoot.setAttribute("style", "mix-blend-mode:normal");
+      designSvg.appendChild(chromeRoot);
+    }
+
+    var legacyInsetRoot = designSvg.querySelector("#frame-inset-overlay-root");
+    if (
+      legacyInsetRoot &&
+      legacyInsetRoot.parentNode === designSvg &&
+      legacyInsetRoot.id === "frame-inset-overlay-root"
+    ) {
+      while (legacyInsetRoot.firstChild) {
+        chromeRoot.appendChild(legacyInsetRoot.firstChild);
+      }
+      designSvg.removeChild(legacyInsetRoot);
+    }
+
+    if (gridBoundaryLayer) {
+      if (gridBoundaryLayer.parentNode !== chromeRoot) {
+        if (gridBoundaryLayer.parentNode) {
+          gridBoundaryLayer.parentNode.removeChild(gridBoundaryLayer);
+        }
+        chromeRoot.insertBefore(gridBoundaryLayer, chromeRoot.firstChild);
+      }
+    } else if (!chromeRoot.querySelector("#layer-grid-boundary")) {
+      chromeRoot.insertBefore(createGridBoundaryLayer(), chromeRoot.firstChild);
+    }
+
+    var insetRoot = chromeRoot.querySelector("#frame-inset-overlay-root");
+    if (!insetRoot) {
+      insetRoot = elSvg("g");
+      insetRoot.setAttribute("id", "frame-inset-overlay-root");
+      chromeRoot.appendChild(insetRoot);
+    }
+    insetRoot.setAttribute("transform", getInnerContentTransformAttr());
+
+    if (frameLayer) {
+      if (frameLayer.parentNode !== insetRoot) {
+        if (frameLayer.parentNode) frameLayer.parentNode.removeChild(frameLayer);
+        insetRoot.appendChild(frameLayer);
+      }
+    } else if (!insetRoot.querySelector("#layer-frame-inset-overlay")) {
+      insetRoot.appendChild(createFrameInsetOverlayLayer());
+    }
+
+    var prideRoot = designSvg.querySelector("#pride-auto-merge-root");
+    var fanRoot = designSvg.querySelector("#fan-half-circle-root");
+    var chromeAnchor = designSvg.querySelector("#layer-edge-brown-bars");
+    var insertBeforeNode =
+      fanRoot && fanRoot.parentNode === designSvg
+        ? fanRoot
+        : chromeAnchor;
+
+    if (prideRoot && prideRoot.parentNode === designSvg) {
+      if (chromeRoot.previousSibling !== prideRoot) {
+        designSvg.insertBefore(chromeRoot, prideRoot.nextSibling);
+      }
+    } else if (insertBeforeNode && insertBeforeNode.parentNode === designSvg) {
+      if (chromeRoot.nextSibling !== insertBeforeNode) {
+        designSvg.insertBefore(chromeRoot, insertBeforeNode);
+      }
+    } else if (chromeRoot.parentNode !== designSvg) {
+      designSvg.appendChild(chromeRoot);
+    }
+  }
+
   function updateFrameInsetOverlayLayer() {
     if (!designSvg) return;
     var layer = designSvg.querySelector("#layer-frame-inset-overlay");
@@ -7499,6 +8170,7 @@
     while (layer.firstChild) layer.removeChild(layer.firstChild);
     layer.appendChild(frameInsetOverlayToGroup());
     applyFrameInsetOverlayVisibility();
+    ensureGridFrameChromeMounted();
   }
 
   function pushFrameInsetOverlayExportLines(lines, options) {
@@ -7633,58 +8305,11 @@
   }
 
   /**
-   * Interior column-divider × horizontal crossings (col 1↔2, 2↔3, …).
-   * Uses frame column dividers at x = c·b (c = 1 … cols−1) on both sides.
+   * Top/bottom band junction dots only — column-divider × horizontal crossings omitted.
    * @returns {{ cx: number, cy: number }[]}
    */
   function collectBorderFrameGridJunctionPoints() {
-    var b = getCanvasBorderPx();
-    var cols = getBorderSideThicknessColumns();
-    if (cols < 2) return [];
-
-    var extra = Math.max(0, cols - 1);
-    var ys = getBorderDivisionHorizontalYPositions();
-    var points = [];
-    var seen = {};
-    var j;
-    var c;
-    var t;
-    var x;
-
-    function add(px, py) {
-      var key = px.toFixed(3) + "," + py.toFixed(3);
-      if (seen[key]) return;
-      seen[key] = true;
-      points.push({ cx: px, cy: py });
-    }
-
-    for (c = 1; c < cols; c++) {
-      x = c * b;
-      for (j = 0; j < ys.length; j++) {
-        add(x, ys[j]);
-        add(CANVAS_W - x, ys[j]);
-      }
-    }
-
-    if (extra > 0) {
-      for (c = 1; c < cols; c++) {
-        x = c * b;
-        for (t = 1; t <= extra; t++) {
-          var bandYs = [
-            t * b,
-            (t + 1) * b,
-            CANVAS_H - (t + 1) * b,
-            CANVAS_H - t * b,
-          ];
-          for (j = 0; j < bandYs.length; j++) {
-            add(x, bandYs[j]);
-            add(CANVAS_W - x, bandYs[j]);
-          }
-        }
-      }
-    }
-
-    return points;
+    return [];
   }
 
   function getBorderDivisionJunctionCircleRadius() {
@@ -8115,7 +8740,7 @@
   }
 
   /**
-   * Full cell frame (top, bottom, left, right) on top of white fill.
+   * Horizontal division lines on empty (color-fade) cells only — no vertical sides.
    * @param {SVGElement} g
    * @param {number} x
    * @param {number} b
@@ -8125,27 +8750,15 @@
   function appendBorderSideWhitenedCellFrameLinesAtX(g, x, b, yTop, yBottom) {
     appendBorderDivisionLine(g, x, yTop, x + b, yTop);
     appendBorderDivisionLine(g, x, yBottom, x + b, yBottom);
-    appendBorderDivisionLine(g, x, yTop, x, yBottom);
-    appendBorderDivisionLine(g, x + b, yTop, x + b, yBottom);
   }
 
   /**
-   * Vertical dividers between adjacent margin columns (full strip height).
+   * Vertical separators between Medium/Thick frame columns are omitted —
+   * only horizontal division lines remain.
    * @param {SVGElement} g
    */
   function appendLeftRightBorderColumnDividers(g) {
-    var b = getCanvasBorderPx();
-    var cols = getBorderSideThicknessColumns();
-    if (cols <= 1) return;
-
-    var divY = getLeftRightBorderDivisionYBounds();
-    var c;
-    for (c = 1; c < cols; c++) {
-      var xLeft = c * b;
-      appendBorderDivisionLine(g, xLeft, divY.top, xLeft, divY.bottom);
-      var xRight = CANVAS_W - c * b;
-      appendBorderDivisionLine(g, xRight, divY.top, xRight, divY.bottom);
-    }
+    return;
   }
 
   /**
@@ -8395,7 +9008,7 @@
         '" y2="' +
         y2 +
         '" stroke="' +
-        getPatternStrokeColor() +
+        getBorderDivisionStrokeColor() +
         '" stroke-width="' +
         BORDER_DIVISION_STROKE_WIDTH +
         '" shape-rendering="crispEdges"/>'
@@ -8412,26 +9025,11 @@
   function pushBorderSideWhitenedCellFrameLinesAtXExport(lines, x, b, yTop, yBottom) {
     pushBorderDivisionLineExport(lines, x, yTop, x + b, yTop);
     pushBorderDivisionLineExport(lines, x, yBottom, x + b, yBottom);
-    pushBorderDivisionLineExport(lines, x, yTop, x, yBottom);
-    pushBorderDivisionLineExport(lines, x + b, yTop, x + b, yBottom);
   }
 
-  /**
-   * @param {string[]} lines
-   */
+  /** @param {string[]} lines */
   function pushLeftRightBorderColumnDividersExport(lines) {
-    var b = getCanvasBorderPx();
-    var cols = getBorderSideThicknessColumns();
-    if (cols <= 1) return;
-
-    var divY = getLeftRightBorderDivisionYBounds();
-    var c;
-    for (c = 1; c < cols; c++) {
-      var xLeft = c * b;
-      pushBorderDivisionLineExport(lines, xLeft, divY.top, xLeft, divY.bottom);
-      var xRight = CANVAS_W - c * b;
-      pushBorderDivisionLineExport(lines, xRight, divY.top, xRight, divY.bottom);
-    }
+    return;
   }
 
   /**
@@ -8599,6 +9197,30 @@
     rect.setAttribute("fill", fill);
     rect.setAttribute("stroke", "none");
     g.appendChild(rect);
+  }
+
+  /**
+   * @param {string[]} lines
+   * @param {number} x
+   * @param {number} yTop
+   * @param {number} w
+   * @param {number} h
+   * @param {string} fill
+   */
+  function pushBorderSideSolidCellRectExport(lines, x, yTop, w, h, fill) {
+    lines.push(
+      '<rect x="' +
+        x +
+        '" y="' +
+        yTop +
+        '" width="' +
+        w +
+        '" height="' +
+        h +
+        '" fill="' +
+        fill +
+        '" stroke="none" shape-rendering="crispEdges"/>'
+    );
   }
 
   /**
@@ -8844,35 +9466,58 @@
     if (!home && !outside) return;
 
     var b = getCanvasBorderPx();
+    var cols = getBorderSideThicknessColumns();
+    var hasOverlayCols = cols > 1;
     var yBounds = getLeftRightBorderCellYBounds();
+    var rowCount = yBounds.length - 1;
     var rightX = CANVAS_W - b;
     var j;
     var yTop;
     var yBottom;
     var h;
     var cellType;
+    var seam;
+    var span;
 
-    for (j = 0; j < yBounds.length - 1; j++) {
+    function leftSeamOpts(rowIndex) {
+      return {
+        bleedLeft: true,
+        bleedRight: hasOverlayCols,
+        bleedBottom: rowIndex < rowCount - 1,
+      };
+    }
+
+    function rightSeamOpts(rowIndex) {
+      return {
+        bleedRight: true,
+        bleedLeft: hasOverlayCols,
+        bleedBottom: rowIndex < rowCount - 1,
+      };
+    }
+
+    for (j = 0; j < rowCount; j++) {
       yTop = yBounds[j];
       yBottom = yBounds[j + 1];
       h = yBottom - yTop;
       cellType = getBorderSideCellType(j);
 
       if (isBorderSideCellWhitened(0, j)) {
+        seam = expandBorderCellRectForSeams(0, yTop, b, h, leftSeamOpts(j));
         appendBorderSideSolidCellRect(
           g,
-          0,
-          yTop,
-          b,
-          h,
+          seam.x,
+          seam.y,
+          seam.width,
+          seam.height,
           getBorderSideColorFadeFillColor()
         );
+        seam = expandBorderCellRectForSeams(rightX, yTop, b, h, rightSeamOpts(j));
         appendBorderSideSolidCellRect(
           g,
-          rightX,
-          yTop,
-          b,
-          h,
+          seam.x,
+          seam.y,
+          seam.width,
+          seam.height,
           getBorderSideColorFadeFillColor()
         );
         appendBorderSideEmptyCellStippleAtX(g, 0, b, yTop, yBottom, 0, j);
@@ -8890,24 +9535,46 @@
 
       if (cellType === "outside") {
         if (!outside) continue;
-        appendBorderSideBrownCellXPatternFills(g, 0, b, yTop, yBottom);
-        appendBorderSideBrownCellXPatternFills(g, rightX, b, yTop, yBottom);
-      } else if (cellType === "grey") {
-        if (!home || !outside) continue;
-        appendBorderSideSolidCellRect(
+        span = expandBorderCellSpanForSeams(0, yTop, b, yBottom, leftSeamOpts(j));
+        appendBorderSideBrownCellXPatternFills(
           g,
-          0,
-          yTop,
-          b,
-          h,
-          BORDER_SIDE_CELL_COLOR_GREY
+          span.x,
+          span.w,
+          span.yTop,
+          span.yBottom
         );
-        appendBorderSideSolidCellRect(
-          g,
+        span = expandBorderCellSpanForSeams(
           rightX,
           yTop,
           b,
-          h,
+          yBottom,
+          rightSeamOpts(j)
+        );
+        appendBorderSideBrownCellXPatternFills(
+          g,
+          span.x,
+          span.w,
+          span.yTop,
+          span.yBottom
+        );
+      } else if (cellType === "grey") {
+        if (!home || !outside) continue;
+        seam = expandBorderCellRectForSeams(0, yTop, b, h, leftSeamOpts(j));
+        appendBorderSideSolidCellRect(
+          g,
+          seam.x,
+          seam.y,
+          seam.width,
+          seam.height,
+          BORDER_SIDE_CELL_COLOR_GREY
+        );
+        seam = expandBorderCellRectForSeams(rightX, yTop, b, h, rightSeamOpts(j));
+        appendBorderSideSolidCellRect(
+          g,
+          seam.x,
+          seam.y,
+          seam.width,
+          seam.height,
           BORDER_SIDE_CELL_COLOR_GREY
         );
       } else if (cellType === "beige") {
@@ -8916,12 +9583,41 @@
           typeof BORDER_SIDE_CELL_COLOR_BEIGE !== "undefined"
             ? BORDER_SIDE_CELL_COLOR_BEIGE
             : BORDER_SIDE_X_FILL_RIGHT;
-        appendBorderSideSolidCellRect(g, 0, yTop, b, h, beigeFill);
-        appendBorderSideSolidCellRect(g, rightX, yTop, b, h, beigeFill);
+        seam = expandBorderCellRectForSeams(0, yTop, b, h, leftSeamOpts(j));
+        appendBorderSideSolidCellRect(g, seam.x, seam.y, seam.width, seam.height, beigeFill);
+        seam = expandBorderCellRectForSeams(rightX, yTop, b, h, rightSeamOpts(j));
+        appendBorderSideSolidCellRect(
+          g,
+          seam.x,
+          seam.y,
+          seam.width,
+          seam.height,
+          beigeFill
+        );
       } else {
         if (!home) continue;
-        appendBorderSideBlueCellXPatternFills(g, 0, b, yTop, yBottom);
-        appendBorderSideBlueCellXPatternFills(g, rightX, b, yTop, yBottom);
+        span = expandBorderCellSpanForSeams(0, yTop, b, yBottom, leftSeamOpts(j));
+        appendBorderSideBlueCellXPatternFills(
+          g,
+          span.x,
+          span.w,
+          span.yTop,
+          span.yBottom
+        );
+        span = expandBorderCellSpanForSeams(
+          rightX,
+          yTop,
+          b,
+          yBottom,
+          rightSeamOpts(j)
+        );
+        appendBorderSideBlueCellXPatternFills(
+          g,
+          span.x,
+          span.w,
+          span.yTop,
+          span.yBottom
+        );
       }
     }
   }
@@ -8999,34 +9695,12 @@
   }
 
   /**
-   * Top/bottom cell edges in left/right strips, aligned with grid separation frame.
-   * @param {SVGElement} g
-   */
-  function appendLeftRightBorderFrameEdgeLines(g) {
-    var b = getCanvasBorderPx();
-    var divY = getLeftRightBorderDivisionYBounds();
-    appendBorderDivisionLine(g, 0, divY.top, b, divY.top);
-    appendBorderDivisionLine(g, 0, divY.bottom, b, divY.bottom);
-    appendBorderDivisionLine(g, CANVAS_W - b, divY.top, CANVAS_W, divY.top);
-    appendBorderDivisionLine(g, CANVAS_W - b, divY.bottom, CANVAS_W, divY.bottom);
-  }
-
-  /**
+   * Frame margin strips: no global horizontal lines — empty cells draw their own
+   * caps via appendBorderSideWhitenedCellFrameLinesAtX.
    * @param {SVGElement} g
    */
   function appendBorderDivisionLinesToGroup(g) {
-    var b = getCanvasBorderPx();
-    var i;
-    var y;
-
-    appendLeftRightBorderFrameEdgeLines(g);
-
-    var sideInteriorY = getLeftRightBorderInteriorYPositions();
-    for (i = 0; i < sideInteriorY.length; i++) {
-      y = sideInteriorY[i];
-      appendBorderDivisionLine(g, 0, y, b, y);
-      appendBorderDivisionLine(g, CANVAS_W - b, y, CANVAS_W, y);
-    }
+    return;
   }
 
   /**
@@ -9094,8 +9768,30 @@
         var overlayBaseFill = isBorderSideCellWhitened(c, j)
           ? getBorderSideColorFadeFillColor()
           : getCanvasBackgroundColor();
-        appendOverlayCellBase(leftX, yTop, b, h, overlayBaseFill);
-        appendOverlayCellBase(rightX, yTop, b, h, overlayBaseFill);
+        var leftSeam = expandBorderCellRectForSeams(leftX, yTop, b, h, {
+          bleedLeft: true,
+          bleedRight: c < extra,
+          bleedBottom: j < rowCount - 1,
+        });
+        var rightSeam = expandBorderCellRectForSeams(rightX, yTop, b, h, {
+          bleedLeft: c < extra,
+          bleedRight: true,
+          bleedBottom: j < rowCount - 1,
+        });
+        appendOverlayCellBase(
+          leftSeam.x,
+          leftSeam.y,
+          leftSeam.width,
+          leftSeam.height,
+          overlayBaseFill
+        );
+        appendOverlayCellBase(
+          rightSeam.x,
+          rightSeam.y,
+          rightSeam.width,
+          rightSeam.height,
+          overlayBaseFill
+        );
 
         if (isBorderSideCellWhitened(c, j)) {
           appendBorderSideEmptyCellStippleAtX(
@@ -9199,17 +9895,6 @@
           appendBorderSideCellRhombus(g, rightX, b, yTop, yBottom, rhombusFill);
         }
       }
-
-      // Division lines on top of cell fills.
-      appendBorderDivisionLine(g, leftX, divY.top, leftX + b, divY.top);
-      appendBorderDivisionLine(g, leftX, divY.bottom, leftX + b, divY.bottom);
-      appendBorderDivisionLine(g, rightX, divY.top, rightX + b, divY.top);
-      appendBorderDivisionLine(g, rightX, divY.bottom, rightX + b, divY.bottom);
-      for (var i = 0; i < sideInteriorY.length; i++) {
-        var yLine = sideInteriorY[i];
-        appendBorderDivisionLine(g, leftX, yLine, leftX + b, yLine);
-        appendBorderDivisionLine(g, rightX, yLine, rightX + b, yLine);
-      }
     }
 
     // Top/bottom overlays: simple b×b cells across the inner width (avoid corners).
@@ -9257,24 +9942,13 @@
             );
             appendBorderSideCellRhombus(g, x, b, y0, y1, rFill);
           }
-
-          // Vertical divider between cells (matches division-line style).
-          appendBorderDivisionLine(g, x, y0, x, y1);
         }
 
         drawBandCell(topY0, topY1, hhTop);
         drawBandCell(bottomY0, bottomY1, hhBottom);
       }
-
-      // Close the band edges.
-      appendBorderDivisionLine(g, innerX0, topY0, innerX1, topY0);
-      appendBorderDivisionLine(g, innerX0, topY1, innerX1, topY1);
-      appendBorderDivisionLine(g, innerX0, bottomY0, innerX1, bottomY0);
-      appendBorderDivisionLine(g, innerX0, bottomY1, innerX1, bottomY1);
     }
 
-    // Column separators on top of all overlay fills.
-    appendLeftRightBorderColumnDividers(g);
     appendBorderDivisionJunctionCircles(g);
   }
 
@@ -9421,31 +10095,21 @@
           }
         } else if (cellType === "grey") {
           if (home && outside) {
-            lines.push(
-              '<rect x="' +
-                leftX +
-                '" y="' +
-                yTop +
-                '" width="' +
-                b +
-                '" height="' +
-                h +
-                '" fill="' +
-                BORDER_SIDE_CELL_COLOR_GREY +
-                '"/>'
+            pushBorderSideSolidCellRectExport(
+              lines,
+              leftX,
+              yTop,
+              b,
+              h,
+              BORDER_SIDE_CELL_COLOR_GREY
             );
-            lines.push(
-              '<rect x="' +
-                rightX +
-                '" y="' +
-                yTop +
-                '" width="' +
-                b +
-                '" height="' +
-                h +
-                '" fill="' +
-                BORDER_SIDE_CELL_COLOR_GREY +
-                '"/>'
+            pushBorderSideSolidCellRectExport(
+              lines,
+              rightX,
+              yTop,
+              b,
+              h,
+              BORDER_SIDE_CELL_COLOR_GREY
             );
           }
         } else if (cellType === "beige") {
@@ -9454,32 +10118,8 @@
               typeof BORDER_SIDE_CELL_COLOR_BEIGE !== "undefined"
                 ? BORDER_SIDE_CELL_COLOR_BEIGE
                 : BORDER_SIDE_X_FILL_RIGHT;
-            lines.push(
-              '<rect x="' +
-                leftX +
-                '" y="' +
-                yTop +
-                '" width="' +
-                b +
-                '" height="' +
-                h +
-                '" fill="' +
-                beigeFill +
-                '"/>'
-            );
-            lines.push(
-              '<rect x="' +
-                rightX +
-                '" y="' +
-                yTop +
-                '" width="' +
-                b +
-                '" height="' +
-                h +
-                '" fill="' +
-                beigeFill +
-                '"/>'
-            );
+            pushBorderSideSolidCellRectExport(lines, leftX, yTop, b, h, beigeFill);
+            pushBorderSideSolidCellRectExport(lines, rightX, yTop, b, h, beigeFill);
           }
         } else {
           if (home) {
@@ -9532,28 +10172,6 @@
           );
         }
       }
-
-      pushBorderDivisionLineExport(lines, leftX, divY.top, leftX + b, divY.top);
-      pushBorderDivisionLineExport(
-        lines,
-        leftX,
-        divY.bottom,
-        leftX + b,
-        divY.bottom
-      );
-      pushBorderDivisionLineExport(lines, rightX, divY.top, rightX + b, divY.top);
-      pushBorderDivisionLineExport(
-        lines,
-        rightX,
-        divY.bottom,
-        rightX + b,
-        divY.bottom
-      );
-      for (i = 0; i < sideInteriorY.length; i++) {
-        var yLine = sideInteriorY[i];
-        pushBorderDivisionLineExport(lines, leftX, yLine, leftX + b, yLine);
-        pushBorderDivisionLineExport(lines, rightX, yLine, rightX + b, yLine);
-      }
     }
 
     var innerX0 = b;
@@ -9583,18 +10201,13 @@
             }
           } else if (ct === "grey") {
             if (home && outside) {
-              lines.push(
-                '<rect x="' +
-                  x +
-                  '" y="' +
-                  y0 +
-                  '" width="' +
-                  b +
-                  '" height="' +
-                  hh +
-                  '" fill="' +
-                  BORDER_SIDE_CELL_COLOR_GREY +
-                  '"/>'
+              pushBorderSideSolidCellRectExport(
+                lines,
+                x,
+                y0,
+                b,
+                hh,
+                BORDER_SIDE_CELL_COLOR_GREY
               );
             }
           } else if (ct === "beige") {
@@ -9603,19 +10216,7 @@
                 typeof BORDER_SIDE_CELL_COLOR_BEIGE !== "undefined"
                   ? BORDER_SIDE_CELL_COLOR_BEIGE
                   : BORDER_SIDE_X_FILL_RIGHT;
-              lines.push(
-                '<rect x="' +
-                  x +
-                  '" y="' +
-                  y0 +
-                  '" width="' +
-                  b +
-                  '" height="' +
-                  hh +
-                  '" fill="' +
-                  beigeFill2 +
-                  '"/>'
-              );
+              pushBorderSideSolidCellRectExport(lines, x, y0, b, hh, beigeFill2);
             }
           } else {
             if (home) {
@@ -9632,18 +10233,11 @@
             );
             pushBorderSideCellRhombusExport(lines, x, b, y0, y1, rFill);
           }
-
-          pushBorderDivisionLineExport(lines, x, y0, x, y1);
         }
 
         drawBandCellExport(topY0, topY1, hhTop);
         drawBandCellExport(bottomY0, bottomY1, hhBottom);
       }
-
-      pushBorderDivisionLineExport(lines, innerX0, topY0, innerX1, topY0);
-      pushBorderDivisionLineExport(lines, innerX0, topY1, innerX1, topY1);
-      pushBorderDivisionLineExport(lines, innerX0, bottomY0, innerX1, bottomY0);
-      pushBorderDivisionLineExport(lines, innerX0, bottomY1, innerX1, bottomY1);
     }
 
     pushBorderDivisionJunctionCirclesExport(lines);
@@ -14066,29 +14660,14 @@
         cellType = getBorderSideCellType(j);
         if (isBorderSideCellWhitened(0, j)) {
           var colorFadeFillExport = getBorderSideColorFadeFillColor();
-          lines.push(
-            '<rect x="0" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              colorFadeFillExport +
-              '"/>'
-          );
-          lines.push(
-            '<rect x="' +
-              rightX +
-              '" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              colorFadeFillExport +
-              '"/>'
+          pushBorderSideSolidCellRectExport(lines, 0, yTop, b, h, colorFadeFillExport);
+          pushBorderSideSolidCellRectExport(
+            lines,
+            rightX,
+            yTop,
+            b,
+            h,
+            colorFadeFillExport
           );
           pushBorderSideEmptyCellStippleAtXExport(
             lines,
@@ -14116,29 +14695,21 @@
           pushBorderSideBrownCellXPatternExport(lines, rightX, b, yTop, yBottom);
         } else if (cellType === "grey") {
           if (!home || !outside) continue;
-          lines.push(
-            '<rect x="0" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              BORDER_SIDE_CELL_COLOR_GREY +
-              '"/>'
+          pushBorderSideSolidCellRectExport(
+            lines,
+            0,
+            yTop,
+            b,
+            h,
+            BORDER_SIDE_CELL_COLOR_GREY
           );
-          lines.push(
-            '<rect x="' +
-              rightX +
-              '" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              BORDER_SIDE_CELL_COLOR_GREY +
-              '"/>'
+          pushBorderSideSolidCellRectExport(
+            lines,
+            rightX,
+            yTop,
+            b,
+            h,
+            BORDER_SIDE_CELL_COLOR_GREY
           );
         } else if (cellType === "beige") {
           if (!home || !outside) continue;
@@ -14146,29 +14717,21 @@
             typeof BORDER_SIDE_CELL_COLOR_BEIGE !== "undefined"
               ? BORDER_SIDE_CELL_COLOR_BEIGE
               : BORDER_SIDE_X_FILL_RIGHT;
-          lines.push(
-            '<rect x="0" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              beigeFillExport +
-              '"/>'
+          pushBorderSideSolidCellRectExport(
+            lines,
+            0,
+            yTop,
+            b,
+            h,
+            beigeFillExport
           );
-          lines.push(
-            '<rect x="' +
-              rightX +
-              '" y="' +
-              yTop +
-              '" width="' +
-              b +
-              '" height="' +
-              h +
-              '" fill="' +
-              beigeFillExport +
-              '"/>'
+          pushBorderSideSolidCellRectExport(
+            lines,
+            rightX,
+            yTop,
+            b,
+            h,
+            beigeFillExport
           );
         } else {
           if (!home) continue;
@@ -14197,73 +14760,6 @@
           rhombusFill
         );
       }
-    }
-
-    var divY = getLeftRightBorderDivisionYBounds();
-    lines.push(
-      '<line x1="0" y1="' +
-        divY.top +
-        '" x2="' +
-        b +
-        '" y2="' +
-        divY.top +
-        '"/>'
-    );
-    lines.push(
-      '<line x1="0" y1="' +
-        divY.bottom +
-        '" x2="' +
-        b +
-        '" y2="' +
-        divY.bottom +
-        '"/>'
-    );
-    lines.push(
-      '<line x1="' +
-        (CANVAS_W - b) +
-        '" y1="' +
-        divY.top +
-        '" x2="' +
-        CANVAS_W +
-        '" y2="' +
-        divY.top +
-        '"/>'
-    );
-    lines.push(
-      '<line x1="' +
-        (CANVAS_W - b) +
-        '" y1="' +
-        divY.bottom +
-        '" x2="' +
-        CANVAS_W +
-        '" y2="' +
-        divY.bottom +
-        '"/>'
-    );
-
-    var sideInteriorY = getLeftRightBorderInteriorYPositions();
-    for (i = 0; i < sideInteriorY.length; i++) {
-      y = sideInteriorY[i];
-      lines.push(
-        '<line x1="0" y1="' +
-          y +
-          '" x2="' +
-          b +
-          '" y2="' +
-          y +
-          '"/>'
-      );
-      lines.push(
-        '<line x1="' +
-          (CANVAS_W - b) +
-          '" y1="' +
-          y +
-          '" x2="' +
-          CANVAS_W +
-          '" y2="' +
-          y +
-          '"/>'
-      );
     }
 
     var outlineOnly = !home && !outside;
@@ -14349,6 +14845,140 @@
     return g;
   }
 
+  /**
+   * Circles/diamonds emotion markers render above the grid + color-division tiles
+   * (same mounting tier as Fear — outside #color-divisions-blend-root).
+   */
+  function createEmotionMarkersBranch() {
+    var root = elSvg("g");
+    root.setAttribute("id", "emotion-markers-root");
+    root.setAttribute("transform", getInnerContentTransformAttr());
+    root.setAttribute("style", "mix-blend-mode:normal");
+
+    var clippedCircleEmotions = createInnerContentClipGroup(
+      "inner-clipped-circle-emotions"
+    );
+    var circleEmotionsLayer = elSvg("g");
+    circleEmotionsLayer.setAttribute("id", "layer-circle-emotions");
+    circleEmotionsLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedCircleEmotions.appendChild(circleEmotionsLayer);
+    root.appendChild(clippedCircleEmotions);
+
+    var clippedDiamonds = createInnerContentClipGroup("inner-clipped-diamond-fills");
+    var diamondLayer = elSvg("g");
+    diamondLayer.setAttribute("id", "layer-diamond-fills");
+    diamondLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedDiamonds.appendChild(diamondLayer);
+    root.appendChild(clippedDiamonds);
+
+    var clippedHollowDiamonds = createInnerContentClipGroup(
+      "inner-clipped-hollow-diamond-fills"
+    );
+    var hollowDiamondLayer = elSvg("g");
+    hollowDiamondLayer.setAttribute("id", "layer-hollow-diamond-fills");
+    hollowDiamondLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedHollowDiamonds.appendChild(hollowDiamondLayer);
+    root.appendChild(clippedHollowDiamonds);
+
+    var clippedAngerTriangles = createInnerContentClipGroup(
+      "inner-clipped-anger-diamond-triangles"
+    );
+    var angerTriangleLayer = elSvg("g");
+    angerTriangleLayer.setAttribute("id", "layer-anger-diamond-triangles");
+    angerTriangleLayer.setAttribute("clip-path", "url(#canvas-clip)");
+    clippedAngerTriangles.appendChild(angerTriangleLayer);
+    root.appendChild(clippedAngerTriangles);
+
+    return root;
+  }
+
+  /** Keep emotion markers above color-division blend tiles, below Fear verticals. */
+  function ensureEmotionMarkersMounted() {
+    if (!designSvg) return;
+    var markersRoot = designSvg.querySelector("#emotion-markers-root");
+    if (!markersRoot) {
+      markersRoot = createEmotionMarkersBranch();
+      var blendRoot = designSvg.querySelector("#color-divisions-blend-root");
+      var fearRoot = designSvg.querySelector("#fear-vertical-grid-root");
+      if (blendRoot && blendRoot.parentNode === designSvg) {
+        designSvg.insertBefore(
+          markersRoot,
+          fearRoot && fearRoot.parentNode === designSvg ? fearRoot : blendRoot.nextSibling
+        );
+      } else {
+        designSvg.appendChild(markersRoot);
+      }
+    }
+
+    markersRoot.setAttribute("transform", getInnerContentTransformAttr());
+    markersRoot.setAttribute("style", "mix-blend-mode:normal");
+
+    var blendRoot = designSvg.querySelector("#color-divisions-blend-root");
+    var fearRoot = designSvg.querySelector("#fear-vertical-grid-root");
+    if (
+      blendRoot &&
+      markersRoot.parentNode === designSvg &&
+      markersRoot.previousSibling !== blendRoot
+    ) {
+      designSvg.insertBefore(
+        markersRoot,
+        fearRoot && fearRoot.parentNode === designSvg ? fearRoot : blendRoot.nextSibling
+      );
+    }
+
+    var innerContent = designSvg.querySelector("#inner-content");
+    if (innerContent) {
+      [
+        "inner-clipped-circle-emotions",
+        "inner-clipped-diamond-fills",
+        "inner-clipped-hollow-diamond-fills",
+        "inner-clipped-anger-diamond-triangles",
+      ].forEach(function (clipId) {
+        var clip = innerContent.querySelector("#" + clipId);
+        if (clip && clip.parentNode === innerContent) {
+          markersRoot.appendChild(clip);
+        }
+      });
+    }
+  }
+
+  function renderCirclesLikeEmotionMarkersLayer() {
+    if (!designSvg || !isCirclesLikeGrid()) return;
+    ensureEmotionMarkersMounted();
+
+    renderDiamondFillsLayer();
+    renderHollowDiamondFillsLayer();
+
+    var circleEmotionsLayer = designSvg.querySelector("#layer-circle-emotions");
+    if (circleEmotionsLayer) {
+      while (circleEmotionsLayer.firstChild) {
+        circleEmotionsLayer.removeChild(circleEmotionsLayer.firstChild);
+      }
+      var helplessnessMarks = getActiveHelplessnessMarks();
+      if (helplessnessMarks.length) {
+        circleEmotionsLayer.appendChild(helplessnessToGroup(helplessnessMarks));
+      }
+      var circles = getActiveCircles();
+      if (circles.length) {
+        circleEmotionsLayer.appendChild(circlesToGroup(circles));
+      }
+      var longingCircles = getActiveLongingCircles();
+      if (longingCircles.length) {
+        circleEmotionsLayer.appendChild(longingCirclesToGroup(longingCircles));
+      }
+      var griefCircles = getActiveGriefCircles();
+      if (griefCircles.length) {
+        circleEmotionsLayer.appendChild(griefCirclesToGroup(griefCircles));
+      }
+      var strengthMarks = getActiveStrengthMarks();
+      if (strengthMarks.length) {
+        circleEmotionsLayer.appendChild(strengthMarksToGroup(strengthMarks));
+      }
+    }
+
+    renderAngerDiamondTrianglesLayer();
+  }
+
   /** Keep Fear (F1) outside the color-division isolation group (no exclusion tint). */
   function ensureFearVerticalGridMounted() {
     if (!designSvg) return;
@@ -14387,18 +15017,21 @@
     return root;
   }
 
-  /** Keep Pride above Fear verticals and below the fan overlay. */
+  /** Keep Pride above Fear verticals and below the frame + fan overlays. */
   function ensurePrideAutoMergeMounted() {
     if (!designSvg) return;
     var prideRoot = designSvg.querySelector("#pride-auto-merge-root");
     if (!prideRoot) return;
     var fearRoot = designSvg.querySelector("#fear-vertical-grid-root");
+    var frameRoot = designSvg.querySelector("#grid-frame-chrome-root");
     var fanRoot = designSvg.querySelector("#fan-half-circle-root");
     var chromeAnchor = designSvg.querySelector("#layer-edge-brown-bars");
     var insertBeforeNode =
-      fanRoot && fanRoot.parentNode === designSvg
-        ? fanRoot
-        : chromeAnchor;
+      frameRoot && frameRoot.parentNode === designSvg
+        ? frameRoot
+        : fanRoot && fanRoot.parentNode === designSvg
+          ? fanRoot
+          : chromeAnchor;
 
     if (fearRoot && fearRoot.parentNode === designSvg) {
       if (prideRoot.previousSibling !== fearRoot) {
@@ -14432,18 +15065,25 @@
     return root;
   }
 
-  /** Keep the fan above Pride and below brown-bar chrome. */
+  /** Keep the fan above Pride + frame overlay and below brown-bar chrome. */
   function ensureFanLayerMounted() {
     if (!designSvg) return;
     var fanRoot = designSvg.querySelector("#fan-half-circle-root");
     if (!fanRoot) return;
+    var frameRoot = designSvg.querySelector("#grid-frame-chrome-root");
     var prideRoot = designSvg.querySelector("#pride-auto-merge-root");
     var anchor = designSvg.querySelector("#layer-edge-brown-bars");
-    if (prideRoot && prideRoot.parentNode === designSvg) {
+    var insertAfterNode =
+      frameRoot && frameRoot.parentNode === designSvg
+        ? frameRoot
+        : prideRoot && prideRoot.parentNode === designSvg
+          ? prideRoot
+          : null;
+    if (insertAfterNode) {
       if (fanRoot.parentNode !== designSvg) {
-        designSvg.insertBefore(fanRoot, prideRoot.nextSibling);
-      } else if (fanRoot.previousSibling !== prideRoot) {
-        designSvg.insertBefore(fanRoot, prideRoot.nextSibling);
+        designSvg.insertBefore(fanRoot, insertAfterNode.nextSibling);
+      } else if (fanRoot.previousSibling !== insertAfterNode) {
+        designSvg.insertBefore(fanRoot, insertAfterNode.nextSibling);
       }
       return;
     }
@@ -14498,7 +15138,7 @@
     var svg = elSvg("svg");
     designSvg = svg;
     svg.setAttribute("id", "design-svg");
-    svg.setAttribute("viewBox", "0 0 " + CANVAS_W + " " + CANVAS_H);
+    svg.setAttribute("viewBox", getExpandedViewBoxString());
     svg.setAttribute("xmlns", NS);
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Octagon geometric grid");
@@ -14525,6 +15165,8 @@
     borderFill.setAttribute("height", String(CANVAS_H));
     borderFill.setAttribute("fill", getCanvasBackgroundColor());
     svg.appendChild(borderFill);
+
+    svg.appendChild(createHandkerchiefOuterFrameLayer());
 
     svg.appendChild(createBorderDivisionLinesGroup());
 
@@ -14560,22 +15202,6 @@
 
     applyMergeReveal();
 
-    var clippedDiamonds = createInnerContentClipGroup("inner-clipped-diamond-fills");
-    var diamondLayer = elSvg("g");
-    diamondLayer.setAttribute("id", "layer-diamond-fills");
-    diamondLayer.setAttribute("clip-path", "url(#canvas-clip)");
-    clippedDiamonds.appendChild(diamondLayer);
-    innerContent.appendChild(clippedDiamonds);
-
-    var clippedHollowDiamonds = createInnerContentClipGroup(
-      "inner-clipped-hollow-diamond-fills"
-    );
-    var hollowDiamondLayer = elSvg("g");
-    hollowDiamondLayer.setAttribute("id", "layer-hollow-diamond-fills");
-    hollowDiamondLayer.setAttribute("clip-path", "url(#canvas-clip)");
-    clippedHollowDiamonds.appendChild(hollowDiamondLayer);
-    innerContent.appendChild(clippedHollowDiamonds);
-
     var clippedPattern = createInnerContentClipGroup("inner-clipped-pattern");
     var pattern = elSvg("g");
     pattern.setAttribute("id", "layer-pattern");
@@ -14583,28 +15209,18 @@
     clippedPattern.appendChild(pattern);
     innerContent.appendChild(clippedPattern);
 
-    var clippedAngerTriangles = createInnerContentClipGroup(
-      "inner-clipped-anger-diamond-triangles"
-    );
-    var angerTriangleLayer = elSvg("g");
-    angerTriangleLayer.setAttribute("id", "layer-anger-diamond-triangles");
-    angerTriangleLayer.setAttribute("clip-path", "url(#canvas-clip)");
-    clippedAngerTriangles.appendChild(angerTriangleLayer);
-    innerContent.appendChild(clippedAngerTriangles);
-
-    innerContent.appendChild(createFrameInsetOverlayLayer());
-
     var colorDivisionsBlendRoot = elSvg("g");
     colorDivisionsBlendRoot.setAttribute("id", "color-divisions-blend-root");
     colorDivisionsBlendRoot.setAttribute("style", "isolation:isolate");
     colorDivisionsBlendRoot.appendChild(innerContent);
     colorDivisionsBlendRoot.appendChild(createColorDivisionsLayer());
-    colorDivisionsBlendRoot.appendChild(createGridBoundaryLayer());
-    // Medium/Thick margin columns paint over grid + boundary at shared edges.
+    // Medium/Thick margin columns paint over grid at shared edges.
     colorDivisionsBlendRoot.appendChild(createBorderDivisionOverlayGroup());
     svg.appendChild(colorDivisionsBlendRoot);
+    svg.appendChild(createEmotionMarkersBranch());
     svg.appendChild(createFearVerticalGridBranch());
     svg.appendChild(createPrideAutoMergeBranch());
+    svg.appendChild(createGridFrameChromeBranch());
     svg.appendChild(createFanHalfCircleBranch());
 
     var edgeBrownBars = elSvg("g");
@@ -19017,6 +19633,15 @@
     var patternLayer = designSvg.querySelector("#layer-pattern");
     if (!patternLayer) return;
 
+    if (!isCirclesLikeGrid()) {
+      var circleEmotionsLayer = designSvg.querySelector("#layer-circle-emotions");
+      if (circleEmotionsLayer) {
+        while (circleEmotionsLayer.firstChild) {
+          circleEmotionsLayer.removeChild(circleEmotionsLayer.firstChild);
+        }
+      }
+    }
+
     if (isStarGrid()) {
       renderDiamondFillsLayer();
       renderHollowDiamondFillsLayer();
@@ -19055,17 +19680,14 @@
       return;
     }
 
-    renderDiamondFillsLayer();
-    renderHollowDiamondFillsLayer();
+    if (!isCirclesLikeGrid()) {
+      renderDiamondFillsLayer();
+      renderHollowDiamondFillsLayer();
+    }
     while (patternLayer.firstChild) patternLayer.removeChild(patternLayer.firstChild);
     patternLayer.appendChild(segmentsToGroup(getVisiblePatternSegments()));
     if (isCirclesGrid()) {
-      var intactStructuralCircles = getIntactStructuralCirclesForPattern();
-      if (intactStructuralCircles.length) {
-        patternLayer.appendChild(
-          structuralCirclesToGroup(intactStructuralCircles)
-        );
-      }
+      syncCirclesGridStructuralOutlineLayers(patternLayer);
       appendCirclesGridFrameJunctionDots(patternLayer);
     } else if (isDiamondsGrid()) {
       var intactStructuralDiamonds = getIntactStructuralCirclesForPattern();
@@ -19076,27 +19698,32 @@
       }
       appendCirclesGridFrameJunctionDots(patternLayer);
     }
-    var helplessnessMarks = getActiveHelplessnessMarks();
-    if (helplessnessMarks.length) {
-      patternLayer.appendChild(helplessnessToGroup(helplessnessMarks));
+    if (!isCirclesLikeGrid()) {
+      var helplessnessMarks = getActiveHelplessnessMarks();
+      if (helplessnessMarks.length) {
+        patternLayer.appendChild(helplessnessToGroup(helplessnessMarks));
+      }
+      var circles = getActiveCircles();
+      if (circles.length) {
+        patternLayer.appendChild(circlesToGroup(circles));
+      }
+      var longingCircles = getActiveLongingCircles();
+      if (longingCircles.length) {
+        patternLayer.appendChild(longingCirclesToGroup(longingCircles));
+      }
+      var griefCircles = getActiveGriefCircles();
+      if (griefCircles.length) {
+        patternLayer.appendChild(griefCirclesToGroup(griefCircles));
+      }
+      var strengthMarks = getActiveStrengthMarks();
+      if (strengthMarks.length) {
+        patternLayer.appendChild(strengthMarksToGroup(strengthMarks));
+      }
+      renderAngerDiamondTrianglesLayer();
     }
-    var circles = getActiveCircles();
-    if (circles.length) {
-      patternLayer.appendChild(circlesToGroup(circles));
+    if (isCirclesLikeGrid()) {
+      renderCirclesLikeEmotionMarkersLayer();
     }
-    var longingCircles = getActiveLongingCircles();
-    if (longingCircles.length) {
-      patternLayer.appendChild(longingCirclesToGroup(longingCircles));
-    }
-    var griefCircles = getActiveGriefCircles();
-    if (griefCircles.length) {
-      patternLayer.appendChild(griefCirclesToGroup(griefCircles));
-    }
-    var strengthMarks = getActiveStrengthMarks();
-    if (strengthMarks.length) {
-      patternLayer.appendChild(strengthMarksToGroup(strengthMarks));
-    }
-    renderAngerDiamondTrianglesLayer();
   }
 
   /**
@@ -19366,6 +19993,7 @@
 
   function applySheetPaletteToDom() {
     if (!designSvg) return;
+    updateHandkerchiefOuterFrame();
     updateCanvasBackgroundColor();
     invalidateLabelBarSvgTintCache();
     ensureLabelBarIconTintFilter(designSvg.querySelector("defs"));
@@ -19465,6 +20093,7 @@
     syncBorderSideWhiteFillOutput();
 
     applySheetPaletteToDom();
+    ensureHandkerchiefOuterFrameLayerOrder();
     renderBackgroundLayer();
     renderGridMaskLayer("render");
     applyMergeReveal();
@@ -19811,9 +20440,12 @@
     var rect = wrap.getBoundingClientRect();
     var availW = Math.max(60, rect.width - VIEW_MARGIN * 2);
     var availH = Math.max(60, rect.height - VIEW_MARGIN * 2);
-    var scale = Math.min(availW / CANVAS_W, availH / CANVAS_H);
-    svg.style.width = CANVAS_W * scale + "px";
-    svg.style.height = CANVAS_H * scale + "px";
+    var f = getHandkerchiefOuterFramePx();
+    var totalW = CANVAS_W + 2 * f;
+    var totalH = CANVAS_H + 2 * f;
+    var scale = Math.min(availW / totalW, availH / totalH);
+    svg.style.width = totalW * scale + "px";
+    svg.style.height = totalH * scale + "px";
   }
 
   function getMagnifierZoom() {
@@ -19974,10 +20606,12 @@
     lines.push(
       '<svg xmlns="' +
         NS +
-        '" width="68cm" height="180cm" viewBox="0 0 ' +
-        CANVAS_W +
-        " " +
-        CANVAS_H +
+        '" width="' +
+        getExportCanvasWidthCm() +
+        'cm" height="' +
+        getExportCanvasHeightCm() +
+        'cm" viewBox="' +
+        getExpandedViewBoxString() +
         '">'
     );
     lines.push("<defs>");
@@ -19998,6 +20632,7 @@
       pushAutoMergeShadowFilterDefLines(lines);
     }
     lines.push("</defs>");
+    pushHandkerchiefOuterFrameExportLines(lines);
     lines.push(
       '<rect x="0" y="0" width="' +
         CANVAS_W +
@@ -20024,48 +20659,6 @@
       }
     } else {
       pushStippleDotsExportLines(lines);
-    }
-
-    if (diamonds.length) {
-      var fillColor = getDiamondFillColor();
-      lines.push('<g clip-path="url(#inner-content-clip)">');
-      lines.push('<g id="layer-diamond-fills">');
-      for (var d = 0; d < diamonds.length; d++) {
-        var dm = diamonds[d];
-        var pts = dm.points;
-        var pointsAttr = "";
-        for (var p = 0; p < pts.length; p++) {
-          if (p) pointsAttr += " ";
-          pointsAttr += pts[p].x + "," + pts[p].y;
-        }
-        lines.push(
-          '<polygon points="' +
-            pointsAttr +
-            '" fill="' +
-            fillColor +
-            '" stroke="none"/>'
-        );
-      }
-      lines.push("</g>");
-      lines.push("</g>");
-    }
-
-    if (hollowDiamonds.length) {
-      var hollowFillColor = getGuiltShameDiamondFillColor();
-      lines.push('<g clip-path="url(#inner-content-clip)">');
-      lines.push('<g id="layer-hollow-diamond-fills">');
-      for (var hd = 0; hd < hollowDiamonds.length; hd++) {
-        var hdm = hollowDiamonds[hd];
-        lines.push(
-          '<path d="' +
-            hollowDiamondPathD(hdm.points) +
-            '" fill="' +
-            hollowFillColor +
-            '" fill-rule="evenodd" stroke="none"/>'
-        );
-      }
-      lines.push("</g>");
-      lines.push("</g>");
     }
 
     var gridStroke = getGridStrokeWidth();
@@ -20100,9 +20693,10 @@
     pushStructuralCirclesExportLines(lines);
     pushCirclesGridFrameJunctionDotsExport(lines);
 
-    pushHelplessnessExportLines(lines);
+    if (!isCirclesLikeGrid()) {
+      pushHelplessnessExportLines(lines);
 
-    if (circles.length) {
+      if (circles.length) {
       lines.push(
         '<g id="layer-circles" fill="' +
           getCircleFillColor() +
@@ -20245,20 +20839,251 @@
       lines.push("</g>");
     }
 
-    pushAngerTriangleExportLines(lines);
+    if (diamonds.length) {
+      var fillColor = getDiamondFillColor();
+      lines.push('<g id="layer-diamond-fills">');
+      for (var d = 0; d < diamonds.length; d++) {
+        var dm = diamonds[d];
+        var pts = dm.points;
+        var pointsAttr = "";
+        for (var p = 0; p < pts.length; p++) {
+          if (p) pointsAttr += " ";
+          pointsAttr += pts[p].x + "," + pts[p].y;
+        }
+        lines.push(
+          '<polygon points="' +
+            pointsAttr +
+            '" fill="' +
+            fillColor +
+            '" stroke="none"/>'
+        );
+      }
+      lines.push("</g>");
+    }
 
-    if (isFrameInsetOverlayVisibleOnCanvas()) {
-      pushFrameInsetOverlayExportLines(lines, { nestedInInnerContent: true });
+    if (hollowDiamonds.length) {
+      var hollowFillColor = getGuiltShameDiamondFillColor();
+      lines.push('<g id="layer-hollow-diamond-fills">');
+      for (var hdi = 0; hdi < hollowDiamonds.length; hdi++) {
+        var hdm = hollowDiamonds[hdi];
+        lines.push(
+          '<path d="' +
+            hollowDiamondPathD(hdm.points) +
+            '" fill="' +
+            hollowFillColor +
+            '" fill-rule="evenodd" stroke="none"/>'
+        );
+      }
+      lines.push("</g>");
+    }
+
+    pushAngerTriangleExportLines(lines);
     }
 
     lines.push("</g>");
     lines.push("</g>");
     pushColorDivisionsExportLines(lines);
-    lines.push('<g id="layer-grid-boundary">');
-    pushGridBoundaryExportBars(lines, gridBoundaryLayout);
-    lines.push("</g>");
     pushBorderDivisionOverlayExportLines(lines);
     lines.push("</g>");
+
+    if (isCirclesLikeGrid()) {
+      lines.push(
+        '<g id="emotion-markers-root" transform="' +
+          getInnerContentTransformAttr() +
+          '" style="mix-blend-mode:normal">'
+      );
+      lines.push('<g clip-path="url(#inner-content-clip)">');
+      pushHelplessnessExportLines(lines);
+
+      if (circles.length) {
+        lines.push(
+          '<g id="layer-circles" fill="' +
+            getCircleFillColor() +
+            '" stroke="' +
+            getCircleStrokeColor() +
+            '" stroke-width="' +
+            circleStroke +
+            '">'
+        );
+        var circlesStrokeInset = circleStroke / 2;
+        for (var cc = 0; cc < circles.length; cc++) {
+          var circCl = circles[cc];
+          var drawRCl = Math.max(0, circCl.r - circlesStrokeInset);
+          lines.push(
+            '<circle cx="' +
+              circCl.cx +
+              '" cy="' +
+              circCl.cy +
+              '" r="' +
+              drawRCl +
+              '"/>'
+          );
+        }
+        lines.push("</g>");
+      }
+
+      var longingCirclesCl = getActiveLongingCircles();
+      if (longingCirclesCl.length) {
+        var longingCircleStrokeCl = getLongingCircleStrokeWidth();
+        lines.push(
+          '<g id="layer-longing-circles" fill="none" stroke="' +
+            getLongingCircleStrokeColor() +
+            '" stroke-width="' +
+            longingCircleStrokeCl +
+            '">'
+        );
+        var longingStrokeInsetCl = longingCircleStrokeCl / 2;
+        for (var lcc = 0; lcc < longingCirclesCl.length; lcc++) {
+          var longingCircCl = longingCirclesCl[lcc];
+          var longingDrawRCl = Math.max(0, longingCircCl.r - longingStrokeInsetCl);
+          lines.push(
+            '<circle cx="' +
+              longingCircCl.cx +
+              '" cy="' +
+              longingCircCl.cy +
+              '" r="' +
+              longingDrawRCl +
+              '"/>'
+          );
+        }
+        lines.push("</g>");
+      }
+
+      var griefCirclesCl = getActiveGriefCircles();
+      if (griefCirclesCl.length) {
+        var griefCircleStrokeCl = getGriefCircleStrokeWidth();
+        lines.push(
+          '<g id="layer-grief-circles" fill="none" stroke="' +
+            getGriefCircleStrokeColor() +
+            '" stroke-width="' +
+            griefCircleStrokeCl +
+            '">'
+        );
+        var griefStrokeInsetCl = griefCircleStrokeCl / 2;
+        var griefInnerRadiusOffsetCl = GRIEF_INNER_CIRCLE_DIAMETER_GAP_PX / 2;
+        for (var gcc = 0; gcc < griefCirclesCl.length; gcc++) {
+          var griefCircCl = griefCirclesCl[gcc];
+          var griefOuterDrawRCl = Math.max(0, griefCircCl.r - griefStrokeInsetCl);
+          lines.push(
+            '<circle cx="' +
+              griefCircCl.cx +
+              '" cy="' +
+              griefCircCl.cy +
+              '" r="' +
+              griefOuterDrawRCl +
+              '"/>'
+          );
+          var griefInnerDrawRCl = Math.max(
+            0,
+            griefOuterDrawRCl - griefInnerRadiusOffsetCl
+          );
+          if (griefInnerDrawRCl > 0) {
+            lines.push(
+              '<circle cx="' +
+                griefCircCl.cx +
+                '" cy="' +
+                griefCircCl.cy +
+                '" r="' +
+                griefInnerDrawRCl +
+                '"/>'
+            );
+          }
+        }
+        lines.push("</g>");
+      }
+
+      var strengthMarksCl = getActiveStrengthMarks();
+      if (strengthMarksCl.length) {
+        var strengthStrokeCl = getCircleStrokeWidth();
+        var strengthSquareFillCl = getStrengthSquareFillColor();
+        var strengthCircleFillCl = getStrengthCircleFillColor();
+        var strengthStrokeColorCl = getStrengthStrokeColor();
+        lines.push('<g id="layer-strength">');
+        var strengthStrokeInsetCl = strengthStrokeCl / 2;
+        for (var smc = 0; smc < strengthMarksCl.length; smc++) {
+          var strengthMarkCl = strengthMarksCl[smc];
+          var strengthHalfCl = strengthMarkCl.halfSide;
+          var strengthSideCl = strengthHalfCl * 2;
+          lines.push(
+            '<rect x="' +
+              (strengthMarkCl.cx - strengthHalfCl) +
+              '" y="' +
+              (strengthMarkCl.cy - strengthHalfCl) +
+              '" width="' +
+              strengthSideCl +
+              '" height="' +
+              strengthSideCl +
+              '" fill="' +
+              strengthSquareFillCl +
+              '" stroke="' +
+              strengthStrokeColorCl +
+              '" stroke-width="' +
+              strengthStrokeCl +
+              '" paint-order="stroke fill"/>'
+          );
+          var strengthDrawRCl = Math.max(0, strengthMarkCl.r - strengthStrokeInsetCl);
+          lines.push(
+            '<circle cx="' +
+              strengthMarkCl.cx +
+              '" cy="' +
+              strengthMarkCl.cy +
+              '" r="' +
+              strengthDrawRCl +
+              '" fill="' +
+              strengthCircleFillCl +
+              '" stroke="' +
+              strengthStrokeColorCl +
+              '" stroke-width="' +
+              strengthStrokeCl +
+              '"/>'
+          );
+        }
+        lines.push("</g>");
+      }
+
+      if (diamonds.length) {
+        var fillColorCl = getDiamondFillColor();
+        lines.push('<g id="layer-diamond-fills">');
+        for (var dc = 0; dc < diamonds.length; dc++) {
+          var dmCl = diamonds[dc];
+          var ptsCl = dmCl.points;
+          var pointsAttrCl = "";
+          for (var pc = 0; pc < ptsCl.length; pc++) {
+            if (pc) pointsAttrCl += " ";
+            pointsAttrCl += ptsCl[pc].x + "," + ptsCl[pc].y;
+          }
+          lines.push(
+            '<polygon points="' +
+              pointsAttrCl +
+              '" fill="' +
+              fillColorCl +
+              '" stroke="none"/>'
+          );
+        }
+        lines.push("</g>");
+      }
+
+      if (hollowDiamonds.length) {
+        var hollowFillColorCl = getGuiltShameDiamondFillColor();
+        lines.push('<g id="layer-hollow-diamond-fills">');
+        for (var hdic = 0; hdic < hollowDiamonds.length; hdic++) {
+          var hdmCl = hollowDiamonds[hdic];
+          lines.push(
+            '<path d="' +
+              hollowDiamondPathD(hdmCl.points) +
+              '" fill="' +
+              hollowFillColorCl +
+              '" fill-rule="evenodd" stroke="none"/>'
+          );
+        }
+        lines.push("</g>");
+      }
+
+      pushAngerTriangleExportLines(lines);
+      lines.push("</g>");
+      lines.push("</g>");
+    }
+
     lines.push('<g transform="' + getInnerContentTransformAttr() + '" style="mix-blend-mode:normal">');
     pushVerticalGridExportLines(lines);
     lines.push("</g>");
@@ -20268,6 +21093,12 @@
     pushAutoMergeFillOnlyExportLines(lines);
     lines.push("</g>");
     lines.push("</g>");
+    lines.push('<g id="layer-grid-boundary">');
+    pushGridBoundaryExportBars(lines, gridBoundaryLayout);
+    lines.push("</g>");
+    if (isFrameInsetOverlayVisibleOnCanvas()) {
+      pushFrameInsetOverlayExportLines(lines);
+    }
     lines.push('<g transform="' + getInnerContentTransformAttr() + '" style="mix-blend-mode:normal">');
     lines.push('<g clip-path="url(#inner-content-clip)">');
     pushHalfCircleExportLines(lines);
@@ -20330,7 +21161,7 @@
           var blob = new Blob([markup], {
             type: "image/svg+xml;charset=utf-8",
           });
-          downloadBlob(blob, "octagon-export-68x180cm.svg");
+          downloadBlob(blob, "octagon-export-70x182cm.svg");
         } catch (e) {
           console.error(e);
           alert("SVG export failed.");
@@ -20354,7 +21185,7 @@
           var blob = new Blob([markup], {
             type: "image/svg+xml;charset=utf-8",
           });
-          downloadBlob(blob, "octagon-export-68x180cm.svg");
+          downloadBlob(blob, "octagon-export-70x182cm.svg");
         } catch (e) {
           console.error(e);
           alert("SVG export failed.");
@@ -21184,7 +22015,7 @@
         syncJunctionEmotionSliderRangesForGridType();
         syncAngerPainGuiltSliderRangesForGridType();
         resetFeelingsLayoutSignatures();
-        applyFeelingsControlState();
+        applyFeelingsControlState({ skipRender: true });
         refreshLocationCoordinates();
         refreshLabelBarContent();
         render();
@@ -21192,7 +22023,9 @@
       applyPrideLayers: function () {
         syncAllFeelingsSliderOutputs();
         if (getAutoMergeIntensity() > 0) {
-          scheduleRunAutoMerge();
+          if (!hasActivePrideAutoMergeRegions()) {
+            scheduleRunAutoMerge();
+          }
         } else {
           clearAutoMergeState();
           renderAutoMergeFillsLayer();

@@ -97,7 +97,10 @@ function serveStatic(req, res) {
     const ext = path.extname(filePath).toLowerCase();
     send(res, 200, data, {
       "Content-Type": MIME[ext] || "application/octet-stream",
-      "Cache-Control": ext === ".html" || ext === ".js" ? "no-cache" : "public, max-age=60",
+      "Cache-Control":
+        ext === ".html" || ext === ".js" || ext === ".csv"
+          ? "no-cache, no-store, must-revalidate"
+          : "public, max-age=60",
     });
   });
 }
