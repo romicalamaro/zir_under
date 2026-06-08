@@ -2,7 +2,31 @@
   "use strict";
 
   var NOWHERE_PLACEHOLDER = "XX.XXXX° N, XX.XXXX° E";
-  var IRAN_GEOCODE_QUERY = "Tehran";
+  var DEFAULT_IRAN_FROM = "Tehran";
+
+  /**
+   * Verified via Open-Meteo Geocoding API (2026-06-07).
+   * Keys are normalized uppercase (see normalizeLocationKey).
+   */
+  var KNOWN_LOCATIONS = {
+    TEHRAN: { lat: 35.69439, lon: 51.42151 },
+    SHIRAZ: { lat: 29.61031, lon: 52.53113 },
+    ISFAHAN: { lat: 32.65246, lon: 51.67462 },
+    MAINZ: { lat: 49.98185, lon: 8.28008 },
+    GERMANY: { lat: 51.5, lon: 10.5 },
+    DEUTSCHLAND: { lat: 51.5, lon: 10.5 },
+    JERUSALEM: { lat: 31.76904, lon: 35.21633 },
+    "BE'ER SHEVA": { lat: 31.25181, lon: 34.7913 },
+    BEERSHEBA: { lat: 31.25181, lon: 34.7913 },
+  };
+
+  /** Map alternate spellings from the combinations table to KNOWN_LOCATIONS keys. */
+  var LOCATION_ALIASES = {
+    "BEER SHEVA": "BE'ER SHEVA",
+    BEERSHEBA: "BE'ER SHEVA",
+    "BE'ER SHEVA": "BE'ER SHEVA",
+    TEHERAN: "TEHRAN",
+  };
 
   var ISRAEL_TERMS = [
     "ISRAEL",
@@ -10,6 +34,7 @@
     "JERUSALEM",
     "HAIFA",
     "BEER SHEVA",
+    "BE'ER SHEVA",
     "BEERSHEBA",
     "EILAT",
     "NETANYA",
@@ -76,6 +101,8 @@
     "COLOGNE",
   ];
 
+  var IRAN_TERMS = ["TEHRAN", "TEHERAN", "SHIRAZ", "ISFAHAN", "IRAN"];
+
   var cachedContextKey = "";
   var cachedFormatted = "";
   var lookupToken = 0;
@@ -98,39 +125,36 @@
 
   /**
    * @param {string} text
-   * @returns {number}
+   * @returns {string}
    */
-  function hashString(text) {
-    var h = 0;
-    var i;
-    for (i = 0; i < text.length; i++) {
-      h = ((h << 5) - h + text.charCodeAt(i)) | 0;
-    }
-    return Math.abs(h);
+  function normalizeLocationKey(text) {
+    var key = String(text || "").trim().toUpperCase();
+    if (!key) return "";
+    key = key.replace(/\u2019/g, "'");
+    return LOCATION_ALIASES[key] || key;
   }
 
   /**
    * @param {string} locationText
-   * @returns {{ lat: number, lon: number }}
+   * @returns {{ lat: number, lon: number } | null}
    */
-  function fakeCoordinates(locationText) {
-    var key = String(locationText || "UNKNOWN").trim().toUpperCase() || "UNKNOWN";
-    var h = hashString(key);
-    var lat = 10 + (h % 5000) / 100;
-    var lon = 1 + ((h >> 8) % 17900) / 100;
-    if (h & 1) lat = -lat;
-    if (h & 2) lon = -lon;
-    return { lat: lat, lon: lon };
+  function lookupKnownCoordinates(locationText) {
+    var key = normalizeLocationKey(locationText);
+    if (!key) return null;
+    return KNOWN_LOCATIONS[key] || null;
   }
 
   /**
    * @param {string} location
-   * @returns {"IL" | "DE" | "OTHER"}
+   * @returns {"IL" | "DE" | "IR" | "OTHER"}
    */
   function detectRegion(location) {
-    var upper = String(location || "").trim().toUpperCase();
+    var upper = normalizeLocationKey(location);
     var i;
     if (!upper) return "OTHER";
+    for (i = 0; i < IRAN_TERMS.length; i++) {
+      if (upper.indexOf(IRAN_TERMS[i]) >= 0) return "IR";
+    }
     for (i = 0; i < ISRAEL_TERMS.length; i++) {
       if (upper.indexOf(ISRAEL_TERMS[i]) >= 0) return "IL";
     }
@@ -146,9 +170,15 @@
    * @returns {Promise<{ lat: number, lon: number } | null>}
    */
   function geocodeReal(location, countryCode) {
+    var geocodeQuery = location;
+    var key = normalizeLocationKey(location);
+    if (key === "BE'ER SHEVA") {
+      geocodeQuery = "Beersheba";
+    }
+
     var url =
       "https://geocoding-api.open-meteo.com/v1/search?name=" +
-      encodeURIComponent(location) +
+      encodeURIComponent(geocodeQuery) +
       "&count=1&language=en&format=json&countryCode=" +
       countryCode;
     return fetch(url)
@@ -170,42 +200,45 @@
 
   /**
    * @param {string} locationText
+   * @param {string} [countryHint]
    * @returns {Promise<{ lat: number, lon: number } | null>}
    */
-  function resolveNowInCoordinates(locationText) {
+  function resolveLocationCoordinates(locationText, countryHint) {
     var loc = String(locationText || "").trim();
+    var known;
     var region;
     if (!loc) return Promise.resolve(null);
-    region = detectRegion(loc);
-    if (region === "IL") {
-      return geocodeReal(loc, "IL").then(function (coords) {
-        return coords || fakeCoordinates(loc);
-      });
+
+    known = lookupKnownCoordinates(loc);
+    if (known) return Promise.resolve(known);
+
+    region = countryHint || detectRegion(loc);
+    if (region === "IL" || region === "DE" || region === "IR") {
+      return geocodeReal(loc, region);
     }
-    if (region === "DE") {
-      return geocodeReal(loc, "DE").then(function (coords) {
-        return coords || fakeCoordinates(loc);
-      });
-    }
-    return Promise.resolve(fakeCoordinates(loc));
+    return Promise.resolve(null);
   }
 
   /**
-   * @param {{ homeAt?: string, nowIn?: string }} context
+   * @param {{ homeAt?: string, from?: string, nowIn?: string }} context
    * @returns {string}
    */
   function getContextKey(context) {
     var homeAt = context && context.homeAt ? context.homeAt : "inIran";
+    var from = context && context.from ? String(context.from).trim() : "";
     var nowIn = context && context.nowIn ? String(context.nowIn).trim() : "";
-    return homeAt + "|" + nowIn;
+    if (homeAt === "inIran") return homeAt + "|" + from;
+    if (homeAt === "whereILive") return homeAt + "|" + nowIn;
+    return homeAt;
   }
 
   /**
-   * @param {{ homeAt?: string, nowIn?: string }} context
+   * @param {{ homeAt?: string, from?: string, nowIn?: string }} context
    * @returns {Promise<string>}
    */
   function resolveFormattedCoordinates(context) {
     var homeAt = context && context.homeAt ? context.homeAt : "inIran";
+    var from = context && context.from ? String(context.from).trim() : "";
     var nowIn = context && context.nowIn ? String(context.nowIn).trim() : "";
 
     if (homeAt === "nowhere") {
@@ -213,16 +246,20 @@
     }
 
     if (homeAt === "inIran") {
-      return geocodeReal(IRAN_GEOCODE_QUERY, "IR").then(function (coords) {
-        if (!coords) {
-          return formatCoordinates(35.6944, 51.4215);
+      return resolveLocationCoordinates(from || DEFAULT_IRAN_FROM, "IR").then(
+        function (coords) {
+          if (!coords) {
+            var fallback = lookupKnownCoordinates(DEFAULT_IRAN_FROM);
+            if (!fallback) return "";
+            return formatCoordinates(fallback.lat, fallback.lon);
+          }
+          return formatCoordinates(coords.lat, coords.lon);
         }
-        return formatCoordinates(coords.lat, coords.lon);
-      });
+      );
     }
 
     if (homeAt === "whereILive") {
-      return resolveNowInCoordinates(nowIn).then(function (coords) {
+      return resolveLocationCoordinates(nowIn).then(function (coords) {
         if (!coords) return "";
         return formatCoordinates(coords.lat, coords.lon);
       });
@@ -238,7 +275,7 @@
   }
 
   /**
-   * @param {{ homeAt?: string, nowIn?: string }} context
+   * @param {{ homeAt?: string, from?: string, nowIn?: string }} context
    * @returns {Promise<void>}
    */
   function updateFromContext(context) {
@@ -256,13 +293,15 @@
   }
 
   /**
-   * @param {{ homeAt?: string, nowIn?: string }} context
+   * @param {{ homeAt?: string, from?: string, nowIn?: string }} context
    */
   function scheduleUpdateFromContext(context) {
     var homeAt = context && context.homeAt ? context.homeAt : "inIran";
+    var from = context && context.from ? String(context.from).trim() : "";
     var nowIn = context && context.nowIn ? String(context.nowIn).trim() : "";
     var contextKey = getContextKey(context);
-    var region;
+    var known;
+    var locationText;
 
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -275,6 +314,11 @@
     }
 
     if (homeAt === "inIran") {
+      known = lookupKnownCoordinates(from || DEFAULT_IRAN_FROM);
+      if (known) {
+        applyFormatted(formatCoordinates(known.lat, known.lon), contextKey);
+        return;
+      }
       updateFromContext(context);
       return;
     }
@@ -284,12 +328,12 @@
         updateFromContext(context);
         return;
       }
-      region = detectRegion(nowIn);
-      if (region === "OTHER") {
-        var fake = fakeCoordinates(nowIn);
-        applyFormatted(formatCoordinates(fake.lat, fake.lon), contextKey);
+      known = lookupKnownCoordinates(nowIn);
+      if (known) {
+        applyFormatted(formatCoordinates(known.lat, known.lon), contextKey);
         return;
       }
+      locationText = nowIn;
       debounceTimer = setTimeout(function () {
         debounceTimer = null;
         updateFromContext(context);
@@ -311,6 +355,7 @@
     },
     formatCoordinates: formatCoordinates,
     detectRegion: detectRegion,
+    lookupKnownCoordinates: lookupKnownCoordinates,
     NOWHERE_PLACEHOLDER: NOWHERE_PLACEHOLDER,
   };
 })();

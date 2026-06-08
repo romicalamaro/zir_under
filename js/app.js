@@ -930,6 +930,23 @@
     }
   }
 
+  var autoMergeRunScheduled = false;
+
+  /** Coalesced idle run — keeps slider drags responsive on dense grids. */
+  function scheduleRunAutoMerge() {
+    if (autoMergeRunScheduled) return;
+    autoMergeRunScheduled = true;
+    var run = function () {
+      autoMergeRunScheduled = false;
+      runAutoMerge();
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(run, { timeout: 100 });
+    } else {
+      setTimeout(run, 0);
+    }
+  }
+
   function getStarGridOctagonsNMax() {
     return typeof STAR_GRID_OCTAGONS_N_MAX !== "undefined"
       ? STAR_GRID_OCTAGONS_N_MAX
@@ -1848,6 +1865,20 @@
         edgesPerAreaMin,
         Math.round(edgesPerAreaMax * densityAreaScale)
       );
+    }
+
+    if (isOctagonGrid()) {
+      var octPrideScale =
+        typeof OCTAGON_GRID_PRIDE_EDGE_SCALE !== "undefined"
+          ? OCTAGON_GRID_PRIDE_EDGE_SCALE
+          : 1;
+      if (octPrideScale !== 1) {
+        edgesPerAreaMin = Math.max(2, Math.round(edgesPerAreaMin * octPrideScale));
+        edgesPerAreaMax = Math.max(
+          edgesPerAreaMin,
+          Math.round(edgesPerAreaMax * octPrideScale)
+        );
+      }
     }
 
     return {
@@ -5859,8 +5890,13 @@
     }
 
     if (!limitLowInnerScale) {
-      while (applyAutoMergeDanglingPrune(prideSegments)) {
-        /* prune waves until stable */
+      var pruneWave = 0;
+      var maxPruneWaves = 20;
+      while (
+        pruneWave < maxPruneWaves &&
+        applyAutoMergeDanglingPrune(prideSegments)
+      ) {
+        pruneWave++;
       }
     }
 
@@ -10865,7 +10901,7 @@
     text.setAttribute("font-size", String(fontSize));
     text.setAttribute("letter-spacing", String(getBrownBarBannerLetterSpacing()));
     text.setAttribute("text-anchor", "start");
-    /** Middle baseline; y is set so glyph bbox center matches the row midline. */
+    /** Middle baseline; y is band midline + LABEL_BAR_TEXT_Y_OFFSET_PX. */
     text.setAttribute("dominant-baseline", "middle");
     text.setAttribute("alignment-baseline", "middle");
   }
@@ -11033,7 +11069,7 @@
   function getLabelBarKnockoutBadgeTextYOffsetPx() {
     return typeof LABEL_BAR_KNOCKOUT_BADGE_TEXT_Y_OFFSET_PX !== "undefined"
       ? LABEL_BAR_KNOCKOUT_BADGE_TEXT_Y_OFFSET_PX
-      : 1;
+      : 0;
   }
 
   function getLabelBarTextPlacementY(placement, contentArea, flipVertical) {
@@ -11054,7 +11090,10 @@
         if (flipVertical) {
           badgeOffset = -badgeOffset;
         }
-        return spec.textY + offset + badgeOffset;
+        return spec.textY + badgeOffset + offset;
+      }
+      if (spec.type === "text") {
+        return getLabelBarTextY(contentArea, flipVertical);
       }
       return spec.textY + offset;
     }
@@ -11670,16 +11709,20 @@
 
   function getLocationCoordinatesContext() {
     var homeAt = "inIran";
+    var from = "";
     var nowIn = "";
     if (typeof window.IdentityControls !== "undefined") {
       if (window.IdentityControls.getHomeAt) {
         homeAt = window.IdentityControls.getHomeAt();
       }
+      if (window.IdentityControls.getFrom) {
+        from = window.IdentityControls.getFrom();
+      }
       if (window.IdentityControls.getNowIn) {
         nowIn = window.IdentityControls.getNowIn();
       }
     }
-    return { homeAt: homeAt, nowIn: nowIn };
+    return { homeAt: homeAt, from: from, nowIn: nowIn };
   }
 
   function refreshLocationCoordinates() {
@@ -11771,6 +11814,12 @@
       : 0.58;
   }
 
+  function getLabelBarAgeOverlayXOffsetPx() {
+    return typeof LABEL_BAR_AGE_OVERLAY_X_OFFSET_PX !== "undefined"
+      ? LABEL_BAR_AGE_OVERLAY_X_OFFSET_PX
+      : 0;
+  }
+
   function getLabelBarAgeOverlayYOffsetPx() {
     return typeof LABEL_BAR_AGE_OVERLAY_Y_OFFSET_PX !== "undefined"
       ? LABEL_BAR_AGE_OVERLAY_Y_OFFSET_PX
@@ -11782,9 +11831,21 @@
    * @param {ReturnType<typeof getLabelBarContentArea>} contentArea
    * @returns {{ x: number, y: number, fontSize: number }}
    */
-  function getLabelBarAgeOverlayTextMetrics(placement, contentArea, flipVertical) {
+  function getLabelBarAgeOverlayLetterSpacing() {
+    return typeof LABEL_BAR_AGE_OVERLAY_LETTER_SPACING !== "undefined"
+      ? LABEL_BAR_AGE_OVERLAY_LETTER_SPACING
+      : 0;
+  }
+
+  function getLabelBarAgeOverlayTextMetrics(
+    placement,
+    contentArea,
+    flipVertical,
+    overlayText
+  ) {
     var dims = getLabelBarSvgDimensions(getLabelBarAgeSvgFile());
     var spec = placement.spec;
+    var xOffset = getLabelBarAgeOverlayXOffsetPx();
     var yOffset = getLabelBarAgeOverlayYOffsetPx();
     var cxRatio =
       dims && dims.width
@@ -11805,14 +11866,21 @@
             : 27.0816) / dims.height
         : 0.33;
     var circleR = spec.height * rRatio;
+    var fontSize = circleR * 2 * getLabelBarAgeOverlayFontSizeRatio();
+    var circleCenterX;
+    var circleCenterY;
+    var textY;
     if (flipVertical) {
       yOffset = -yOffset;
     }
     var svgY = getLabelBarSvgPlacementY(contentArea, spec.height);
+    circleCenterX = placement.x + spec.width * cxRatio + xOffset;
+    circleCenterY = svgY + spec.height * cyRatio + yOffset;
+    textY = circleCenterY;
     return {
-      x: placement.x + spec.width * cxRatio,
-      y: svgY + spec.height * cyRatio + yOffset,
-      fontSize: circleR * 2 * getLabelBarAgeOverlayFontSizeRatio(),
+      x: circleCenterX,
+      y: textY,
+      fontSize: fontSize,
     };
   }
 
@@ -11821,7 +11889,7 @@
     text.setAttribute("font-family", getBrownBarBannerFontFamily());
     text.setAttribute("font-weight", "700");
     text.setAttribute("font-size", String(fontSize));
-    text.setAttribute("letter-spacing", String(getBrownBarBannerLetterSpacing()));
+    text.setAttribute("letter-spacing", String(getLabelBarAgeOverlayLetterSpacing()));
     text.setAttribute("text-anchor", "middle");
     text.setAttribute("dominant-baseline", "middle");
     text.setAttribute("alignment-baseline", "middle");
@@ -11832,7 +11900,12 @@
     var metrics;
     var text;
     if (overlayText === undefined || !overlayText) return;
-    metrics = getLabelBarAgeOverlayTextMetrics(placement, contentArea, flipVertical);
+    metrics = getLabelBarAgeOverlayTextMetrics(
+      placement,
+      contentArea,
+      flipVertical,
+      overlayText
+    );
     text = elSvg("text");
     text.setAttribute("x", String(metrics.x));
     text.setAttribute("y", String(metrics.y));
@@ -11858,50 +11931,208 @@
 
   function loadExportOpentypeFont(fontDataUri) {
     var buf;
-    if (cachedExportOpentypeFont) {
-      return Promise.resolve(cachedExportOpentypeFont);
-    }
+    var resolvedUri = fontDataUri || getEmbeddedExportFontDataUri();
     if (typeof opentype === "undefined") {
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("SVG export: opentype.js missing — label text may not outline.");
+      }
       return Promise.resolve(null);
     }
-    buf = parseExportFontDataUriToArrayBuffer(
-      fontDataUri || getEmbeddedExportFontDataUri()
-    );
-    if (!buf) return Promise.resolve(null);
+    if (cachedExportOpentypeFont && cachedExportFontDataUri === resolvedUri) {
+      return Promise.resolve(cachedExportOpentypeFont);
+    }
+    buf = parseExportFontDataUriToArrayBuffer(resolvedUri);
+    if (!buf) {
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("SVG export: export font unavailable — label text may not outline.");
+      }
+      return Promise.resolve(null);
+    }
     try {
       cachedExportOpentypeFont = opentype.parse(buf);
+      cachedExportFontDataUri = resolvedUri;
       return Promise.resolve(cachedExportOpentypeFont);
     } catch (e) {
+      cachedExportOpentypeFont = null;
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("SVG export: failed to parse export font.", e);
+      }
       return Promise.resolve(null);
     }
   }
 
-  function getBaselineYMatchingSvgText(textEl, font, fontSize) {
-    var y = parseFloat(textEl.getAttribute("y") || "0");
-    var content = textEl.textContent || "Hg";
+  function copySvgElementAttributes(source, target, skipNames) {
+    var attrs = source.attributes;
+    var ai;
+    var name;
+    skipNames = skipNames || {};
+    for (ai = 0; ai < attrs.length; ai++) {
+      name = attrs[ai].name;
+      if (skipNames[name]) continue;
+      target.setAttribute(name, attrs[ai].value);
+    }
+  }
+
+  /** Visual glyph right edge in canvas space (matches on-screen label bar text). */
+  function measureSvgTextRightEdgeX(textEl) {
     var measureG = getLabelBarMeasureGroup();
     var probe;
-    var attrs = textEl.attributes;
-    var ai;
     var bb;
-    var path;
-    var pb;
-    var textCenter;
-    var pathCenter;
-    if (!measureG || !font) return y;
-    probe = elSvg("text");
-    for (ai = 0; ai < attrs.length; ai++) {
-      probe.setAttribute(attrs[ai].name, attrs[ai].value);
+    if (!measureG) {
+      return parseFloat(textEl.getAttribute("x") || "0");
     }
-    probe.textContent = content;
+    probe = elSvg("text");
+    copySvgElementAttributes(textEl, probe);
+    probe.textContent = textEl.textContent || "";
     measureG.appendChild(probe);
     bb = probe.getBBox();
     measureG.removeChild(probe);
-    path = font.getPath(content, 0, y, fontSize);
-    pb = path.getBoundingBox();
-    textCenter = bb.y + bb.height / 2;
-    pathCenter = (pb.y1 + pb.y2) / 2;
-    return y + (textCenter - pathCenter);
+    return bb.x + bb.width;
+  }
+
+  /** Visual glyph left edge in canvas space (matches on-screen label bar text). */
+  function measureSvgTextLeftEdgeX(textEl) {
+    var measureG = getLabelBarMeasureGroup();
+    var probe;
+    var bb;
+    if (!measureG) {
+      return parseFloat(textEl.getAttribute("x") || "0");
+    }
+    probe = elSvg("text");
+    copySvgElementAttributes(textEl, probe);
+    probe.textContent = textEl.textContent || "";
+    measureG.appendChild(probe);
+    bb = probe.getBBox();
+    measureG.removeChild(probe);
+    return bb.x;
+  }
+
+  /** Align export glyph left edge with on-screen knockout badge text. */
+  function getKnockoutBadgeExportTxNudge(textEl, exportLeftAtOrigin) {
+    var tx = parseFloat(textEl.getAttribute("x") || "0");
+    var screenLeft = measureSvgTextLeftEdgeX(textEl);
+    return screenLeft - tx - exportLeftAtOrigin;
+  }
+
+  /** Visual glyph center in canvas space (matches on-screen label bar text). */
+  function measureSvgTextGlyphCenterY(textEl) {
+    var measureG = getLabelBarMeasureGroup();
+    var probe;
+    var bb;
+    if (!measureG) {
+      return parseFloat(textEl.getAttribute("y") || "0");
+    }
+    probe = elSvg("text");
+    copySvgElementAttributes(textEl, probe);
+    probe.textContent = textEl.textContent || "";
+    measureG.appendChild(probe);
+    bb = probe.getBBox();
+    measureG.removeChild(probe);
+    return bb.y + bb.height / 2;
+  }
+
+  function measureOutlinedPathCenterY(pathD) {
+    var measureG = getLabelBarMeasureGroup();
+    var pathEl;
+    var bb;
+    if (!measureG || !pathD) return 0;
+    pathEl = elSvg("path");
+    pathEl.setAttribute("d", pathD);
+    measureG.appendChild(pathEl);
+    bb = pathEl.getBBox();
+    measureG.removeChild(pathEl);
+    return bb.y + bb.height / 2;
+  }
+
+  function buildLabelBarExportTextAlphabeticProbe(textEl) {
+    var probe = elSvg("text");
+    probe.setAttribute("fill", textEl.getAttribute("fill") || getLabelBarContentColor());
+    probe.setAttribute(
+      "font-family",
+      textEl.getAttribute("font-family") || getBrownBarBannerFontFamily()
+    );
+    probe.setAttribute("font-weight", textEl.getAttribute("font-weight") || "700");
+    probe.setAttribute("font-size", textEl.getAttribute("font-size") || "12");
+    probe.setAttribute(
+      "letter-spacing",
+      textEl.getAttribute("letter-spacing") || String(getBrownBarBannerLetterSpacing())
+    );
+    probe.setAttribute("text-anchor", textEl.getAttribute("text-anchor") || "start");
+    probe.setAttribute("x", "0");
+    probe.setAttribute("y", "0");
+    probe.textContent = textEl.textContent || "";
+    return probe;
+  }
+
+  /**
+   * Illustrator/Photoshop ignore dominant-baseline — export as outlined paths only.
+   */
+  function pushLabelBarExportTextMarkup(edgeLines, textEl, font) {
+    var tx = parseFloat(textEl.getAttribute("x") || "0");
+    var fill = textEl.getAttribute("fill") || getLabelBarContentColor();
+    var fontSize = parseFloat(textEl.getAttribute("font-size") || "12");
+    var letterSpacing = parseFloat(textEl.getAttribute("letter-spacing") || "0");
+    var anchor = textEl.getAttribute("text-anchor") || "start";
+    var content = textEl.textContent || "";
+    var glyphCenterY = measureSvgTextGlyphCenterY(textEl);
+    var isKnockoutMask = fill === "#000000";
+    var txNudge = 0;
+    var pathD;
+    var pathCenterY;
+    var pathLeftX;
+    var ty;
+    var measureG;
+
+    if (!content) return;
+
+    if (font) {
+      pathD = buildOutlinedPathDataForSvgText(
+        font,
+        content,
+        0,
+        0,
+        fontSize,
+        letterSpacing,
+        anchor
+      );
+      if (pathD) {
+        pathCenterY = measureOutlinedPathCenterY(pathD);
+        ty =
+          glyphCenterY -
+          pathCenterY +
+          getLabelBarExportOutlineYNudgePx(isKnockoutMask, content);
+        if (isKnockoutMask) {
+          measureG = getLabelBarMeasureGroup();
+          if (measureG) {
+            var pathProbe = elSvg("path");
+            pathProbe.setAttribute("d", pathD);
+            measureG.appendChild(pathProbe);
+            pathLeftX = pathProbe.getBBox().x;
+            measureG.removeChild(pathProbe);
+            txNudge = getKnockoutBadgeExportTxNudge(textEl, pathLeftX);
+          }
+        }
+        edgeLines.push(
+          '<g transform="translate(' +
+            (tx + txNudge) +
+            " " +
+            ty +
+            ')"><path d="' +
+            pathD +
+            '" fill="' +
+            fill +
+            '"/></g>'
+        );
+        return;
+      }
+    }
+
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn(
+        "SVG export: skipped label text (no outline font): " +
+          JSON.stringify(content.slice(0, 40))
+      );
+    }
   }
 
   function buildOutlinedPathDataForSvgText(
@@ -11937,38 +12168,6 @@
     return pathParts.join(" ");
   }
 
-  function convertSvgTextElementToPath(textEl, font) {
-    var fontSize = parseFloat(textEl.getAttribute("font-size") || "12");
-    var fill = textEl.getAttribute("fill") || getLabelBarContentColor();
-    var letterSpacing = parseFloat(textEl.getAttribute("letter-spacing") || "0");
-    var anchor = textEl.getAttribute("text-anchor") || "start";
-    var content = textEl.textContent || "";
-    var x = parseFloat(textEl.getAttribute("x") || "0");
-    var baselineY;
-    var d;
-    var pathEl;
-    if (!content || !font) return null;
-    baselineY = getBaselineYMatchingSvgText(textEl, font, fontSize);
-    d = buildOutlinedPathDataForSvgText(
-      font,
-      content,
-      x,
-      baselineY,
-      fontSize,
-      letterSpacing,
-      anchor
-    );
-    if (!d) return null;
-    pathEl = elSvg("path");
-    pathEl.setAttribute("d", d);
-    pathEl.setAttribute("fill", fill);
-    return pathEl;
-  }
-
-  function serializeSvgElement(el) {
-    return new XMLSerializer().serializeToString(el);
-  }
-
   function pushLabelBarTextPlacementExport(
     edgeLines,
     placement,
@@ -11977,7 +12176,6 @@
   ) {
     var spec = placement.spec;
     var textEl;
-    var pathEl;
     var textY = getLabelBarTextPlacementY(placement, contentArea, flipVertical);
     if (!spec || !spec.text) return;
     textEl = elSvg("text");
@@ -11985,30 +12183,7 @@
     textEl.setAttribute("y", String(textY));
     applyLabelBarTextAttrs(textEl, spec.fontSize);
     textEl.textContent = spec.text;
-    if (cachedExportOpentypeFont) {
-      pathEl = convertSvgTextElementToPath(textEl, cachedExportOpentypeFont);
-      if (pathEl) {
-        edgeLines.push(serializeSvgElement(pathEl));
-        return;
-      }
-    }
-    edgeLines.push(
-      '<text x="' +
-        placement.x +
-        '" y="' +
-        textY +
-        '" fill="' +
-        getBrownBarBannerFill() +
-        '" font-family="' +
-        getBrownBarBannerFontFamily() +
-        '" font-weight="700" font-size="' +
-        spec.fontSize +
-        '" letter-spacing="' +
-        getBrownBarBannerLetterSpacing() +
-        '" text-anchor="start" dominant-baseline="middle" alignment-baseline="middle">' +
-        spec.text +
-        "</text>"
-    );
+    pushLabelBarExportTextMarkup(edgeLines, textEl, cachedExportOpentypeFont);
   }
 
   function pushLabelBarCoordinatesBadgeExport(
@@ -12020,12 +12195,20 @@
     var spec = placement.spec;
     var badgeX = placement.x;
     var badgeY = spec.rectY;
-    var textX = badgeX + spec.padX;
+    var textX = badgeX + spec.padX - (spec.padBBoxX || 0);
     var textY = getLabelBarTextPlacementY(placement, contentArea, flipVertical);
     var maskId = nextLabelBarCoordsMaskId();
+    var maskWidth;
     var textEl;
-    var pathEl;
     if (!spec || !spec.text) return;
+
+    textEl = elSvg("text");
+    textEl.setAttribute("x", String(textX));
+    textEl.setAttribute("y", String(textY));
+    applyLabelBarTextAttrs(textEl, spec.fontSize);
+    textEl.setAttribute("fill", "#000000");
+    textEl.textContent = spec.text;
+    maskWidth = getLabelBarCoordinatesBadgeExportMaskWidth(spec, badgeX, textEl);
 
     edgeLines.push(
       '<mask id="' +
@@ -12035,7 +12218,7 @@
         '" y="' +
         badgeY +
         '" width="' +
-        spec.width +
+        maskWidth +
         '" height="' +
         spec.height +
         '">'
@@ -12046,43 +12229,13 @@
         '" y="' +
         badgeY +
         '" width="' +
-        spec.width +
+        maskWidth +
         '" height="' +
         spec.height +
         '" fill="#ffffff"/>'
     );
 
-    textEl = elSvg("text");
-    textEl.setAttribute("x", String(textX));
-    textEl.setAttribute("y", String(textY));
-    applyLabelBarTextAttrs(textEl, spec.fontSize);
-    textEl.setAttribute("fill", "#000000");
-    textEl.textContent = spec.text;
-    if (cachedExportOpentypeFont) {
-      pathEl = convertSvgTextElementToPath(textEl, cachedExportOpentypeFont);
-      if (pathEl) {
-        pathEl.setAttribute("fill", "#000000");
-        edgeLines.push(serializeSvgElement(pathEl));
-      } else {
-        edgeLines.push(serializeSvgElement(textEl));
-      }
-    } else {
-      edgeLines.push(
-        '<text x="' +
-          textX +
-          '" y="' +
-          textY +
-          '" fill="#000000" font-family="' +
-          getBrownBarBannerFontFamily() +
-          '" font-weight="700" font-size="' +
-          spec.fontSize +
-          '" letter-spacing="' +
-          getBrownBarBannerLetterSpacing() +
-          '" text-anchor="start" dominant-baseline="middle" alignment-baseline="middle">' +
-          spec.text +
-          "</text>"
-      );
-    }
+    pushLabelBarExportTextMarkup(edgeLines, textEl, cachedExportOpentypeFont);
     edgeLines.push("</mask>");
     edgeLines.push(
       '<rect x="' +
@@ -12090,7 +12243,7 @@
         '" y="' +
         badgeY +
         '" width="' +
-        spec.width +
+        maskWidth +
         '" height="' +
         spec.height +
         '" fill="' +
@@ -12110,38 +12263,19 @@
     var overlayText = placement.ageOverlayText;
     var metrics;
     var textEl;
-    var pathEl;
     if (overlayText === undefined || !overlayText) return;
-    metrics = getLabelBarAgeOverlayTextMetrics(placement, contentArea, flipVertical);
+    metrics = getLabelBarAgeOverlayTextMetrics(
+      placement,
+      contentArea,
+      flipVertical,
+      overlayText
+    );
     textEl = elSvg("text");
     textEl.setAttribute("x", String(metrics.x));
     textEl.setAttribute("y", String(metrics.y));
     applyLabelBarAgeOverlayTextAttrs(textEl, metrics.fontSize);
     textEl.textContent = overlayText;
-    if (cachedExportOpentypeFont) {
-      pathEl = convertSvgTextElementToPath(textEl, cachedExportOpentypeFont);
-      if (pathEl) {
-        edgeLines.push(serializeSvgElement(pathEl));
-        return;
-      }
-    }
-    edgeLines.push(
-      '<text x="' +
-        metrics.x +
-        '" y="' +
-        metrics.y +
-        '" fill="' +
-        getLabelBarAgeOverlayFill() +
-        '" font-family="' +
-        getBrownBarBannerFontFamily() +
-        '" font-weight="700" font-size="' +
-        metrics.fontSize +
-        '" letter-spacing="' +
-        getBrownBarBannerLetterSpacing() +
-        '" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle">' +
-        overlayText +
-        "</text>"
-    );
+    pushLabelBarExportTextMarkup(edgeLines, textEl, cachedExportOpentypeFont);
   }
 
   function getLabelBarRightLionInnerRow2SvgFile() {
@@ -12341,6 +12475,59 @@
       : 3;
   }
 
+  function getLabelBarCoordinatesBadgeExportExtraWidthPx() {
+    return typeof LABEL_BAR_COORDINATES_BADGE_EXPORT_EXTRA_WIDTH_PX !== "undefined"
+      ? LABEL_BAR_COORDINATES_BADGE_EXPORT_EXTRA_WIDTH_PX
+      : 0;
+  }
+
+  function isLabelBarFractionKnockoutBadgeText(text) {
+    return /^\d+\/\d+$/.test(String(text || "").trim());
+  }
+
+  function getLabelBarExportOutlineYNudgePx(isKnockoutMask, textContent) {
+    if (isKnockoutMask) {
+      if (isLabelBarFractionKnockoutBadgeText(textContent)) {
+        return typeof LABEL_BAR_EXPORT_FRACTION_BADGE_OUTLINE_Y_NUDGE_PX !==
+          "undefined"
+          ? LABEL_BAR_EXPORT_FRACTION_BADGE_OUTLINE_Y_NUDGE_PX
+          : -4;
+      }
+      return typeof LABEL_BAR_EXPORT_COORDINATES_OUTLINE_Y_NUDGE_PX !==
+        "undefined"
+        ? LABEL_BAR_EXPORT_COORDINATES_OUTLINE_Y_NUDGE_PX
+        : -1;
+    }
+    return typeof LABEL_BAR_EXPORT_OUTLINE_Y_NUDGE_PX !== "undefined"
+      ? LABEL_BAR_EXPORT_OUTLINE_Y_NUDGE_PX
+      : -3;
+  }
+
+  function measureLabelBarExportAlphabeticTextWidth(text, fontSize) {
+    var measureG = getLabelBarMeasureGroup();
+    var textEl;
+    var probe;
+    var bb;
+    if (!measureG || !text) return 0;
+    textEl = elSvg("text");
+    applyLabelBarTextAttrs(textEl, fontSize);
+    textEl.textContent = text;
+    probe = buildLabelBarExportTextAlphabeticProbe(textEl);
+    measureG.appendChild(probe);
+    bb = probe.getBBox();
+    measureG.removeChild(probe);
+    return bb.width > 0 ? bb.width : 0;
+  }
+
+  function getLabelBarCoordinatesBadgeExportMaskWidth(spec) {
+    var padX = spec.padX || getLabelBarCoordinatesBadgePadXPx();
+    var exportTextWidth = measureLabelBarExportAlphabeticTextWidth(
+      spec.text,
+      spec.fontSize
+    );
+    return Math.max(spec.width, padX * 2 + exportTextWidth);
+  }
+
   function buildLabelBarCoordinatesBadgeSpec(text, contentArea) {
     var label = (text || "").trim();
     var textMetrics;
@@ -12348,6 +12535,13 @@
     var padY = getLabelBarCoordinatesBadgePadYPx();
     var badgeHeight;
     var rectY;
+    var fontSize;
+    var measured;
+    var bbox;
+    var glyphHeight;
+    var glyphWidth;
+    var badgeInnerHeight;
+    var padBBoxX;
     if (!label) return null;
     textMetrics = fitLabelBarTextMetrics(
       label,
@@ -12355,19 +12549,38 @@
       contentArea.y,
       contentArea.y + contentArea.height
     );
+    fontSize = textMetrics.fontSize;
+    measured = measureLabelBarTextAtCellSize(label, fontSize);
+    bbox = measured.bbox;
+    badgeInnerHeight = Math.max(1, contentArea.height - padY * 2);
+    if (bbox && bbox.height > badgeInnerHeight) {
+      fontSize = Math.max(1, (fontSize * badgeInnerHeight) / bbox.height);
+      measured = measureLabelBarTextAtCellSize(label, fontSize);
+      bbox = measured.bbox;
+    }
+    glyphHeight =
+      bbox && bbox.height > 0 ? bbox.height : Math.max(1, fontSize);
+    glyphWidth =
+      bbox && bbox.width > 0
+        ? bbox.width
+        : measured.width > 0
+          ? measured.width
+          : Math.max(1, label.length * fontSize * 0.55);
+    padBBoxX = bbox ? bbox.x : 0;
     badgeHeight = Math.min(
       contentArea.height,
-      Math.max(1, textMetrics.height + padY * 2)
+      Math.max(1, glyphHeight + padY * 2)
     );
     rectY = contentArea.y + (contentArea.height - badgeHeight) / 2;
     return {
       type: "coordinatesBadge",
       text: label,
-      width: textMetrics.width + padX * 2,
+      width: glyphWidth + padX * 2,
       height: badgeHeight,
-      fontSize: textMetrics.fontSize,
-      textY: textMetrics.textY,
+      fontSize: fontSize,
+      textY: rectY + badgeHeight / 2,
       padX: padX,
+      padBBoxX: padBBoxX,
       rectY: rectY,
     };
   }
@@ -12453,14 +12666,7 @@
       getLabelBarWomenSvgFile(),
       getLabelBarSvgRowTargetHeight(livingRowArea.height)
     );
-    var lostFile = getLostLabelSvgFile();
-    var lostSpec = lostFile
-      ? buildLabelBarSvgSpec(
-          lostFile,
-          getLabelBarSvgRowTargetHeight(area.height)
-        )
-      : null;
-    var lostLabelSpec = lostSpec ? buildLabelBarLostLabelSpec(area) : null;
+    var lostLabelSpec = buildLabelBarLostLabelSpec(area);
     var homeAtFile = getHomeAtLabelSvgFile();
     var homeAtSpec = homeAtFile
       ? buildLabelBarSvgSpec(
@@ -12564,7 +12770,6 @@
       row1Clusters,
       buildLabelBarCluster([
         lostLabelSpec ? { spec: lostLabelSpec, svgArea: area } : null,
-        lostSpec ? { spec: lostSpec, svgArea: area } : null,
       ])
     );
     if (unionSmallRow1Spec) {
@@ -12789,7 +12994,7 @@
     var spec = placement.spec;
     var badgeX = placement.x;
     var badgeY = spec.rectY;
-    var textX = badgeX + spec.padX;
+    var textX = badgeX + spec.padX - (spec.padBBoxX || 0);
     var textY = getLabelBarTextPlacementY(placement, contentArea, flipVertical);
     var maskId = nextLabelBarCoordsMaskId();
     var mask = elSvg("mask");
@@ -18367,6 +18572,7 @@
 
     var endpoints = fanLayouts.fullLayout.endpoints;
     var drawAngles = fanLayouts.fullDrawAngles;
+    var clipDrawAngles = fanLayouts.clipDrawAngles;
     var fullLayout = fanLayouts.fullLayout;
     var fullDrawAngles = fanLayouts.fullDrawAngles;
     var outerArcRadius = r * getRadialFanOuterArcScale();
@@ -18466,6 +18672,7 @@
     ribsGroup.setAttribute("id", "radial-fan-ribs-" + idPrefix);
     var i;
     for (i = 0; i < endpoints.length; i++) {
+      if (isRadialFanDrawBoundaryAngle(endpoints[i].a, clipDrawAngles)) continue;
       var ribEnd = halfCirclePolarPoint(
         cx,
         focalY,
@@ -18672,6 +18879,17 @@
       );
       strokesGroup.appendChild(ringsGroup);
     }
+
+    appendRadialFanBoundaryRibs(
+      parentGroup,
+      idPrefix,
+      cx,
+      focalY,
+      outerArcRadius,
+      clipDrawAngles,
+      fanStroke,
+      strokeWidth
+    );
   }
 
   function renderHalfCircleLayer() {
@@ -19394,6 +19612,25 @@
     window.SheetPalettes.updatePaletteButtonStates();
   }
 
+  /** Palette-only DOM refresh — avoids full grid rebuild on live sync. */
+  function refreshPaletteColorLayers() {
+    if (!designSvg) return;
+    applySheetPaletteToDom();
+    refreshBorderFrameAndLabelBars();
+    renderBackgroundLayer();
+    renderGridMaskLayer("palette-live");
+    applyMergeReveal();
+    syncVerticalGridLines(false);
+    renderVerticalGridLayer();
+    updateColorDivisionsLayer();
+    updateFrameInsetOverlayLayer();
+    renderPatternLayer();
+    renderHalfCircleLayer();
+    renderAutoMergeFillsLayer();
+    refreshLabelBarContent();
+    layoutStage();
+  }
+
   /** Re-apply every layer that reads palette slots (after sheet load / reload). */
   function refreshUiFromSheetPalettes() {
     if (!window.SheetPalettes) return;
@@ -19401,8 +19638,7 @@
     window.SheetPalettes.syncBorderGlobals();
     syncBlendAreaSwatchInputs();
     if (appStartupBootstrapping) return;
-    applySheetPaletteToDom();
-    render();
+    refreshPaletteColorLayers();
   }
 
   var sheetPaletteInitComplete = false;
@@ -19662,11 +19898,21 @@
   }
 
   function getEmbeddedExportFontDataUri() {
-    return typeof window !== "undefined" &&
+    if (typeof window === "undefined") return null;
+    if (
       typeof window.DIN_CONDENSED_EXPORT_FONT_DATA_URI === "string" &&
       window.DIN_CONDENSED_EXPORT_FONT_DATA_URI
-      ? window.DIN_CONDENSED_EXPORT_FONT_DATA_URI
-      : null;
+    ) {
+      return window.DIN_CONDENSED_EXPORT_FONT_DATA_URI;
+    }
+    /** Legacy embed name — same Pangram OT2049 snapshot. */
+    if (
+      typeof window.OT2049_EXPORT_FONT_DATA_URI === "string" &&
+      window.OT2049_EXPORT_FONT_DATA_URI
+    ) {
+      return window.OT2049_EXPORT_FONT_DATA_URI;
+    }
+    return null;
   }
 
   function getExportFontFaceCss(fontDataUri) {
@@ -20065,6 +20311,11 @@
       .then(function (results) {
         var fontDataUri = results[1];
         var hopeDotsVectorLines = results[3];
+        if (!cachedExportOpentypeFont && typeof console !== "undefined" && console.warn) {
+          console.warn(
+            "SVG export: outline font not loaded — open via npm run serve and retry."
+          );
+        }
         try {
           syncVerticalGridLines(false);
           renderHalfCircleLayer();
@@ -20852,7 +21103,7 @@
           : 0;
       function onAutoMergeIntensityInteract() {
         syncAllFeelingsSliderOutputs();
-        runAutoMerge();
+        scheduleRunAutoMerge();
       }
       initFeelingsSteppedSlider(
         "auto-merge-intensity",
@@ -20941,7 +21192,7 @@
       applyPrideLayers: function () {
         syncAllFeelingsSliderOutputs();
         if (getAutoMergeIntensity() > 0) {
-          runAutoMerge();
+          scheduleRunAutoMerge();
         } else {
           clearAutoMergeState();
           renderAutoMergeFillsLayer();
@@ -20965,10 +21216,13 @@
     }
 
     if (window.SheetPalettes && window.SheetPalettes.startLiveSync) {
-      window.SheetPalettes.startLiveSync(3000);
+      window.SheetPalettes.startLiveSync(1500);
     }
 
-    if (window.SheetPalettes && window.SheetPalettes.refreshSheetPalettesIfChanged) {
+    if (
+      window.SheetPalettes &&
+      window.SheetPalettes.refreshSheetPalettesIfChanged
+    ) {
       window.SheetPalettes.refreshSheetPalettesIfChanged().catch(function () {
         /* background Google sync; embedded palette already applied */
       });
@@ -21002,7 +21256,10 @@
       window.IdentityControls.setOnAgeChange(refreshLabelBarContent);
     }
     if (window.IdentityControls && window.IdentityControls.setOnFromChange) {
-      window.IdentityControls.setOnFromChange(refreshLabelBarContent);
+      window.IdentityControls.setOnFromChange(function () {
+        scheduleLocationCoordinates();
+        refreshLabelBarContent();
+      });
     }
     if (window.LocationCoordinates && window.LocationCoordinates.setOnUpdate) {
       window.LocationCoordinates.setOnUpdate(refreshLabelBarContent);
@@ -21019,7 +21276,6 @@
         refreshLabelBarContent();
       });
     }
-    refreshLocationCoordinates();
     if (window.IdentityControls && window.IdentityControls.setOnNameChange) {
       window.IdentityControls.setOnNameChange(refreshLabelBarContent);
     }
@@ -21036,9 +21292,18 @@
     render();
     appStartupBootstrapping = false;
     syncFrameOverlayToggleButton();
-    initMagnifier();
     initSidebarScrollFocus();
     setHopeInteractionMode("view");
+
+    var deferPostRenderInit = function () {
+      refreshLocationCoordinates();
+      initMagnifier();
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(deferPostRenderInit, { timeout: 1500 });
+    } else {
+      setTimeout(deferPostRenderInit, 0);
+    }
   }
 
   if (document.readyState === "loading") {

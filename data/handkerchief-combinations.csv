@@ -2,14 +2,14 @@
 Profile,חי/ת באיראן?,livingInIran,yes|no,yes,yes,yes,yes,yes,yes,yes,yes
 Profile,כמה מהחיים באיראן?,livingDuration,smallPart|partOfLife|mostAll,smallPart,partOfLife,mostAll,partOfLife,partOfLife,mostAll,mostAll,smallPart
 Profile,שנת עזיבה,leavingYear,4 digits,2009,2009,2022,1979,1980,2018,2022,1990
-Profile,From,from,text,TEHERAN,TEHERAN,TEHERAN,TEHERAN,Tehran,Tehran,shiraz,Isfahan
-Profile,Now in,nowIn,text,MAINZ,GERMANY,GERMANY,Jerusalem,Beer sheva,Germany,Turkey,Canada
-Profile,שם,name,text,Sana,-,Kiyana,Mozhgan ,Firozeh,Atoosa,Melika,Romi Calamaro
-Profile,הצגת שם,nameDisplayMode,anonymous|initials|name,name,anonymous,name,name,name,name,initials,initials
+Profile,From,from,text,Tehran,Tehran,Tehran,Tehran,Tehran,Tehran,shiraz,Isfahan
+Profile,Now in,nowIn,text,MAINZ,GERMANY,GERMANY,Jerusalem,Be׳er sheva,Germany,Turkey,Canada
+Profile,שם,name,text,Sana,-,Kiyana,Mozhgan ,Firozeh,Atoosa,Melika R,Romi Calamaro
+Profile,הצגת שם,nameDisplayMode,anonymous|initials|name,name,anonymous,name,name,name,name,initials,anonymous
 Profile,גיל,age,2 digits,24,60,29,56,56,27,25,45
 Profile,"איפה ""בבית""?",homeAt,inIran|whereILive|nowhere,in betweeen,whereILive,nowhere,whereILive,whereILive,nowhere,inIran,inIran
 Profile,סימן צד (0=Lion),labelBarTagIndex,0-6,0,1,2,3,4,5,6,0
-Grid,קהילה (צפיפות),octagonsN,1 to 10,4,3,5,3,7,10,1,10
+Grid,קהילה (צפיפות),octagonsN,1 to 10,4,3,5,3,7,10,1,6
 Grid,זהות במרכז,innerScale,1 to 10,9,10,5,9,10,7,1,10
 Colors,מספר חלוקות צבע,colorDivisions,1 to 5,1,1,1,1,1,1,1,1
 Colors,Seed לפריסת חלוקות,colorDivisionShuffleSeed,0+,0,0,0,0,0,0,0,0

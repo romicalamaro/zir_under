@@ -492,14 +492,20 @@
       if (!silent && onAgeChange) onAgeChange(ageValue);
     }
 
-    if (
-      row.homeAt === "inIran" ||
-      row.homeAt === "whereILive" ||
-      row.homeAt === "nowhere"
-    ) {
-      homeAtChoice = row.homeAt;
-      syncHomeAtUiOnly(homeAtChoice);
-      if (!silent && onHomeAtChange) onHomeAtChange(homeAtChoice);
+    if (row.homeAt !== undefined && row.homeAt !== "") {
+      var homeAtValue = String(row.homeAt).trim();
+      if (homeAtValue === "in betweeen" || homeAtValue === "in between") {
+        homeAtValue = "nowhere";
+      }
+      if (
+        homeAtValue === "inIran" ||
+        homeAtValue === "whereILive" ||
+        homeAtValue === "nowhere"
+      ) {
+        homeAtChoice = homeAtValue;
+        syncHomeAtUiOnly(homeAtChoice);
+        if (!silent && onHomeAtChange) onHomeAtChange(homeAtChoice);
+      }
     }
 
     if (!silent && onNameChange) onNameChange();

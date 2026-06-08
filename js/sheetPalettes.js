@@ -9,7 +9,7 @@
     "/export?format=csv&gid=" +
     SHEET_GID;
   var LOCAL_CSV_URL = "data/sheet-palette-colors.csv";
-  /** Local proxy (npm run serve) — Palette 8+9 need full Google CSV; file:// blocks direct fetch. */
+  /** Local proxy (npm run serve) — Palette 8–10 need full Google CSV; file:// blocks direct fetch. */
   var SHEET_CSV_PROXY_URL = "http://127.0.0.1:8080/api/google-sheet-palette.csv";
 
   var PALETTE_KEYS = [
@@ -22,9 +22,10 @@
     "palette7",
     "palette8",
     "palette9",
+    "palette10",
   ];
   /** gviz returns these columns as numbers — hex text is null; load only from CSV export. */
-  var GVIZ_CSV_ONLY_PALETTE_KEYS = ["palette8", "palette9"];
+  var GVIZ_CSV_ONLY_PALETTE_KEYS = ["palette8", "palette9", "palette10"];
 
   /**
    * טבלת פלטות — חלוקות (עמודת Division ב-CSV). Slots באותה חלוקה = אותו צבע מומלץ.
@@ -166,6 +167,7 @@
       palette7: {},
       palette8: {},
       palette9: {},
+      palette10: {},
     };
   }
 
@@ -182,6 +184,7 @@
       palette7: Object.assign({}, palettes.palette7 || {}),
       palette8: Object.assign({}, palettes.palette8 || {}),
       palette9: Object.assign({}, palettes.palette9 || {}),
+      palette10: Object.assign({}, palettes.palette10 || {}),
     };
     return syncPaletteFallbacks(copy);
   }
@@ -190,32 +193,64 @@
     return !palettes[key] || !Object.keys(palettes[key]).length;
   }
 
-  /** Palette 8–9 often miss gviz data — hydrate from Google CSV (proxy) or embedded fallback. */
-  function hydrateCsvOnlyPalettesIfNeeded() {
+  /**
+   * Palette 8–10 need CSV export (gviz omits hex text). Fill from embedded/local authority.
+   * @param {{ force?: boolean }} [options]
+   */
+  function ensureCsvOnlyPalettesFromAuthority(options) {
+    options = options || {};
     if (!loaded) return;
     var ki;
-    var needs = false;
-    for (ki = 0; ki < GVIZ_CSV_ONLY_PALETTE_KEYS.length; ki++) {
-      if (csvOnlyPaletteIsEmpty(GVIZ_CSV_ONLY_PALETTE_KEYS[ki])) {
-        needs = true;
-        break;
+    var needs = !!options.force || isFileProtocol();
+    if (!needs) {
+      for (ki = 0; ki < GVIZ_CSV_ONLY_PALETTE_KEYS.length; ki++) {
+        if (csvOnlyPaletteIsEmpty(GVIZ_CSV_ONLY_PALETTE_KEYS[ki])) {
+          needs = true;
+          break;
+        }
+        if (countMissingPaletteSlots(palettes, GVIZ_CSV_ONLY_PALETTE_KEYS[ki]).length) {
+          needs = true;
+          break;
+        }
       }
     }
     if (!needs) return;
     var embedded = getEmbeddedLocalPaletteCsvText();
     var parsed = embedded ? tryParsePaletteCsv(embedded) : null;
-    if (parsed) supplementCsvOnlyPalettesFromAuthority(palettes, parsed);
+    if (parsed) {
+      supplementCsvOnlyPalettesFromAuthority(palettes, parsed);
+      return;
+    }
+    resolveLocalPaletteCsvText()
+      .then(function (text) {
+        var localParsed = tryParsePaletteCsv(text);
+        if (localParsed) supplementCsvOnlyPalettesFromAuthority(palettes, localParsed);
+      })
+      .catch(function () {
+        /* ignore — embedded/local unavailable */
+      });
+  }
+
+  /** @deprecated alias */
+  function hydrateCsvOnlyPalettesIfNeeded() {
+    ensureCsvOnlyPalettesFromAuthority();
   }
 
   function refreshCsvOnlyPalettesFromGoogle() {
+    if (isFileProtocol() || isLocalDevHost()) {
+      ensureCsvOnlyPalettesFromAuthority({ force: true });
+      syncBorderGlobals();
+      return Promise.resolve(palettes);
+    }
     return fetchGoogleSheetCsv()
       .then(function (text) {
         var parsed = tryParsePaletteCsv(text);
         if (parsed) supplementCsvOnlyPalettesFromAuthority(palettes, parsed);
+        overlayEmbeddedCsvOnlyPalettesAuthority(palettes);
         return palettes;
       })
       .catch(function () {
-        hydrateCsvOnlyPalettesIfNeeded();
+        ensureCsvOnlyPalettesFromAuthority({ force: true });
         return palettes;
       });
   }
@@ -260,7 +295,7 @@
   var lastGvizSig = null;
   var lastGoogleLiveRawKey = null;
   var liveSyncTimerId = null;
-  var liveSyncIntervalMs = 3000;
+  var liveSyncIntervalMs = 1500;
   var liveSyncPollInFlight = false;
   var lastLiveSyncAt = null;
 
@@ -461,6 +496,7 @@
         palette7: {},
         palette8: {},
         palette9: {},
+        palette10: {},
       });
     }
     var layout = getPaletteCsvLayout(records[0]);
@@ -476,6 +512,7 @@
       palette7: {},
       palette8: {},
       palette9: {},
+      palette10: {},
     };
     var ri;
     for (ri = 1; ri < records.length; ri++) {
@@ -565,7 +602,7 @@
     syncBorderGlobals();
     updatePaletteButtonStates();
     if (GVIZ_CSV_ONLY_PALETTE_KEYS.indexOf(key) !== -1) {
-      hydrateCsvOnlyPalettesIfNeeded();
+      ensureCsvOnlyPalettesFromAuthority({ force: isFileProtocol() });
       refreshCsvOnlyPalettesFromGoogle().then(function () {
         syncBorderGlobals();
         notifyPalettesLoaded();
@@ -739,6 +776,30 @@
     return merged;
   }
 
+  /**
+   * Palette 8–10 in Google columns L–N often lag — embedded/local CSV wins.
+   * Keeps csv-only palettes in sync after `npm run embed:palette-csv` without waiting on the sheet.
+   */
+  function overlayEmbeddedCsvOnlyPalettesAuthority(into) {
+    if (!into) return into;
+    var embedded = getEmbeddedLocalPaletteCsvText();
+    var parsed = embedded ? tryParsePaletteCsv(embedded) : null;
+    if (!parsed) return into;
+    var patch = {};
+    var ki;
+    var key;
+    var hasPatch = false;
+    for (ki = 0; ki < GVIZ_CSV_ONLY_PALETTE_KEYS.length; ki++) {
+      key = GVIZ_CSV_ONLY_PALETTE_KEYS[ki];
+      if (!parsed[key] || !Object.keys(parsed[key]).length) continue;
+      patch[key] = parsed[key];
+      hasPatch = true;
+    }
+    if (!hasPatch) return into;
+    applyAuthoritativePaletteSlots(into, patch);
+    return into;
+  }
+
   function csvOnlyPalettesNeedFill(merged) {
     var ki;
     for (ki = 0; ki < GVIZ_CSV_ONLY_PALETTE_KEYS.length; ki++) {
@@ -755,8 +816,13 @@
     if (csvParsed) {
       return Promise.resolve(supplementCsvOnlyPalettesFromAuthority(merged, csvParsed));
     }
-    /** Live poll must not use local/embedded CSV — it is a static snapshot and blocks updates. */
-    if (options.livePoll) {
+    /** Live poll without CSV: gviz omits palette8–10 — keep embedded/local authority. */
+    if (options.livePoll && !csvParsed) {
+      var embeddedLive = getEmbeddedLocalPaletteCsvText();
+      var embeddedLiveParsed = embeddedLive ? tryParsePaletteCsv(embeddedLive) : null;
+      if (embeddedLiveParsed) {
+        supplementCsvOnlyPalettesFromAuthority(merged, embeddedLiveParsed);
+      }
       return Promise.resolve(merged);
     }
     if (!csvOnlyPalettesNeedFill(merged)) return Promise.resolve(merged);
@@ -841,6 +907,7 @@
         }
         toApply = parsed;
       }
+      overlayEmbeddedCsvOnlyPalettesAuthority(toApply);
       warnIfPaletteIncomplete(toApply);
       return applyParsedPaletteData(toApply, sourceKey, sourceLabel, {
         skipMemoryGapFill: options.livePoll === true,
@@ -927,7 +994,7 @@
     if (loaded && isCsvOnlyPaletteRegression(incoming)) {
       if (typeof console !== "undefined" && console.warn) {
         console.warn(
-          "SheetPalettes: skipped update — palette8/9 would lose colors (partial sheet response)."
+          "SheetPalettes: skipped update — palette8–10 would lose colors (partial sheet response)."
         );
       }
       return palettes;
@@ -975,7 +1042,9 @@
     var time = lastLiveSyncAt ? formatLiveSyncClock(lastLiveSyncAt) : "";
     var fileHint = isFileProtocol()
       ? " · פתח דרך localhost לעדכון מלא"
-      : "";
+      : isLocalDevHost()
+        ? " · מקור: קובץ מקומי"
+        : "";
     var csvOnlyHint = "";
     if (
       palettes &&
@@ -1168,6 +1237,45 @@
     } catch (e) {
       return false;
     }
+  }
+
+  /** npm run serve — local data/sheet-palette-colors.csv is authoritative (not Google). */
+  function isLocalDevHost() {
+    try {
+      var host = global.location && global.location.hostname;
+      return host === "localhost" || host === "127.0.0.1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function localPaletteSourceLabel(text) {
+    return getEmbeddedLocalPaletteCsvText() === text
+      ? "embedded palette CSV"
+      : "data/sheet-palette-colors.csv";
+  }
+
+  function loadFromLocalCsvAuthoritative() {
+    return resolveLocalPaletteCsvText().then(function (text) {
+      return applyParsedPalettes(
+        text,
+        "local",
+        localPaletteSourceLabel(text) + " (local dev)"
+      );
+    });
+  }
+
+  function pollLocalCsvLive() {
+    return fetchLocalCsv().then(function (text) {
+      var parsed = tryParsePaletteCsv(text);
+      if (!parsed) throw new Error("Local palette CSV unavailable");
+      return applyParsedPaletteData(
+        parsed,
+        "local",
+        localPaletteSourceLabel(text) + " (live local dev)",
+        { skipMemoryGapFill: true }
+      );
+    });
   }
 
   /**
@@ -1399,7 +1507,8 @@
     if (!loaded) return loadSheetPalettes();
     if (liveSyncPollInFlight) return Promise.resolve(palettes);
     liveSyncPollInFlight = true;
-    return pollGoogleSheetLive()
+    var poll = isLocalDevHost() ? pollLocalCsvLive() : pollGoogleSheetLive();
+    return poll
       .catch(function (err) {
         if (typeof console !== "undefined" && console.warn) {
           console.warn(
@@ -1447,7 +1556,11 @@
     if (embedded) {
       return Promise.resolve(
         applyParsedPalettes(embedded, "embedded", "embedded palette CSV (fast boot)")
-      );
+      ).then(function (result) {
+        ensureCsvOnlyPalettesFromAuthority({ force: true });
+        syncBorderGlobals();
+        return result;
+      });
     }
     return resolveLocalPaletteCsvText()
       .then(function (text) {
@@ -1474,6 +1587,17 @@
     lastPaletteFingerprint = null;
     lastGvizSig = null;
     lastGoogleLiveRawKey = null;
+    if (isLocalDevHost()) {
+      return loadFromLocalCsvAuthoritative().catch(function (localErr) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn(
+            "SheetPalettes: local CSV unavailable on localhost; trying Google Sheet.",
+            localErr
+          );
+        }
+        return loadFromGoogleSheet();
+      });
+    }
     return loadFromGoogleSheet()
       .catch(function (err) {
         if (typeof console !== "undefined" && console.warn) {

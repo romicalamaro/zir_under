@@ -222,13 +222,16 @@ var LABEL_BAR_AGE_CIRCLE_CX = 30.38;
 var LABEL_BAR_AGE_CIRCLE_CY = 40;
 var LABEL_BAR_AGE_CIRCLE_R = 23.65;
 /** Overlay font size as a fraction of circle diameter */
-var LABEL_BAR_AGE_OVERLAY_FONT_SIZE_RATIO = 0.58;
+var LABEL_BAR_AGE_OVERLAY_FONT_SIZE_RATIO = 0.56;
 var LABEL_BAR_AGE_OVERLAY_FILL = "#ffffff";
-/** Nudge age digits down inside the circle (px) */
-var LABEL_BAR_AGE_OVERLAY_Y_OFFSET_PX = 1;
+/** Letter-spacing for age digits (0 keeps double digits visually centered) */
+var LABEL_BAR_AGE_OVERLAY_LETTER_SPACING = 0;
+/** Nudge age digits inside the circle (px) */
+var LABEL_BAR_AGE_OVERLAY_X_OFFSET_PX = 0;
+var LABEL_BAR_AGE_OVERLAY_Y_OFFSET_PX = 0.5;
 var LABEL_BAR_RIGHT_LION_INNER_ROW2_SVG = "";
 /** Profile Lost icon inward from the right lion (row 1) — always Inner Circle */
-var LABEL_BAR_LOST_INNER_SVG = "LOST/man.svg";
+var LABEL_BAR_LOST_INNER_SVG = "";
 var LABEL_BAR_LOST_MIDDLE_SVG = "LOST/2 man.svg";
 var LABEL_BAR_LOST_DISTANT_SVG = "LOST/3 man.svg";
 /** Fixed caption left of the Lost profile icon (row 1, inward from right lion) */
@@ -268,7 +271,7 @@ var LABEL_BAR_END_CAP_ROW_SPAN = 2;
 /** Gap between end cap and inner label content on each side (px) */
 var LABEL_BAR_ITEM_GAP_PX = 8;
 /** Fixed gap between caption text and its symbol inside one label-bar group (px) */
-var LABEL_BAR_CLUSTER_INTERNAL_GAP_PX = 7;
+var LABEL_BAR_CLUSTER_INTERNAL_GAP_PX = 8;
 /** Square inserted between each pair of label-bar SVG symbol clusters */
 var LABEL_BAR_SYMBOL_SEPARATOR_SIZE_PX = 5;
 var LABEL_BAR_SYMBOL_SEPARATOR_FILL = "#ffffff";
@@ -283,8 +286,16 @@ var LABEL_BAR_TEXT_Y_OFFSET_PX = 3;
 /** Padding inside the knockout badge (coordinates + 1/1) */
 var LABEL_BAR_COORDINATES_BADGE_PAD_X_PX = 7;
 var LABEL_BAR_COORDINATES_BADGE_PAD_Y_PX = 3;
+/** Minimum extra knockout-badge width in SVG export (Illustrator text is wider) */
+var LABEL_BAR_COORDINATES_BADGE_EXPORT_EXTRA_WIDTH_PX = 8;
 /** Extra downward nudge for text inside knockout badges (px); rect stays put */
-var LABEL_BAR_KNOCKOUT_BADGE_TEXT_Y_OFFSET_PX = 1;
+var LABEL_BAR_KNOCKOUT_BADGE_TEXT_Y_OFFSET_PX = -1;
+/** Lift outlined export text vs on-screen middle baseline (negative = up) */
+var LABEL_BAR_EXPORT_OUTLINE_Y_NUDGE_PX = -3;
+/** Knockout fraction badges (1/1) — tiny downward vs coordinates */
+var LABEL_BAR_EXPORT_FRACTION_BADGE_OUTLINE_Y_NUDGE_PX = -4;
+/** Knockout coordinates badge — sits lower than fraction text in export */
+var LABEL_BAR_EXPORT_COORDINATES_OUTLINE_Y_NUDGE_PX = -1;
 
 /** Random 8-digit serial in white margin above/below brown bars (same number top + bottom) */
 var CANVAS_EDGE_SERIAL_EDGE_INSET_PX = 50;
@@ -816,6 +827,8 @@ var PRIDE_AUTO_MERGE_DENSITY_AREA_EXPONENT = 2;
 var PRIDE_AUTO_MERGE_DENSITY_AREA_SCALE_MAX = 8;
 /** refTile/currentTile at/above this → fast simple merge path (no prune/orphans) */
 var PRIDE_AUTO_MERGE_SIMPLE_MODE_DENSITY_RATIO = 3;
+/** Octagon grid only: Pride auto-merge edge budget scale (0.85 ≈ 15% smaller regions). */
+var OCTAGON_GRID_PRIDE_EDGE_SCALE = 0.85;
 /** Octagon grid + low inner-scale: min Hope stipple region area (× tileSize²) */
 var HOPE_LOW_INNER_SCALE_MIN_AREA_TILE_FRACTION = 1.5;
 /** Default stipple dot fill (Hope layer) */
