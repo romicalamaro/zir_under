@@ -67,6 +67,11 @@ var BG_COLOR = CANVAS_BACKGROUND_COLOR_DEFAULT;
 var CANVAS_EDGE_BROWN_BAR_HEIGHT_PX = 100;
 /** Length toward canvas top/bottom past division line (inner edge stays on divY) */
 var CANVAS_EDGE_BROWN_BAR_OUTWARD_EXTEND_PX = 20;
+/** Extra canvas area above bottom label bar included in profile questionnaire zoom */
+var PROFILE_LABEL_FOCUS_PAD_ABOVE_PX = 100;
+/** Profile zoom target: grid columns (1-based) — focus rect fills this span on the right */
+var PROFILE_LABEL_FOCUS_GRID_COL_START = 8;
+var PROFILE_LABEL_FOCUS_GRID_COL_SPAN = 5;
 var CANVAS_EDGE_BROWN_BAR_COLOR = "#685450";
 /** Label bar background (color picker default) */
 var LABEL_BAR_BACKGROUND_COLOR_DEFAULT = CANVAS_EDGE_BROWN_BAR_COLOR;

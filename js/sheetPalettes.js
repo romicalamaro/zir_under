@@ -586,6 +586,180 @@
     return FALLBACK_DEFAULTS[slotId] || "#000000";
   }
 
+  /** Slot order A1…H5 — matches CSV row order for stable gradient sequencing. */
+  function getPaletteSlotOrder() {
+    return Object.keys(FALLBACK_DEFAULTS);
+  }
+
+  function getSlotColorForPalette(paletteKey, slotId) {
+    var palette = palettes[paletteKey] || {};
+    if (palette[slotId]) return palette[slotId];
+    if (paletteKey === "palette1" && palettes.default && palettes.default[slotId]) {
+      return palettes.default[slotId];
+    }
+    return FALLBACK_DEFAULTS[slotId] || null;
+  }
+
+  /** Unique hex colors for one palette (deduped, first-seen slot order). */
+  function getUniquePaletteColors(paletteKey) {
+    if (PALETTE_KEYS.indexOf(paletteKey) === -1) return [];
+    var seen = {};
+    var result = [];
+    var slots = getPaletteSlotOrder();
+    var i;
+    for (i = 0; i < slots.length; i++) {
+      var hex = normalizeHex(getSlotColorForPalette(paletteKey, slots[i]));
+      if (hex && !seen[hex]) {
+        seen[hex] = true;
+        result.push(hex);
+      }
+    }
+    return result;
+  }
+
+  /** Neutrals excluded from optional swatch colors (not A1/G4 required slots). */
+  var PROMINENT_EXCLUDED_NEUTRALS = {
+    "#000000": true,
+    "#303030": true,
+    "#ffffff": true,
+    "#d9d9d9": true,
+    "#685450": true,
+    "#655551": true,
+    "#fffce8": true,
+    "#fffce9": true,
+    "#f7cecd": true,
+    "#ffebf0": true,
+  };
+
+  var PROMINENT_BACKGROUND_SLOT = "A1";
+  var PROMINENT_LABEL_SLOT = "G4";
+  var PROMINENT_FEELING_SLOTS = [
+    "F2",
+    "F3",
+    "F5",
+    "F7",
+    "F8",
+    "F11",
+    "F12",
+    "F15",
+    "F1",
+    "F4",
+    "F6",
+    "F10",
+    "F13",
+    "F14",
+    "F16",
+    "F17",
+  ];
+  var PROMINENT_MAX_COLORS = 5;
+
+  function isProminentExcludedNeutral(hex) {
+    var normalized = normalizeHex(hex);
+    return !!(normalized && PROMINENT_EXCLUDED_NEUTRALS[normalized]);
+  }
+
+  /**
+   * 3–5 colors for palette preview circles: always background (A1), label (G4),
+   * and one feeling marker; extras skip black/gray/white/beige neutrals.
+   */
+  function getProminentPaletteColors(paletteKey) {
+    if (PALETTE_KEYS.indexOf(paletteKey) === -1) return [];
+    var seen = {};
+    var result = [];
+    var slots = getPaletteSlotOrder();
+    var i;
+    var fi;
+    var hex;
+
+    function addColor(value, allowNeutral) {
+      hex = normalizeHex(value);
+      if (!hex || seen[hex]) return;
+      if (!allowNeutral && isProminentExcludedNeutral(hex)) return;
+      seen[hex] = true;
+      result.push(hex);
+    }
+
+    addColor(getSlotColorForPalette(paletteKey, PROMINENT_BACKGROUND_SLOT), true);
+    addColor(getSlotColorForPalette(paletteKey, PROMINENT_LABEL_SLOT), true);
+
+    for (fi = 0; fi < PROMINENT_FEELING_SLOTS.length; fi++) {
+      hex = normalizeHex(
+        getSlotColorForPalette(paletteKey, PROMINENT_FEELING_SLOTS[fi])
+      );
+      if (hex && !isProminentExcludedNeutral(hex)) {
+        addColor(hex, false);
+        break;
+      }
+    }
+
+    for (i = 0; i < slots.length && result.length < PROMINENT_MAX_COLORS; i++) {
+      var slot = slots[i];
+      if (
+        slot === PROMINENT_BACKGROUND_SLOT ||
+        slot === PROMINENT_LABEL_SLOT ||
+        slot.charAt(0) === "F"
+      ) {
+        continue;
+      }
+      addColor(getSlotColorForPalette(paletteKey, slot), false);
+    }
+
+    if (result.length < 3) {
+      for (fi = 0; fi < PROMINENT_FEELING_SLOTS.length; fi++) {
+        addColor(
+          getSlotColorForPalette(paletteKey, PROMINENT_FEELING_SLOTS[fi]),
+          true
+        );
+        if (result.length >= 3) break;
+      }
+    }
+    if (result.length < 3) {
+      for (i = 0; i < slots.length && result.length < 3; i++) {
+        addColor(getSlotColorForPalette(paletteKey, slots[i]), true);
+      }
+    }
+
+    return result.slice(0, PROMINENT_MAX_COLORS);
+  }
+
+  /** Soft mesh positions — organic spread like blurred color blobs in a circle. */
+  var PALETTE_MESH_POSITIONS = [
+    [28, 22],
+    [76, 34],
+    [48, 84],
+    [14, 58],
+    [86, 68],
+  ];
+
+  /** Overlapping radial layers for soft color mixing (pair with CSS blur on swatch). */
+  function getPaletteMeshGradient(paletteKey) {
+    var colors = getProminentPaletteColors(paletteKey);
+    if (!colors.length) return "#cccccc";
+    if (colors.length === 1) return colors[0];
+    var layers = [];
+    var i;
+    for (i = 0; i < colors.length; i++) {
+      var pos = PALETTE_MESH_POSITIONS[i % PALETTE_MESH_POSITIONS.length];
+      layers.push(
+        "radial-gradient(circle at " +
+          pos[0] +
+          "% " +
+          pos[1] +
+          "%, " +
+          colors[i] +
+          " 0%, " +
+          colors[i] +
+          " 42%, transparent 72%)"
+      );
+    }
+    return layers.join(", ");
+  }
+
+  /** @deprecated alias — questionnaire swatches use mesh blur, not conic wedges. */
+  function getPaletteConicGradient(paletteKey) {
+    return getPaletteMeshGradient(paletteKey);
+  }
+
   /** Override palette slot (sidebar pipettes; persists until sheet reload / palette switch). */
   function setSlotColor(slotId, hex) {
     if (!slotId) return false;
@@ -1755,6 +1929,10 @@
     stopLiveSync: stopLiveSync,
     onPalettesLoaded: onPalettesLoaded,
     getColor: getColor,
+    getUniquePaletteColors: getUniquePaletteColors,
+    getProminentPaletteColors: getProminentPaletteColors,
+    getPaletteMeshGradient: getPaletteMeshGradient,
+    getPaletteConicGradient: getPaletteConicGradient,
     setSlotColor: setSlotColor,
     setActivePalette: setActivePalette,
     getActivePaletteKey: getActivePaletteKey,

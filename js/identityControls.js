@@ -505,10 +505,27 @@
       livingInIranChoice = isYes;
       userTouched.livingInIran = true;
       syncLivingInIranUiOnly(isYes);
+      if (!isYes) {
+        livingDurationChoice = null;
+        userTouched.livingDuration = false;
+        syncLivingDurationUiOnly(null);
+        leavingYearValue = "";
+        userTouched.leavingYear = false;
+        var clearedLeavingYearInput = document.getElementById(
+          "identity-leaving-year-input"
+        );
+        if (clearedLeavingYearInput) clearedLeavingYearInput.value = "";
+        if (!silent && onLeavingYearChange) onLeavingYearChange("");
+      }
       if (!silent && onLivingInIranChange) onLivingInIranChange(livingInIranChoice);
     }
 
-    if (
+    if (row.livingDuration === "" || row.livingDuration === null) {
+      livingDurationChoice = null;
+      userTouched.livingDuration = false;
+      syncLivingDurationUiOnly(null);
+      if (!silent && onLivingDurationChange) onLivingDurationChange(null);
+    } else if (
       row.livingDuration === "smallPart" ||
       row.livingDuration === "partOfLife" ||
       row.livingDuration === "mostAll"

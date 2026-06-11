@@ -13,7 +13,6 @@
   var SLIDER_KEYS = [
     "octagonsN",
     "innerScale",
-    "colorDivisions",
     "borderSideSegments",
     "borderFrameDivisions",
     "borderSideWhiteFill",
@@ -34,7 +33,6 @@
   var SLIDER_DOM = {
     octagonsN: "octagons-n",
     innerScale: "inner-scale",
-    colorDivisions: "color-divisions",
     borderSideSegments: "border-side-segments",
     borderFrameDivisions: "border-frame-divisions",
     borderSideWhiteFill: "border-side-white-fill",

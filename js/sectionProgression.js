@@ -15,6 +15,7 @@
 
   var labelBarTagTouched = false;
   var profileWasComplete = false;
+  var questionnaireProfileComplete = false;
   var gridTypeChosen = false;
   var frameSectionEngaged = false;
   var fanSectionEngaged = false;
@@ -58,7 +59,10 @@
   }
 
   function isGridContentUnlocked() {
-    return isProfileSectionComplete() && gridTypeChosen;
+    return (
+      (isProfileSectionComplete() || questionnaireProfileComplete) &&
+      gridTypeChosen
+    );
   }
 
   function isFrameContentUnlocked() {
@@ -121,7 +125,13 @@
   function markGridTypeChosen() {
     if (gridTypeChosen) return;
     gridTypeChosen = true;
-    applySidebarLocks();
+    notifySectionProgressChange();
+  }
+
+  function markQuestionnaireProfileComplete() {
+    if (questionnaireProfileComplete) return;
+    questionnaireProfileComplete = true;
+    notifySectionProgressChange();
   }
 
   function markFrameSectionEngaged() {
@@ -163,6 +173,7 @@
     isFrameContentUnlocked: isFrameContentUnlocked,
     isFanContentUnlocked: isFanContentUnlocked,
     markGridTypeChosen: markGridTypeChosen,
+    markQuestionnaireProfileComplete: markQuestionnaireProfileComplete,
     markFrameSectionEngaged: markFrameSectionEngaged,
     markFanSectionEngaged: markFanSectionEngaged,
     isSectionUnlocked: isSectionUnlocked,

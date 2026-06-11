@@ -3,19 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+      }
+    </script>
     <title>Octagon Grid — 68×180cm @ 300 DPI</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260608-panel-hide" />
+    <link rel="stylesheet" href="css/styles.css?v=20260611-canvas-top" />
   </head>
   <body>
-    <button
-      type="button"
-      id="page2-grid-lines-toggle"
-      aria-pressed="false"
-      aria-label="Show or hide page 2 grid lines"
-    >
-      Grid lines
-    </button>
-
     <div id="page2">
       <div class="page2-layout">
         <div class="page2-guides" aria-hidden="true">
@@ -44,7 +40,13 @@
           </div>
           <div class="page2-header-col" data-col="1">
             <div class="page2-header-cell">
-              <span class="page2-col-title">home</span>
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">home</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >خانه</span
+                >
+              </span>
             </div>
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell"></div>
@@ -52,13 +54,25 @@
           <div class="page2-header-col" data-col="2">
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell">
-              <span class="page2-col-title">design</span>
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">design</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >طراحی</span
+                >
+              </span>
             </div>
             <div class="page2-header-cell"></div>
           </div>
           <div class="page2-header-col" data-col="3">
             <div class="page2-header-cell">
-              <span class="page2-col-title">archive / shop</span>
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">shop</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >فروشگاه</span
+                >
+              </span>
             </div>
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell"></div>
@@ -66,23 +80,57 @@
           <div class="page2-header-col" data-col="4">
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell">
-              <span class="page2-col-title">about</span>
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">about</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >درباره</span
+                >
+              </span>
             </div>
             <div class="page2-header-cell"></div>
           </div>
           <div class="page2-header-col" data-col="5">
             <div class="page2-header-cell">
-              <span class="page2-col-title">contact</span>
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">contact</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >تماس</span
+                >
+              </span>
             </div>
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell"></div>
           </div>
-          <div class="page2-header-col" data-col="6">
+          <div
+            class="page2-header-col page2-header-col--right-edge"
+            data-col="6"
+          >
             <div class="page2-header-cell"></div>
-            <div class="page2-header-cell"></div>
+            <div
+              class="page2-header-cell page2-header-cell--design-panel-trigger"
+              role="button"
+              tabindex="0"
+              aria-pressed="false"
+              aria-label="Show or hide design section sidebar panel"
+            ></div>
             <div class="page2-header-cell"></div>
           </div>
         </header>
+
+        <div class="page2-logo" aria-label="Site logo">
+          <div class="page2-logo__slot">
+            <img
+              class="page2-logo__image"
+              src="website/logo.svg"
+              alt="Under Cover"
+              width="207"
+              height="93"
+              decoding="async"
+            />
+          </div>
+        </div>
 
         <main class="page2-sections" aria-label="Site sections">
           <section
@@ -91,10 +139,32 @@
             data-section-col="1"
             aria-label="home"
           >
+            <div class="page2-home-bg" aria-hidden="true">
+              <div
+                class="page2-home-bg__slide is-active"
+                style="background-image: url('website/background%20home3.png')"
+              ></div>
+              <div
+                class="page2-home-bg__slide"
+                style="background-image: url('website/background%20home.png')"
+              ></div>
+              <div
+                class="page2-home-bg__slide"
+                style="background-image: url('website/background%20home2.png')"
+              ></div>
+            </div>
             <div class="page2-home-content">
-              <p class="page2-home-intro">
+              <p class="page2-home-intro page2-home-intro--en">
                 Modular fashion scarves expressing solidarity with Iranian
                 women&rsquo;s protest for bodily autonomy
+              </p>
+              <p
+                class="page2-home-intro page2-home-intro--fa"
+                lang="fa"
+                dir="rtl"
+              >
+                روسری&zwnj;های مدولار؛ ابراز همبستگی با اعتراض زنان ایران برای
+                خودمختاری بدنشان
               </p>
             </div>
           </section>
@@ -104,6 +174,34 @@
             data-section-col="2"
             aria-label="design"
           >
+            <div
+              class="questionnaire-panel"
+              id="questionnaire-panel"
+              aria-label="Profile questionnaire"
+            >
+              <div class="questionnaire-panel__grid">
+                <div class="questionnaire-panel__content">
+                  <nav
+                    class="questionnaire-panel__progress"
+                    id="questionnaire-progress"
+                    aria-label="Question progress"
+                  ></nav>
+                  <div class="questionnaire-panel__body">
+                    <p
+                      class="questionnaire-panel__section-label"
+                      id="questionnaire-section-label"
+                    >
+                      1/ Profile
+                    </p>
+                    <div
+                      class="questionnaire-panel__viewport"
+                      id="questionnaire-viewport"
+                      aria-live="polite"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
 <div class="app-shell">
       <aside class="sidebar" aria-label="Design controls">
         <div class="sidebar__scroll">
@@ -562,15 +660,8 @@
                 id="sheet-palette-buttons"
                 class="sidebar__sheet-palette-buttons"
                 role="group"
-                aria-label="Palette shuffle controls"
+                aria-label="Palette controls"
               >
-                <button
-                  type="button"
-                  id="color-divisions-shuffle-btn"
-                  class="sidebar__palette-btn sidebar__palette-btn--label"
-                >
-                  Shuffle layout
-                </button>
                 <div class="sidebar__palette-shuffle-group">
                   <button
                     type="button"
@@ -588,106 +679,6 @@
                     >Palette 1</span
                   >
                 </div>
-                <button
-                  type="button"
-                  id="color-divisions-mix-areas-btn"
-                  class="sidebar__palette-btn sidebar__palette-btn--label"
-                >
-                  Mix areas
-                </button>
-              </div>
-            </div>
-            <div class="sidebar__blend-swatches" id="blend-area-swatches">
-              <span class="sidebar__grid-density-label">שטחי שילוב (H1–H5)</span>
-              <p class="sidebar__hint sidebar__hint--blend">
-                פיפטה לכל אזור — נסי צבעים על הקנבס; אחר כך העתיקי ל־Palette 1 בגיליון (שורות H1–H5).
-              </p>
-              <ul class="sidebar__blend-swatch-list" aria-label="צבעי שטחי שילוב">
-                <li class="sidebar__blend-swatch-row">
-                  <label class="sidebar__blend-swatch-label" for="blend-color-H1">
-                    <span class="sidebar__blend-swatch-id">H1</span>
-                    <span class="sidebar__blend-swatch-caption">אזור 1 · exclusion</span>
-                  </label>
-                  <input
-                    type="color"
-                    id="blend-color-H1"
-                    class="sidebar__blend-swatch-input"
-                    data-slot="H1"
-                    value="#4200ae"
-                    aria-label="צבע אזור 1 exclusion"
-                  />
-                </li>
-                <li class="sidebar__blend-swatch-row">
-                  <label class="sidebar__blend-swatch-label" for="blend-color-H2">
-                    <span class="sidebar__blend-swatch-id">H2</span>
-                    <span class="sidebar__blend-swatch-caption">אזור 2 · exclusion</span>
-                  </label>
-                  <input
-                    type="color"
-                    id="blend-color-H2"
-                    class="sidebar__blend-swatch-input"
-                    data-slot="H2"
-                    value="#b2ff00"
-                    aria-label="צבע אזור 2 exclusion"
-                  />
-                </li>
-                <li class="sidebar__blend-swatch-row">
-                  <label class="sidebar__blend-swatch-label" for="blend-color-H3">
-                    <span class="sidebar__blend-swatch-id">H3</span>
-                    <span class="sidebar__blend-swatch-caption">אזור 3 · exclusion</span>
-                  </label>
-                  <input
-                    type="color"
-                    id="blend-color-H3"
-                    class="sidebar__blend-swatch-input"
-                    data-slot="H3"
-                    value="#ffffff"
-                    aria-label="צבע אזור 3 exclusion"
-                  />
-                </li>
-                <li class="sidebar__blend-swatch-row">
-                  <label class="sidebar__blend-swatch-label" for="blend-color-H4">
-                    <span class="sidebar__blend-swatch-id">H4</span>
-                    <span class="sidebar__blend-swatch-caption">אזור 4 · exclusion</span>
-                  </label>
-                  <input
-                    type="color"
-                    id="blend-color-H4"
-                    class="sidebar__blend-swatch-input"
-                    data-slot="H4"
-                    value="#000000"
-                    aria-label="צבע אזור 4 exclusion"
-                  />
-                </li>
-                <li class="sidebar__blend-swatch-row">
-                  <label class="sidebar__blend-swatch-label" for="blend-color-H5">
-                    <span class="sidebar__blend-swatch-id">H5</span>
-                    <span class="sidebar__blend-swatch-caption">אזור 5 · color dodge</span>
-                  </label>
-                  <input
-                    type="color"
-                    id="blend-color-H5"
-                    class="sidebar__blend-swatch-input"
-                    data-slot="H5"
-                    value="#303030"
-                    aria-label="צבע אזור 5 color dodge"
-                  />
-                </li>
-              </ul>
-            </div>
-            <div class="sidebar__grid-density">
-              <span class="sidebar__grid-density-label">Color divisions</span>
-              <div class="sidebar__grid-density-control sidebar__item-control">
-                <input
-                  id="color-divisions"
-                  type="range"
-                  min="1"
-                  max="5"
-                  value="1"
-                  step="1"
-                  aria-label="Color divisions"
-                />
-                <output id="color-divisions-out" for="color-divisions">1</output>
               </div>
             </div>
           </section>
@@ -1100,44 +1091,13 @@
           <!-- SVG injected by js/app.js -->
         </div>
       </div>
-
-      <div class="magnifier-dock" aria-label="Canvas magnifier">
-        <div class="magnifier-viewport" id="magnifier-viewport">
-          <svg
-            id="magnifier-svg"
-            xmlns="http://www.w3.org/2000/svg"
-            preserveAspectRatio="xMidYMid meet"
-            overflow="hidden"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <use id="magnifier-use" href="#design-svg" x="0" y="0" />
-          </svg>
-          <div class="magnifier-crosshair" aria-hidden="true"></div>
-        </div>
-        <div class="magnifier-dock__zoom">
-          <span class="magnifier-dock__zoom-label">Zoom</span>
-          <div class="magnifier-dock__zoom-control">
-            <input
-              id="magnifier-zoom"
-              type="range"
-              min="2"
-              max="15"
-              value="4"
-              step="1"
-              aria-label="Magnifier zoom"
-            />
-            <output id="magnifier-zoom-out" for="magnifier-zoom">4×</output>
-          </div>
-        </div>
-      </div>
     </div>
           </section>
           <section
             class="page2-section"
             id="section-archive"
             data-section-col="3"
-            aria-label="archive / shop"
+            aria-label="shop"
           ></section>
           <section
             class="page2-section"
@@ -1156,29 +1116,8 @@
     </div>
 
     <style id="page2-isolated-styles">
-      #page2-grid-lines-toggle {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        z-index: 10000;
-        margin: 0;
-        padding: 8px 14px;
-        font: 13px/1.2 system-ui, sans-serif;
-        color: #1a1a1a;
-        background: #fff;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-      }
-
-      #page2-grid-lines-toggle:hover {
-        background: #f5f5f5;
-      }
-
-      #page2-grid-lines-toggle[aria-pressed="true"] {
-        background: #eef2fb;
-        border-color: rgba(100, 120, 160, 0.45);
+      #page2:not(.page2--design-panel-visible) #section-design .sidebar {
+        display: none;
       }
 
       /*
@@ -1263,6 +1202,7 @@
       }
 
       #page2 #section-design {
+        position: relative;
         overflow: hidden;
         cursor: default;
         box-sizing: border-box;
@@ -1271,13 +1211,12 @@
       }
 
       #page2 #section-design > .app-shell {
-        height: 100%;
-        min-height: 0;
+        flex-direction: row-reverse;
       }
 
-      #page2:not(.page2--design-active) .magnifier-dock {
-        visibility: hidden;
-        pointer-events: none;
+      #page2 #section-design .sidebar {
+        border-right: none;
+        border-left: 1px solid #ddd;
       }
 
       #page2 #section-home .page2-home-content {
@@ -1294,25 +1233,30 @@
       }
 
       #page2 .page2-home-intro {
-        grid-column: 2 / span 2;
         margin: 0;
-        font-family: "DIN Condensed", sans-serif;
         font-size: calc((var(--page2-space-20) - 4px) * 1.2);
         font-weight: 700;
         line-height: 1.15;
         color: #fff;
+      }
+
+      #page2 .page2-home-intro--en {
+        grid-column: 2 / span 2;
+        font-family: "DIN Condensed", sans-serif;
         text-align: left;
       }
 
-      #page2 #section-home::before {
-        content: "";
+      #page2 .page2-home-intro--fa {
+        grid-column: 10 / span 2;
+        font-family: "DecoType Nastaleeq", "Noto Nastaliq Urdu", serif;
+        font-weight: normal;
+        text-align: right;
+      }
+
+      #page2 #section-home .page2-home-bg {
         position: absolute;
         inset: 0;
         z-index: 0;
-        background-image: url("website/background%20home.png");
-        background-size: cover;
-        background-position: center center;
-        background-repeat: no-repeat;
         /* Fade the image edge out — image stays sharp; only opacity tapers at bottom */
         -webkit-mask-image: linear-gradient(
           to bottom,
@@ -1334,6 +1278,26 @@
           rgba(0, 0, 0, 0.18) 92%,
           transparent 100%
         );
+      }
+
+      #page2 #section-home .page2-home-bg__slide {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        opacity: 0;
+        transition: opacity 1.2s ease-in-out;
+      }
+
+      #page2 #section-home .page2-home-bg__slide.is-active {
+        opacity: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2 #section-home .page2-home-bg__slide {
+          transition: none;
+        }
       }
 
       #page2.page2--grid-lines-visible .page2-col {
@@ -1416,10 +1380,18 @@
         box-shadow: inset 0 0 0 1px rgba(80, 70, 60, 0.28);
       }
 
-      /* Left edge column: middle cell only (top/bottom stay default) */
-      #page2 .page2-header-col--left-edge .page2-header-cell:nth-child(2) {
+      /* Edge columns: middle cell only (top/bottom stay default) */
+      #page2 .page2-header-col--left-edge .page2-header-cell:nth-child(2),
+      #page2 .page2-header-col--right-edge .page2-header-cell:nth-child(2) {
         background: #000;
         box-shadow: none;
+        cursor: pointer;
+      }
+
+      #page2.page2--design-panel-visible
+        .page2-header-col--right-edge
+        .page2-header-cell--design-panel-trigger {
+        box-shadow: inset 0 0 0 2px rgba(100, 120, 160, 0.55);
       }
 
       /* Remaining columns keep the original 6-column checkerboard */
@@ -1445,6 +1417,9 @@
       }
 
       #page2 .page2-col-title {
+        display: inline-flex;
+        direction: ltr;
+        align-items: baseline;
         font-family: "DIN Condensed", sans-serif;
         font-size: calc(var(--page2-space-20) - 4px);
         font-weight: 700;
@@ -1455,9 +1430,31 @@
         pointer-events: none;
       }
 
+      #page2 .page2-col-title__en,
+      #page2 .page2-col-title__sep {
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        color: inherit;
+        mix-blend-mode: inherit;
+      }
+
+      #page2 .page2-col-title__fa {
+        font-family: "DecoType Nastaleeq", "Noto Nastaliq Urdu", serif;
+        font-size: 0.92em;
+        font-weight: normal;
+        line-height: inherit;
+        color: inherit;
+        mix-blend-mode: inherit;
+      }
+
       /* Home section: invert checkerboard — black cells → white */
       #page2.page2--header-invert
         .page2-header-col--left-edge
+        .page2-header-cell:nth-child(2),
+      #page2.page2--header-invert
+        .page2-header-col--right-edge
         .page2-header-cell:nth-child(2) {
         background: #fff;
         box-shadow: none;
@@ -1481,8 +1478,14 @@
       }
 
       /* Home: photo shows through letterforms; checkerboard cells stay solid white */
-      #page2.page2--header-invert .page2-col-title {
-        background-image: url("website/background%20home.png");
+      #page2.page2--header-invert .page2-col-title,
+      #page2.page2--header-invert .page2-col-title__en,
+      #page2.page2--header-invert .page2-col-title__sep,
+      #page2.page2--header-invert .page2-col-title__fa {
+        background-image: var(
+          --page2-home-bg,
+          url("website/background%20home3.png")
+        );
         background-size: cover;
         background-position: center center;
         background-attachment: fixed;
@@ -1492,31 +1495,106 @@
         color: transparent;
         mix-blend-mode: normal;
       }
+
+      #page2 .page2-logo {
+        position: fixed;
+        bottom: var(--page2-space-20);
+        left: 0;
+        right: 0;
+        z-index: 3;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        column-gap: var(--page2-gutter);
+        padding-inline: var(--page2-margin);
+        box-sizing: border-box;
+        align-items: end;
+        pointer-events: none;
+      }
+
+      #page2 .page2-logo__slot {
+        grid-column: 1 / span 2;
+        width: 100%;
+        min-width: 0;
+      }
+
+      #page2 .page2-logo__image {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 207 / 93;
+        display: block;
+      }
     </style>
 
     <script id="page-toggle-script">
       (function () {
-        var gridLinesToggle = document.getElementById("page2-grid-lines-toggle");
         var page2 = document.getElementById("page2");
+        var gridLinesTrigger =
+          page2 &&
+          page2.querySelector(
+            ".page2-header-col--left-edge .page2-header-cell:nth-child(2)"
+          );
+        var designPanelTrigger =
+          page2 &&
+          page2.querySelector(".page2-header-cell--design-panel-trigger");
         var gridLinesVisible = false;
+        var designPanelVisible = false;
 
         function applyGridLinesView() {
+          if (!page2) return;
           page2.classList.toggle("page2--grid-lines-visible", gridLinesVisible);
-          gridLinesToggle.setAttribute(
-            "aria-pressed",
-            gridLinesVisible ? "true" : "false"
-          );
-          gridLinesToggle.textContent = gridLinesVisible
-            ? "Hide grid lines"
-            : "Grid lines";
         }
 
-        gridLinesToggle.addEventListener("click", function () {
-          gridLinesVisible = !gridLinesVisible;
+        function applyDesignPanelView() {
+          page2.classList.toggle(
+            "page2--design-panel-visible",
+            designPanelVisible
+          );
+          if (designPanelTrigger) {
+            designPanelTrigger.setAttribute(
+              "aria-pressed",
+              designPanelVisible ? "true" : "false"
+            );
+          }
+          if (designPanelVisible) {
+            window.requestAnimationFrame(function () {
+              window.dispatchEvent(new Event("resize"));
+            });
+          }
+        }
+
+        function toggleDesignPanel() {
+          designPanelVisible = !designPanelVisible;
+          applyDesignPanelView();
+        }
+
+        if (gridLinesTrigger) {
+          gridLinesTrigger.addEventListener("mouseenter", function () {
+            gridLinesVisible = true;
+            applyGridLinesView();
+          });
+          gridLinesTrigger.addEventListener("mouseleave", function () {
+            gridLinesVisible = false;
+            applyGridLinesView();
+          });
+        }
+
+        if (designPanelTrigger) {
+          designPanelTrigger.addEventListener("click", toggleDesignPanel);
+          designPanelTrigger.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleDesignPanel();
+            }
+          });
+        }
+
+        page2.addEventListener("page2:hide", function () {
+          gridLinesVisible = false;
           applyGridLinesView();
         });
 
         applyGridLinesView();
+        applyDesignPanelView();
       })();
     </script>
 
@@ -1544,6 +1622,12 @@
         var suppressHeaderRefreshOnce = false;
         var postHeaderAnimRefreshTimer = null;
         var headerAnimLockUntil = 0;
+        var scrollBootstrapComplete = false;
+
+        function openHomeSection(animate) {
+          page2.scrollTop = 0;
+          applyExpandedColumn(DEFAULT_OPEN_INDEX, animate === false ? false : undefined);
+        }
 
         function spansForExpandedColumn(index) {
           return Array.prototype.map.call(headerCols, function (_, i) {
@@ -1804,7 +1888,7 @@
           }
           sectionObserver = new IntersectionObserver(
             function (entries) {
-              if (!isPage2Visible()) return;
+              if (!scrollBootstrapComplete || !isPage2Visible()) return;
               entries.forEach(function (entry) {
                 if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
                   return;
@@ -1880,7 +1964,7 @@
         });
 
         function syncActiveSectionFromScroll() {
-          if (!isPage2Visible()) return;
+          if (!scrollBootstrapComplete || !isPage2Visible()) return;
           var viewportMid =
             page2.getBoundingClientRect().top + page2.clientHeight / 2;
           for (var i = 0; i < sections.length; i++) {
@@ -1906,15 +1990,24 @@
         });
 
         page2.addEventListener("page2:show", function () {
-          page2.scrollTop = 0;
-          applyExpandedColumn(DEFAULT_OPEN_INDEX, false);
+          openHomeSection(false);
           initSectionObserver();
           scheduleRefresh();
         });
         page2.addEventListener("page2:hide", function () {
           destroySectionObserver();
           clearHeaderCellHover();
-          applyExpandedColumn(DEFAULT_OPEN_INDEX, false);
+          openHomeSection(false);
+        });
+        window.addEventListener("pageshow", function (event) {
+          if (!event.persisted || !isPage2Visible()) return;
+          openHomeSection(false);
+          scheduleRefresh();
+        });
+        window.addEventListener("load", function () {
+          openHomeSection(false);
+          scrollBootstrapComplete = true;
+          scheduleRefresh();
         });
         window.addEventListener("resize", function () {
           if (suppressHeaderRefreshOnce) {
@@ -1924,9 +2017,63 @@
           scheduleRefresh();
         });
 
-        applyExpandedColumn(DEFAULT_OPEN_INDEX, false);
+        openHomeSection(false);
         initSectionObserver();
         scheduleRefresh();
+      })();
+    </script>
+
+    <script id="page2-home-bg-script">
+      (function () {
+        var page2 = document.getElementById("page2");
+        var slides = document.querySelectorAll(
+          "#section-home .page2-home-bg__slide"
+        );
+        if (!page2 || slides.length < 2) return;
+
+        var HOME_BG_INTERVAL_MS = 5000;
+        var currentIndex = 0;
+        var timerId = null;
+        var prefersReducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches;
+
+        function setActiveSlide(index) {
+          slides.forEach(function (slide, i) {
+            slide.classList.toggle("is-active", i === index);
+          });
+          var activeSlide = slides[index];
+          if (!activeSlide) return;
+          var bgImage = activeSlide.style.backgroundImage;
+          if (bgImage) {
+            page2.style.setProperty("--page2-home-bg", bgImage);
+          }
+        }
+
+        function advanceSlide() {
+          currentIndex = (currentIndex + 1) % slides.length;
+          setActiveSlide(currentIndex);
+        }
+
+        function startCarousel() {
+          if (prefersReducedMotion || timerId !== null) return;
+          timerId = window.setInterval(advanceSlide, HOME_BG_INTERVAL_MS);
+        }
+
+        function stopCarousel() {
+          if (timerId === null) return;
+          window.clearInterval(timerId);
+          timerId = null;
+        }
+
+        setActiveSlide(0);
+
+        if (!prefersReducedMotion) {
+          startCarousel();
+        }
+
+        page2.addEventListener("page2:show", startCarousel);
+        page2.addEventListener("page2:hide", stopCarousel);
       })();
     </script>
 
@@ -1940,11 +2087,12 @@
     <script defer src="js/nestedStarOctagonsGeometry.js"></script>
     <script defer src="js/circlesGridGeometry.js"></script>
     <script defer src="js/diamondsGridGeometry.js"></script>
-    <script defer src="js/identityControls.js"></script>
-    <script defer src="js/sectionProgression.js"></script>
+    <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
+    <script defer src="js/sectionProgression.js?v=20260611-canvas-grid"></script>
+    <script defer src="js/questionnaire.js?v=20260611-canvas-sync"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
-    <script defer src="js/app.js?v=20260607-export-knockout-y"></script>
+    <script defer src="js/app.js?v=20260611-canvas-anchor4"></script>
   </body>
 </html>

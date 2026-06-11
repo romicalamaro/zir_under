@@ -8,7 +8,6 @@
   var NS = "http://www.w3.org/2000/svg";
   var designSvg = null;
   /** H1–H5 pipette picks override sheet palette until palette button / sheet reload clears them */
-  var blendAreaColorOverrides = {};
   var cachedExportFontDataUri = null;
   var cachedExportOpentypeFont = null;
   var lastOctagonsN = OCTAGONS_N_DEFAULT;
@@ -128,6 +127,8 @@
   var borderSideWhiteCellIds = new Set();
   /** One random 8-digit serial per page load (top + bottom white strips). */
   var canvasEdgeSerial = null;
+  /** Stable questionnaire canvas clip + bottom anchor (reset on resize). */
+  var page2QuestionnaireCanvasLayoutCache = null;
   /** Five random rects tiling the grid frame (normalized 0–1 within layout bounds). */
   var cachedColorDivisionNormalizedRects = null;
   /** Maps area slot (0–3) → index in cachedColorDivisionNormalizedRects (shuffled). */
@@ -142,10 +143,6 @@
   var labelBarSvgLoadPromises = {};
   /** End-cap tag SVG — advances one step in svg/tag/ pool on each page load. */
   var labelBarEndCapSvgFile = null;
-
-  var magnifierCenterX = CANVAS_W / 2;
-  var magnifierCenterY = CANVAS_H / 2;
-  var magnifierListenersBound = false;
 
   /**
    * Symmetric border thickness (px) so the white ring area = CANVAS_BORDER_AREA_RATIO × canvas.
@@ -6723,19 +6720,9 @@
   }
 
   function getColorDivisionsSliderValue() {
-    var slider = document.getElementById("color-divisions");
-    var min =
-      typeof COLOR_DIVISIONS_MIN !== "undefined" ? COLOR_DIVISIONS_MIN : 1;
-    var max =
-      typeof COLOR_DIVISIONS_MAX !== "undefined" ? COLOR_DIVISIONS_MAX : 5;
-    var def =
-      typeof COLOR_DIVISIONS_DEFAULT !== "undefined"
-        ? COLOR_DIVISIONS_DEFAULT
-        : 1;
-    if (!slider) return def;
-    var v = parseInt(slider.value, 10);
-    if (!isFinite(v)) return def;
-    return Math.min(max, Math.max(min, v));
+    return typeof COLOR_DIVISIONS_DEFAULT !== "undefined"
+      ? COLOR_DIVISIONS_DEFAULT
+      : 1;
   }
 
   function getColorDivisionsColoredCount() {
@@ -6751,112 +6738,11 @@
     return Math.min(maxRegions, v - 1);
   }
 
-  function getColorDivisionsFillDefault(index) {
-    if (
-      typeof COLOR_DIVISIONS_FILL_DEFAULTS !== "undefined" &&
-      COLOR_DIVISIONS_FILL_DEFAULTS[index]
-    ) {
-      return COLOR_DIVISIONS_FILL_DEFAULTS[index];
-    }
-    return typeof COLOR_DIVISIONS_FILL_DEFAULT !== "undefined"
-      ? COLOR_DIVISIONS_FILL_DEFAULT
-      : "#303030";
-  }
-
   var BLEND_AREA_COLOR_SLOTS_ORDER = ["H1", "H2", "H3", "H4", "H5"];
-
-  function clearBlendAreaColorOverrides() {
-    blendAreaColorOverrides = {};
-  }
-
-  function getBlendAreaFillColor(slotId) {
-    if (
-      slotId &&
-      blendAreaColorOverrides[slotId] &&
-      normalizeHexColor(blendAreaColorOverrides[slotId], "")
-    ) {
-      return blendAreaColorOverrides[slotId];
-    }
-    return sheetColor(slotId);
-  }
 
   function getColorDivisionsFillColor(index) {
     var slot = BLEND_AREA_COLOR_SLOTS_ORDER[index] || "H5";
-    return getBlendAreaFillColor(slot);
-  }
-
-  function getBlendAreaSlotFallbackHex(slotId) {
-    var slots = ["H1", "H2", "H3", "H4", "H5"];
-    var index = slots.indexOf(slotId);
-    if (index < 0) return "#000000";
-    if (
-      typeof COLOR_DIVISIONS_FILL_DEFAULTS !== "undefined" &&
-      COLOR_DIVISIONS_FILL_DEFAULTS[index]
-    ) {
-      return COLOR_DIVISIONS_FILL_DEFAULTS[index];
-    }
-    return typeof COLOR_DIVISIONS_FILL_DEFAULT !== "undefined"
-      ? COLOR_DIVISIONS_FILL_DEFAULT
-      : "#000000";
-  }
-
-  function applyBlendAreaColorFromPipette(slot, hex) {
-    if (!slot) return;
-    var normalized = normalizeHexColor(hex, getBlendAreaSlotFallbackHex(slot));
-    blendAreaColorOverrides[slot] = normalized;
-    if (window.SheetPalettes && window.SheetPalettes.setSlotColor) {
-      window.SheetPalettes.setSlotColor(slot, normalized);
-    }
-    var input = document.getElementById("blend-color-" + slot);
-    if (input) input.value = normalized;
-    updateColorDivisionsLayer();
-  }
-
-  function syncBlendAreaSwatchInputs() {
-    var inputs = document.querySelectorAll(
-      ".sidebar__blend-swatch-input[data-slot]"
-    );
-    var i;
-    for (i = 0; i < inputs.length; i++) {
-      var input = inputs[i];
-      var slot = input.getAttribute("data-slot");
-      if (!slot) continue;
-      input.value = normalizeHexColor(
-        getBlendAreaFillColor(slot),
-        getBlendAreaSlotFallbackHex(slot)
-      );
-    }
-  }
-
-  function onBlendAreaSwatchInput(input) {
-    var slot = input.getAttribute("data-slot");
-    if (!slot) return;
-    applyBlendAreaColorFromPipette(slot, input.value);
-  }
-
-  function initBlendAreaColorSwatches() {
-    syncBlendAreaSwatchInputs();
-    var inputs = document.querySelectorAll(
-      ".sidebar__blend-swatch-input[data-slot]"
-    );
-    var i;
-    for (i = 0; i < inputs.length; i++) {
-      (function (input) {
-        if (input.__blendSwatchBound) return;
-        input.__blendSwatchBound = true;
-        input.addEventListener("input", function () {
-          onBlendAreaSwatchInput(input);
-        });
-        input.addEventListener("change", function () {
-          onBlendAreaSwatchInput(input);
-        });
-      })(inputs[i]);
-    }
-  }
-
-  function syncColorDivisionsOutput() {
-    var out = document.getElementById("color-divisions-out");
-    if (out) out.textContent = String(getColorDivisionsSliderValue());
+    return sheetColor(slot);
   }
 
   function rectArea(r) {
@@ -7119,27 +7005,6 @@
       }
     }
     return generateColorDivisionRectOrderGreedy(rects, adj, maxColored);
-  }
-
-  function reshuffleColorDivisionAreaOrder() {
-    if (!cachedColorDivisionNormalizedRects) {
-      ensureColorDivisionRects(false);
-    }
-    var absoluteRects = getAbsoluteColorDivisionRects();
-    if (!absoluteRects) return;
-    cachedColorDivisionRectOrder = generateValidColorDivisionRectOrder(
-      absoluteRects
-    );
-    updateColorDivisionsLayer();
-  }
-
-  function reshuffleColorDivisionRects() {
-    colorDivisionShuffleSeed += 1;
-    lastColorDivisionLayoutSignature = "";
-    cachedColorDivisionNormalizedRects = null;
-    cachedColorDivisionRectOrder = null;
-    ensureColorDivisionRects(true);
-    updateColorDivisionsLayer();
   }
 
   function ensureColorDivisionRects(force) {
@@ -13968,9 +13833,6 @@
         appendLabelBarContent(group);
         group.removeAttribute("visibility");
         labelBarContentHasRendered = true;
-        if (typeof updateMagnifierViewBox === "function") {
-          updateMagnifierViewBox();
-        }
       });
   }
 
@@ -20089,7 +19951,6 @@
     ensureLabelBarIconTintFilter(designSvg.querySelector("defs"));
     refreshHopeColoredExportDataUri();
     renderHopeMergeFillLayer();
-    syncMagnifierBorderColor();
   }
 
   function isGridContentUnlocked() {
@@ -20135,9 +19996,10 @@
     setCanvasLayerDisplay("grid-frame-chrome-root", frameOn);
     setCanvasLayerDisplay("fan-half-circle-root", fanOn);
 
-    setCanvasLayerDisplay("emotion-markers-root", false);
-    setCanvasLayerDisplay("fear-vertical-grid-root", false);
-    setCanvasLayerDisplay("pride-auto-merge-root", false);
+    var feelingsOn = fanOn;
+    setCanvasLayerDisplay("emotion-markers-root", feelingsOn);
+    setCanvasLayerDisplay("fear-vertical-grid-root", feelingsOn);
+    setCanvasLayerDisplay("pride-auto-merge-root", feelingsOn);
   }
 
   function markFrameSectionEngaged() {
@@ -20396,8 +20258,6 @@
           btn.addEventListener("click", function () {
             var key = btn.getAttribute("data-palette-key");
             if (key && window.SheetPalettes.setActivePalette(key)) {
-              clearBlendAreaColorOverrides();
-              syncBlendAreaSwatchInputs();
               applySheetPaletteToDom();
               render();
             }
@@ -20414,8 +20274,6 @@
         } else {
           window.SheetPalettes.pickRandomPalette();
         }
-        clearBlendAreaColorOverrides();
-        syncBlendAreaSwatchInputs();
         applySheetPaletteToDom();
         render();
       });
@@ -20446,9 +20304,7 @@
   /** Re-apply every layer that reads palette slots (after sheet load / reload). */
   function refreshUiFromSheetPalettes() {
     if (!window.SheetPalettes) return;
-    clearBlendAreaColorOverrides();
     window.SheetPalettes.syncBorderGlobals();
-    syncBlendAreaSwatchInputs();
     if (appStartupBootstrapping) return;
     refreshPaletteColorLayers();
   }
@@ -20470,7 +20326,6 @@
   }
 
   function initSheetPaletteAutoRefresh() {
-    initBlendAreaColorSwatches();
     if (!window.SheetPalettes || !window.SheetPalettes.onPalettesLoaded) return;
     window.SheetPalettes.onPalettesLoaded(function (_palettes, source) {
       if (typeof console !== "undefined" && console.info) {
@@ -20616,99 +20471,366 @@
     applyFeelingsControlState();
   }
 
+  function resetPage2QuestionnaireCanvasLayoutCache() {
+    page2QuestionnaireCanvasLayoutCache = null;
+  }
+
+  function isQuestionnaireCanvasLayoutActive() {
+    var q = window.Questionnaire;
+    if (!q || !q.getCurrentStepId) return false;
+    var stepId = q.getCurrentStepId();
+    return stepId && stepId !== "__feelings_complete__";
+  }
+
+  /**
+   * Lock bottom clip + upward extend from the first questionnaire layout
+   * (natural .main height — before stage-wrap margin tweaks).
+   */
+  function ensurePage2QuestionnaireCanvasLayoutCache(wrap, f) {
+    if (page2QuestionnaireCanvasLayoutCache) {
+      return page2QuestionnaireCanvasLayoutCache;
+    }
+    if (!wrap) return null;
+    var main = wrap.closest("#section-design .main");
+    if (!main) return null;
+    var mainRect = main.getBoundingClientRect();
+    var naturalHeight = mainRect.height;
+    var naturalWrapTop = mainRect.top;
+    var focusRect = getProfileLabelFocusRect();
+    var slot = getPage2CanvasSlot(wrap);
+    if (!slot || slot.slotWidth <= 0) return null;
+
+    var profileScale = slot.slotWidth / focusRect.width;
+    var totalH = CANVAS_H + 2 * f;
+    var focusCenterY =
+      (focusRect.y + f + focusRect.height / 2) * profileScale;
+    var focusBottomInSvg =
+      (focusRect.y + f + focusRect.height) * profileScale;
+    var centeredTopInWrap = naturalHeight / 2 - focusCenterY;
+    var focusTopInWrap = centeredTopInWrap + (focusRect.y + f) * profileScale;
+    var headerBottom = getPage2HeaderBottomPx();
+    var targetTopInWrap = Math.max(0, headerBottom - naturalWrapTop);
+    var extendUp = Math.max(0, focusTopInWrap - targetTopInWrap);
+    page2QuestionnaireCanvasLayoutCache = {
+      extendUp: extendUp,
+      anchorBottomViewport: null,
+      anchorSvgBottomInWrap: null,
+      profileScale: profileScale,
+    };
+    return page2QuestionnaireCanvasLayoutCache;
+  }
+
+  function captureQuestionnaireCanvasBottomAnchor(wrap, svg, cache) {
+    if (!wrap || !svg || !cache || cache.anchorSvgBottomInWrap != null) return;
+    void svg.offsetHeight;
+    var wrapRect = wrap.getBoundingClientRect();
+    var svgRect = svg.getBoundingClientRect();
+    cache.anchorSvgBottomInWrap = svgRect.bottom - wrapRect.top;
+    cache.anchorBottomViewport = svgRect.bottom;
+  }
+
+  function applyQuestionnaireCanvasClipExtend(wrap, cache) {
+    if (!wrap) return;
+    if (cache && cache.extendUp > 0) {
+      wrap.style.marginTop = -cache.extendUp + "px";
+      wrap.style.height = "calc(100% + " + cache.extendUp + "px)";
+    } else {
+      wrap.style.marginTop = "";
+      wrap.style.height = "";
+    }
+  }
+
+  function applyQuestionnaireCanvasBottomAnchor(svg, wrap, totalH, scale, cache, f) {
+    if (!svg || !wrap || !cache) return;
+
+    if (cache.anchorSvgBottomInWrap == null) {
+      var main = wrap.closest("#section-design .main");
+      if (!main) return;
+      var mainRect = main.getBoundingClientRect();
+      var focusRect = getProfileLabelFocusRect();
+      var focusCenterY =
+        (focusRect.y + f + focusRect.height / 2) * cache.profileScale;
+      var centeredTopInWrap = mainRect.height / 2 - focusCenterY;
+      svg.style.position = "absolute";
+      svg.style.top = centeredTopInWrap + cache.extendUp + "px";
+      svg.style.bottom = "auto";
+      svg.style.transform = "none";
+      captureQuestionnaireCanvasBottomAnchor(wrap, svg, cache);
+    }
+
+    if (cache.anchorSvgBottomInWrap == null) return;
+
+    void wrap.offsetHeight;
+    var bottomInset = Math.max(0, wrap.clientHeight - cache.anchorSvgBottomInWrap);
+    svg.style.position = "absolute";
+    svg.style.top = "auto";
+    svg.style.bottom = bottomInset + "px";
+    svg.style.transform = "none";
+  }
+
+  function applyQuestionnaireProfileCanvasHorizontalPosition(svg, wrap, scale, f) {
+    var page2 = document.getElementById("page2");
+    if (!page2 || !wrap || !svg) return;
+    var cols = page2.querySelectorAll(".page2-guides .page2-col");
+    var colStartIndex =
+      typeof PROFILE_LABEL_FOCUS_GRID_COL_START !== "undefined"
+        ? PROFILE_LABEL_FOCUS_GRID_COL_START - 1
+        : 7;
+    var colSpan =
+      typeof PROFILE_LABEL_FOCUS_GRID_COL_SPAN !== "undefined"
+        ? PROFILE_LABEL_FOCUS_GRID_COL_SPAN
+        : 5;
+    var colEndIndex = colStartIndex + colSpan - 1;
+    if (cols.length <= colEndIndex) return;
+    var colStart = cols[colStartIndex].getBoundingClientRect();
+    var colEnd = cols[colEndIndex].getBoundingClientRect();
+    var wrapRect = wrap.getBoundingClientRect();
+    var focusRect = getProfileLabelFocusRect();
+    svg.style.left =
+      colStart.left -
+      wrapRect.left -
+      (focusRect.x + f) * scale +
+      "px";
+  }
+
+  function applyQuestionnaireFullCanvasHorizontalPosition(svg, wrap) {
+    var page2 = document.getElementById("page2");
+    if (!page2 || !wrap || !svg) return;
+    var cols = page2.querySelectorAll(".page2-guides .page2-col");
+    if (cols.length < 10) return;
+    var col9 = cols[8].getBoundingClientRect();
+    var col10 = cols[9].getBoundingClientRect();
+    var wrapRect = wrap.getBoundingClientRect();
+    var svgW = svg.getBoundingClientRect().width;
+    var slotLeft = col9.left;
+    var slotWidth = col10.right - col9.left;
+    svg.style.left =
+      slotLeft - wrapRect.left + (slotWidth - svgW) / 2 + "px";
+  }
+
+  /** Bottom edge of the fixed page-2 header (canvas top should align here). */
+  function getPage2HeaderBottomPx() {
+    var page2 = document.getElementById("page2");
+    if (!page2) return 0;
+    var header = page2.querySelector(".page2-header");
+    if (header) return header.getBoundingClientRect().bottom;
+    var space20 = getComputedStyle(page2).getPropertyValue("--page2-space-20").trim();
+    var space20Px = 20;
+    if (space20) {
+      var rem = parseFloat(space20);
+      if (!isNaN(rem)) {
+        var rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        space20Px = rem * (rootFont || 16);
+      }
+    }
+    return space20Px * 4;
+  }
+
+  /**
+   * Scale + top offset: extend canvas upward to the header while keeping the
+   * original centered bottom anchor on the stage wrap.
+   */
+  function getPage2CanvasTopAnchoredLayout(wrap, totalW, totalH) {
+    var rect = getStageLayoutRect(wrap);
+    if (!rect || !wrap) return null;
+    var wrapRect = wrap.getBoundingClientRect();
+    var availW = Math.max(60, rect.width - VIEW_MARGIN * 2);
+    var availH = Math.max(60, rect.height - VIEW_MARGIN * 2);
+    var baselineScale = Math.min(availW / totalW, availH / totalH);
+    var baselineSvgH = totalH * baselineScale;
+    var anchorBottomViewport =
+      wrapRect.top + (wrapRect.height + baselineSvgH) / 2;
+    var headerBottom = getPage2HeaderBottomPx();
+    var heightFromHeader = Math.max(60, anchorBottomViewport - headerBottom);
+    var scaleFromHeader = heightFromHeader / totalH;
+    var scale = Math.min(availW / totalW, Math.max(baselineScale, scaleFromHeader));
+    var topInWrap = Math.max(0, headerBottom - wrapRect.top);
+    return {
+      scale: scale,
+      topInWrap: topInWrap,
+    };
+  }
+
+  /** Full .main area on page 2 design — grid slot is narrow but scale stays viewport-sized. */
+  function getStageLayoutRect(wrap) {
+    if (!wrap) return null;
+    var page2 = document.getElementById("page2");
+    var sectionDesign = wrap.closest("#section-design");
+    if (page2 && sectionDesign) {
+      var mainEl = sectionDesign.querySelector(".main");
+      if (mainEl) return mainEl.getBoundingClientRect();
+    }
+    return wrap.getBoundingClientRect();
+  }
+
+  /** Focus rect for profile questionnaire zoom (bottom label band). */
+  function getProfileLabelFocusRect() {
+    var pad =
+      typeof PROFILE_LABEL_FOCUS_PAD_ABOVE_PX !== "undefined"
+        ? PROFILE_LABEL_FOCUS_PAD_ABOVE_PX
+        : 100;
+    var bar = getCanvasEdgeBrownBarLayout("bottom");
+    var focusY = Math.max(0, bar.y - pad);
+    return {
+      x: 0,
+      y: focusY,
+      width: CANVAS_W,
+      height: CANVAS_H - focusY,
+    };
+  }
+
+  function isProfileQuestionnaireZoomActive() {
+    var q = window.Questionnaire;
+    if (!q || !q.getCurrentStepId || !q.isProfileStep) return false;
+    var stepId = q.getCurrentStepId();
+    if (!stepId) return false;
+    return q.isProfileStep(stepId);
+  }
+
+  function getPage2CanvasSlot(wrap) {
+    var page2 = document.getElementById("page2");
+    var sectionDesign = wrap ? wrap.closest("#section-design") : null;
+    if (!page2 || !sectionDesign || !wrap) return null;
+    var cols = page2.querySelectorAll(".page2-guides .page2-col");
+    var colStartIndex =
+      typeof PROFILE_LABEL_FOCUS_GRID_COL_START !== "undefined"
+        ? PROFILE_LABEL_FOCUS_GRID_COL_START - 1
+        : 7;
+    var colSpan =
+      typeof PROFILE_LABEL_FOCUS_GRID_COL_SPAN !== "undefined"
+        ? PROFILE_LABEL_FOCUS_GRID_COL_SPAN
+        : 5;
+    var colEndIndex = colStartIndex + colSpan - 1;
+    if (cols.length <= colEndIndex) return null;
+    var colStart = cols[colStartIndex].getBoundingClientRect();
+    var colEnd = cols[colEndIndex].getBoundingClientRect();
+    return {
+      slotLeft: colStart.left,
+      slotWidth: colEnd.right - colStart.left,
+      wrapRect: wrap.getBoundingClientRect(),
+    };
+  }
+
+  function setProfileLabelZoomClass(wrap, active) {
+    if (!wrap) return;
+    wrap.classList.toggle("is-profile-label-zoom", active);
+  }
+
+  function syncPage2CanvasGridPosition() {
+    var wrap = document.getElementById("stage-wrap");
+    var svg = document.getElementById("design-svg");
+    if (!wrap || !svg) return;
+    if (isQuestionnaireCanvasLayoutActive()) return;
+    var page2 = document.getElementById("page2");
+    var sectionDesign = wrap.closest("#section-design");
+    if (!page2 || !sectionDesign) {
+      svg.style.position = "";
+      svg.style.left = "";
+      svg.style.top = "";
+      svg.style.bottom = "";
+      svg.style.transform = "";
+      return;
+    }
+    var cols = page2.querySelectorAll(".page2-guides .page2-col");
+    if (cols.length < 10) return;
+    var col9 = cols[8].getBoundingClientRect();
+    var col10 = cols[9].getBoundingClientRect();
+    var wrapRect = wrap.getBoundingClientRect();
+    var svgW = svg.getBoundingClientRect().width;
+    var slotLeft = col9.left;
+    var slotWidth = col10.right - col9.left;
+    svg.style.position = "absolute";
+    svg.style.left =
+      slotLeft - wrapRect.left + (slotWidth - svgW) / 2 + "px";
+    var f = getHandkerchiefOuterFramePx();
+    var totalH = CANVAS_H + 2 * f;
+    var layout = getPage2CanvasTopAnchoredLayout(
+      wrap,
+      CANVAS_W + 2 * f,
+      totalH
+    );
+    var topInWrap = layout ? layout.topInWrap : 0;
+    svg.style.top = topInWrap + "px";
+    svg.style.bottom = "auto";
+    svg.style.transform = "none";
+  }
+
   function layoutStage() {
     var wrap = document.getElementById("stage-wrap");
     var svg = document.getElementById("design-svg");
     if (!wrap || !svg) return;
-    var rect = wrap.getBoundingClientRect();
-    var availW = Math.max(60, rect.width - VIEW_MARGIN * 2);
-    var availH = Math.max(60, rect.height - VIEW_MARGIN * 2);
+    var rect = getStageLayoutRect(wrap);
+    if (!rect) return;
     var f = getHandkerchiefOuterFramePx();
     var totalW = CANVAS_W + 2 * f;
     var totalH = CANVAS_H + 2 * f;
-    var scale = Math.min(availW / totalW, availH / totalH);
-    svg.style.width = totalW * scale + "px";
-    svg.style.height = totalH * scale + "px";
-  }
+    var profileZoom = isProfileQuestionnaireZoomActive();
+    var questionnaireLayout = isQuestionnaireCanvasLayoutActive();
 
-  function getMagnifierZoom() {
-    var input = document.getElementById("magnifier-zoom");
-    if (!input) return 4;
-    var z = parseFloat(input.value);
-    if (!isFinite(z)) return 4;
-    return Math.min(15, Math.max(2, z));
-  }
+    if (questionnaireLayout) {
+      var qCache = ensurePage2QuestionnaireCanvasLayoutCache(wrap, f);
+      if (qCache) {
+        applyQuestionnaireCanvasClipExtend(wrap, qCache);
+        setProfileLabelZoomClass(wrap, qCache.extendUp > 0);
+        var qScale;
+        if (profileZoom) {
+          qScale = qCache.profileScale;
+        } else {
+          var availW = Math.max(60, rect.width - VIEW_MARGIN * 2);
+          var availH = Math.max(60, rect.height - VIEW_MARGIN * 2);
+          qScale = Math.min(availW / totalW, availH / totalH);
+        }
+        svg.style.width = totalW * qScale + "px";
+        svg.style.height = totalH * qScale + "px";
+        void svg.offsetHeight;
+        if (profileZoom) {
+          applyQuestionnaireProfileCanvasHorizontalPosition(svg, wrap, qScale, f);
+        } else {
+          applyQuestionnaireFullCanvasHorizontalPosition(svg, wrap);
+        }
+        applyQuestionnaireCanvasBottomAnchor(svg, wrap, totalH, qScale, qCache, f);
+        return;
+      }
+      return;
+    } else {
+      resetPage2QuestionnaireCanvasLayoutCache();
+      applyQuestionnaireCanvasClipExtend(wrap, null);
+      setProfileLabelZoomClass(wrap, false);
+    }
 
-  function updateMagnifierZoomOutput() {
-    var out = document.getElementById("magnifier-zoom-out");
-    if (out) out.textContent = String(getMagnifierZoom()) + "×";
-  }
-
-  function syncMagnifierBorderColor() {
-    var color = getPatternStrokeColor();
-    document.documentElement.style.setProperty(
-      "--magnifier-border-color",
-      color
-    );
-  }
-
-  function updateMagnifierViewBox() {
-    var magnifierSvg = document.getElementById("magnifier-svg");
-    if (!magnifierSvg) return;
-
-    var zoom = getMagnifierZoom();
-    var side = Math.min(CANVAS_W, CANVAS_H) / zoom;
-    var x = magnifierCenterX - side / 2;
-    var y = magnifierCenterY - side / 2;
-
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
-    if (x + side > CANVAS_W) x = CANVAS_W - side;
-    if (y + side > CANVAS_H) y = CANVAS_H - side;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
-
-    magnifierSvg.setAttribute(
-      "viewBox",
-      x + " " + y + " " + side + " " + side
-    );
-  }
-
-  function syncMagnifierUseGeometry() {
-    var useEl = document.getElementById("magnifier-use");
-    if (!useEl) return;
-    useEl.setAttribute("width", String(CANVAS_W));
-    useEl.setAttribute("height", String(CANVAS_H));
-  }
-
-  function onMagnifierPointerMove(e) {
-    if (!designSvg) return;
-    var pt = clientToViewBox(designSvg, e.clientX, e.clientY);
-    if (!pt) return;
-    magnifierCenterX = pt.x;
-    magnifierCenterY = pt.y;
-    updateMagnifierViewBox();
-  }
-
-  function bindMagnifierPointerListeners() {
-    if (!designSvg || magnifierListenersBound) return;
-    designSvg.addEventListener("pointermove", onMagnifierPointerMove);
-    magnifierListenersBound = true;
-  }
-
-  function initMagnifier() {
-    syncMagnifierUseGeometry();
-    syncMagnifierBorderColor();
-    updateMagnifierZoomOutput();
-    updateMagnifierViewBox();
-    bindMagnifierPointerListeners();
-
-    var zoomSlider = document.getElementById("magnifier-zoom");
-    if (zoomSlider) {
-      zoomSlider.addEventListener("input", function () {
-        updateMagnifierZoomOutput();
-        updateMagnifierViewBox();
-      });
+    if (profileZoom) {
+      var slot = getPage2CanvasSlot(wrap);
+      if (slot && slot.slotWidth > 0) {
+        var focusRect = getProfileLabelFocusRect();
+        var scale = slot.slotWidth / focusRect.width;
+        svg.style.width = totalW * scale + "px";
+        svg.style.height = totalH * scale + "px";
+        applyQuestionnaireProfileCanvasHorizontalPosition(svg, wrap, scale, f);
+        var fallbackCache = ensurePage2QuestionnaireCanvasLayoutCache(wrap, f);
+        if (fallbackCache) {
+          applyQuestionnaireCanvasBottomAnchor(svg, wrap, totalH, scale, fallbackCache, f);
+        }
+      } else {
+        var anchored = getPage2CanvasTopAnchoredLayout(wrap, totalW, totalH);
+        var fallbackScale = anchored
+          ? anchored.scale
+          : Math.min(
+              Math.max(60, rect.width - VIEW_MARGIN * 2) / totalW,
+              Math.max(60, rect.height - VIEW_MARGIN * 2) / totalH
+            );
+        svg.style.width = totalW * fallbackScale + "px";
+        svg.style.height = totalH * fallbackScale + "px";
+        syncPage2CanvasGridPosition();
+      }
+    } else {
+      var anchored = getPage2CanvasTopAnchoredLayout(wrap, totalW, totalH);
+      var scale = anchored ? anchored.scale : Math.min(
+        Math.max(60, rect.width - VIEW_MARGIN * 2) / totalW,
+        Math.max(60, rect.height - VIEW_MARGIN * 2) / totalH
+      );
+      svg.style.width = totalW * scale + "px";
+      svg.style.height = totalH * scale + "px";
+      syncPage2CanvasGridPosition();
     }
   }
 
@@ -21743,43 +21865,6 @@
       });
     }
 
-    var colorDivisionsSlider = document.getElementById("color-divisions");
-    if (colorDivisionsSlider) {
-      colorDivisionsSlider.min = String(
-        typeof COLOR_DIVISIONS_MIN !== "undefined" ? COLOR_DIVISIONS_MIN : 1
-      );
-      colorDivisionsSlider.max = String(
-        typeof COLOR_DIVISIONS_MAX !== "undefined" ? COLOR_DIVISIONS_MAX : 5
-      );
-      colorDivisionsSlider.value = String(
-        typeof COLOR_DIVISIONS_DEFAULT !== "undefined"
-          ? COLOR_DIVISIONS_DEFAULT
-          : 1
-      );
-      syncColorDivisionsOutput();
-      colorDivisionsSlider.addEventListener("input", function () {
-        syncColorDivisionsOutput();
-        updateColorDivisionsLayer();
-      });
-    }
-
-    var colorDivisionsShuffleBtn = document.getElementById(
-      "color-divisions-shuffle-btn"
-    );
-    if (colorDivisionsShuffleBtn) {
-      colorDivisionsShuffleBtn.addEventListener("click", reshuffleColorDivisionRects);
-    }
-
-    var colorDivisionsMixAreasBtn = document.getElementById(
-      "color-divisions-mix-areas-btn"
-    );
-    if (colorDivisionsMixAreasBtn) {
-      colorDivisionsMixAreasBtn.addEventListener(
-        "click",
-        reshuffleColorDivisionAreaOrder
-      );
-    }
-
     var borderSideWhiteFillSlider = document.getElementById("border-side-white-fill");
     if (borderSideWhiteFillSlider) {
       var whiteFillMin =
@@ -22187,7 +22272,6 @@
       },
       getFeelingsSliderBounds: getFeelingsSliderBoundsForCombo,
       finalizeApplySilent: function () {
-        syncColorDivisionsOutput();
         syncBorderSideWhiteFillOutput();
         syncJunctionEmotionSliderRangesForGridType();
         syncAngerPainGuiltSliderRangesForGridType();
@@ -22196,12 +22280,23 @@
         refreshLocationCoordinates();
       },
       finalizeApply: function () {
-        syncColorDivisionsOutput();
         syncBorderSideWhiteFillOutput();
         syncJunctionEmotionSliderRangesForGridType();
         syncAngerPainGuiltSliderRangesForGridType();
         resetFeelingsLayoutSignatures();
         applyFeelingsControlState({ skipRender: true });
+        refreshLocationCoordinates();
+        refreshLabelBarContent();
+        render();
+      },
+      /** Questionnaire slider sync: repaint feelings markers then full canvas. */
+      refreshQuestionnaireCanvas: function () {
+        if (!isGridContentUnlocked()) return;
+        syncBorderSideWhiteFillOutput();
+        syncJunctionEmotionSliderRangesForGridType();
+        syncAngerPainGuiltSliderRangesForGridType();
+        resetFeelingsLayoutSignatures();
+        applyFeelingsControlState();
         refreshLocationCoordinates();
         refreshLabelBarContent();
         render();
@@ -22321,8 +22416,12 @@
     }
 
     window.render = render;
+    window.layoutStage = layoutStage;
 
-    window.addEventListener("resize", layoutStage);
+    window.addEventListener("resize", function () {
+      resetPage2QuestionnaireCanvasLayoutCache();
+      layoutStage();
+    });
     lastCircleLayoutSignature = "";
     lastLongingCircleLayoutSignature = "";
     lastGriefCircleLayoutSignature = "";
@@ -22337,7 +22436,6 @@
 
     var deferPostRenderInit = function () {
       refreshLocationCoordinates();
-      initMagnifier();
     };
     if (typeof requestIdleCallback === "function") {
       requestIdleCallback(deferPostRenderInit, { timeout: 1500 });
