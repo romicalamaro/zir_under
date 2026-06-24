@@ -2,7 +2,44 @@
   "use strict";
 
   var STORAGE_KEY = "undercover.handkerchiefArchive";
-  var ARCHIVE_THUMB_WIDTH = 280;
+
+  /** Columns per row from archive grid CSS (span 2 => 6). */
+  function getArchiveColumnsPerRow() {
+    var grid = document.querySelector(".archive-grid");
+    if (!grid) {
+      return 6;
+    }
+    var card = grid.querySelector(".archive-card");
+    if (!card) {
+      return 6;
+    }
+    var gridColumn = window.getComputedStyle(card).gridColumn || "";
+    var spanMatch = gridColumn.match(/span\s+(\d+)/);
+    var spanCols = spanMatch ? parseInt(spanMatch[1], 10) : 2;
+    return Math.max(1, Math.floor(12 / spanCols));
+  }
+
+  /** Match archive card CSS width × device pixel ratio for sharp thumbnails. */
+  function getArchiveThumbWidth() {
+    var dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2.5);
+    var viewportW = window.innerWidth || 1728;
+    var archiveSection = document.querySelector(
+      "#section-archive .archive-section, .archive-section"
+    );
+    var marginInline = archiveSection
+      ? parseFloat(window.getComputedStyle(archiveSection).paddingLeft) * 2
+      : 40;
+    var grid = document.querySelector(".archive-grid");
+    var gridGap = grid
+      ? parseFloat(window.getComputedStyle(grid).gap) ||
+        parseFloat(window.getComputedStyle(grid).columnGap) ||
+        16
+      : 16;
+    var cols = getArchiveColumnsPerRow();
+    var contentW = Math.max(viewportW - marginInline, 320);
+    var cardCssW = (contentW - gridGap * (cols - 1)) / cols;
+    return Math.round(Math.max(cardCssW * dpr, 560));
+  }
 
   function readEntries() {
     try {
@@ -86,7 +123,7 @@
       }
 
       return window
-        .captureArchiveDesignPng(ARCHIVE_THUMB_WIDTH)
+        .captureArchiveDesignPng(getArchiveThumbWidth())
         .then(function (dataUrl) {
           return measurePngDataUrl(dataUrl).then(function (stats) {
             if (stats.uniqueColors <= 2) {
@@ -132,12 +169,26 @@
 
         var thumb = document.createElement("div");
         thumb.className = "archive-card__thumbnail";
+        var figure = document.createElement("div");
+        figure.className = "archive-card__figure";
         var img = document.createElement("img");
         img.className = "archive-card__image";
         img.src = entry.imagePng;
         img.alt = entry.title || "Saved handkerchief";
         img.decoding = "async";
-        thumb.appendChild(img);
+        figure.appendChild(img);
+
+        var deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "archive-card__delete";
+        deleteBtn.setAttribute("aria-label", "Delete handkerchief");
+        deleteBtn.textContent = "\u00D7";
+        deleteBtn.addEventListener("click", function (event) {
+          event.stopPropagation();
+          deleteEntry(entry.id);
+        });
+        figure.appendChild(deleteBtn);
+        thumb.appendChild(figure);
 
         var title = document.createElement("h3");
         title.className = "archive-card__title";
@@ -147,25 +198,20 @@
         date.className = "archive-card__date";
         date.textContent = formatSavedDate(entry.savedAt);
 
-        var actions = document.createElement("div");
-        actions.className = "archive-card__actions";
-
-        var deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "archive-card__btn archive-card__btn--delete";
-        deleteBtn.textContent = "Delete";
-        deleteBtn.addEventListener("click", function () {
-          deleteEntry(entry.id);
-        });
-
-        actions.appendChild(deleteBtn);
-
         card.appendChild(thumb);
         card.appendChild(title);
         card.appendChild(date);
-        card.appendChild(actions);
         grid.appendChild(card);
       })(entries[i]);
+    }
+
+    if (
+      window.Page2Navigation &&
+      typeof window.Page2Navigation.updateScrollability === "function"
+    ) {
+      window.requestAnimationFrame(function () {
+        window.Page2Navigation.updateScrollability();
+      });
     }
   }
 
@@ -194,22 +240,26 @@
   }
 
   function revealDesignArchive() {
-    var designArchive = document.getElementById("design-archive");
-    var sectionDesign = document.getElementById("section-design");
-    if (designArchive) {
-      designArchive.hidden = false;
-    }
-    if (sectionDesign) {
-      sectionDesign.classList.add("section-design--archive-visible");
-    }
     renderArchiveGrid();
+    if (
+      window.Page2Navigation &&
+      typeof window.Page2Navigation.showSection === "function"
+    ) {
+      window.Page2Navigation.showSection(5);
+      return;
+    }
+    var archiveSection = document.getElementById("section-archive");
+    if (archiveSection) {
+      archiveSection.classList.add("is-active");
+      document.querySelectorAll(".page2-section").forEach(function (section) {
+        if (section !== archiveSection) {
+          section.classList.remove("is-active");
+        }
+      });
+    }
   }
 
   function init() {
-    var designArchive = document.getElementById("design-archive");
-    if (designArchive && designArchive.hidden) {
-      return;
-    }
     renderArchiveGrid();
   }
 

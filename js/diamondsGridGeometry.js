@@ -197,6 +197,8 @@
     buildCoarseCircleBlockBoundarySegments:
       Circles.buildCoarseCircleBlockBoundarySegments,
     buildPatternSegments: Circles.buildPatternSegments,
+    buildBleedPatternSegments: Circles.buildBleedPatternSegments,
+    buildBleedStructuralCircles: Circles.buildBleedStructuralCircles,
     buildJunctionCircleCatalog: Circles.buildJunctionCircleCatalog,
     buildAdjacentCircleJunctionCatalog: Circles.buildAdjacentCircleJunctionCatalog,
     buildJunctionDiamondCatalog: Circles.buildJunctionDiamondCatalog,

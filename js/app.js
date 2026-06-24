@@ -15,6 +15,13 @@
   var gridType = GRID_TYPE_OCTAGON;
   var starValidLayouts = [];
   var cachedAllSegments = [];
+  /**
+   * Memo of getAllSegmentsForTracing() output. Its inputs (cachedAllSegments and
+   * the star/circle fill caches) only change inside buildAllSegments(), so the
+   * memo is cleared right after each buildAllSegments() call. Same value.
+   * @type {{x1:number,y1:number,x2:number,y2:number}[] | null}
+   */
+  var cachedTracingSegments = null;
   /** @type {{ outline: {x:number,y:number}[] }[]} */
   var cachedStarFills = [];
   /** @type {{ outline: {x:number,y:number}[] }[]} */
@@ -56,6 +63,8 @@
   var sliderRenderScheduled = false;
   var sliderRenderPending = false;
   var sliderRenderGeneration = 0;
+  /** Last committed octagons-n + inner-scale + grid type (skip merge reset on no-op sync). */
+  var lastCommittedGridStructureSignature = "";
   var sliderPreviewRendered = false;
   /** Canvas bitmap preview of grid geometry while density sliders drag. */
   var GRID_RASTER_PREVIEW_IMAGE_ID = "grid-raster-preview-image";
@@ -66,6 +75,13 @@
   /** @type {{ points: { x: number, y: number }[] }[] | null} */
   var hopeMergeRegionsRenderCache = null;
   var hopeMergeRegionsCacheVersion = -1;
+  /**
+   * Within-render memo of getMergedRegionsForMask(). Invalidated on every merge
+   * state change (bumpHopeMergeState) and at the start of renderGridMaskLayer,
+   * so repeated callers in a single render reuse one computation. Same value.
+   * @type {{ points: { x: number, y: number }[] }[] | null}
+   */
+  var mergedRegionsForMaskCache = null;
 
   var circleSelectedIds = new Set();
   var lastCircleLayoutSignature = "";
@@ -199,6 +215,210 @@
     var off = getInnerContentOffset();
     var s = getInnerContentScale();
     return "translate(" + off.x + "," + off.y + ") scale(" + s + ")";
+  }
+
+  /**
+   * Extended col/row stamp range so bleed pattern fills canvas margins before frame.
+   * @param {{ tileSize: number, cols: number, rows: number, offsetY?: number }} baseLayout
+   * @returns {{ colStart: number, colEnd: number, rowStart: number, rowEnd: number, bleedOffsetY: number }}
+   */
+  function computeBleedStampBounds(baseLayout) {
+    var T = baseLayout.tileSize;
+    var off = getInnerContentOffset();
+    var s = getInnerContentScale();
+    var scaledT = T * s;
+    var offsetY =
+      typeof baseLayout.offsetY === "number" ? baseLayout.offsetY : 0;
+    var extraCol = Math.max(1, Math.ceil(off.x / scaledT)) + 1;
+    // Match main grid vertical phase (offsetY + row*T) so bleed lines align at seams.
+    var bleedOffsetY = offsetY;
+    var bottomBarTop = getCanvasEdgeBrownBarLayout("bottom").y;
+    var localYMin = -off.y / s - T;
+    // Stamp through the label top edge; syncBleedVisibleClipPath() clips the excess.
+    var localYMax = (bottomBarTop - off.y) / s + T;
+    var rowStart = Math.floor((localYMin - bleedOffsetY) / T) - 1;
+    var rowEnd = Math.ceil((localYMax - bleedOffsetY) / T) + 1;
+    return {
+      colStart: -extraCol,
+      colEnd: baseLayout.cols + extraCol,
+      rowStart: rowStart,
+      rowEnd: rowEnd,
+      bleedOffsetY: bleedOffsetY,
+    };
+  }
+
+  /**
+   * Clip bleed below the bottom label bar (geometry may stamp one extra tile row).
+   */
+  function syncBleedVisibleClipPath() {
+    if (!designSvg) return;
+    var defs = designSvg.querySelector("defs");
+    if (!defs) return;
+    var clip = defs.querySelector("#bleed-visible-clip");
+    if (!clip) {
+      clip = elSvg("clipPath");
+      clip.setAttribute("id", "bleed-visible-clip");
+      var clipRect = elSvg("rect");
+      clipRect.setAttribute("id", "bleed-visible-clip-rect");
+      clipRect.setAttribute("x", "0");
+      clipRect.setAttribute("y", "0");
+      clipRect.setAttribute("width", String(CANVAS_W));
+      clip.appendChild(clipRect);
+      defs.appendChild(clip);
+    }
+    var clipRect = clip.querySelector("#bleed-visible-clip-rect");
+    var bottomBarTop = getCanvasEdgeBrownBarLayout("bottom").y;
+    clipRect.setAttribute("height", String(bottomBarTop));
+    var root = designSvg.querySelector("#layer-pattern-bleed-root");
+    if (root) {
+      root.setAttribute("clip-path", "url(#bleed-visible-clip)");
+    }
+  }
+
+  function shouldShowGridBleedFill() {
+    return canRenderGridCanvas() && !isFrameContentUnlocked();
+  }
+
+  function buildGridBleedSegments() {
+    var stampBounds;
+    if (isStarGrid()) {
+      var starLayout = getStarLayout();
+      stampBounds = computeBleedStampBounds(starLayout);
+      if (
+        typeof NestedStarOctagonsGeometry === "undefined" ||
+        !NestedStarOctagonsGeometry.buildBleedPattern
+      ) {
+        return [];
+      }
+      return NestedStarOctagonsGeometry.buildBleedPattern(
+        starLayout,
+        getStarMiddlePinwheelFactor(),
+        stampBounds
+      );
+    }
+    if (isCirclesLikeGrid()) {
+      var circlesGeo = getCirclesLikeGridGeometry();
+      var circlesLayout = circlesGeo.computeLayout(
+        lastOctagonsN,
+        CANVAS_W,
+        CANVAS_H
+      );
+      stampBounds = computeBleedStampBounds(circlesLayout);
+      if (!circlesGeo.buildBleedPatternSegments) return [];
+      return circlesGeo.buildBleedPatternSegments(
+        lastOctagonsN,
+        CANVAS_W,
+        CANVAS_H,
+        getInnerScale(),
+        stampBounds
+      );
+    }
+    var octLayout = TopkapiGeometry.computeLayout(
+      lastOctagonsN,
+      CANVAS_W,
+      CANVAS_H
+    );
+    stampBounds = computeBleedStampBounds(octLayout);
+    if (!TopkapiGeometry.buildBleedPatternSegments) return [];
+    return TopkapiGeometry.buildBleedPatternSegments(
+      octLayout,
+      stampBounds,
+      getInnerScale()
+    );
+  }
+
+  function buildGridBleedStructuralShapes() {
+    if (!isCirclesLikeGrid()) return [];
+    var geo = getCirclesLikeGridGeometry();
+    if (!geo.buildBleedStructuralCircles) return [];
+    var layout = geo.computeLayout(lastOctagonsN, CANVAS_W, CANVAS_H);
+    var stampBounds = computeBleedStampBounds(layout);
+    return geo.buildBleedStructuralCircles(
+      lastOctagonsN,
+      CANVAS_W,
+      CANVAS_H,
+      getInnerScale(),
+      stampBounds
+    );
+  }
+
+  function syncGridBleedStructuralLayer(layer) {
+    if (!layer) return;
+    var oldCircles = layer.querySelector("#layer-structural-circles");
+    var oldDiamonds = layer.querySelector("#layer-structural-diamonds");
+    if (oldCircles) layer.removeChild(oldCircles);
+    if (oldDiamonds) layer.removeChild(oldDiamonds);
+    if (!isCirclesLikeGrid()) return;
+    var shapes = buildGridBleedStructuralShapes();
+    if (!shapes.length) return;
+    if (isCirclesGrid()) {
+      layer.appendChild(structuralCirclesToGroup(shapes));
+    } else if (isDiamondsGrid()) {
+      layer.appendChild(structuralDiamondsToGroup(shapes));
+    }
+  }
+
+  function buildGridBleedSegmentsGroup(segments) {
+    var sig = "bleed:" + gridSegmentsCacheSignature(segments);
+    if (
+      gridBleedSegmentsGroupCache &&
+      gridBleedSegmentsGroupCache.sig === sig
+    ) {
+      return gridBleedSegmentsGroupCache.group.cloneNode(true);
+    }
+    var group = segmentsToGroup(segments);
+    gridBleedSegmentsGroupCache = { sig: sig, group: group.cloneNode(true) };
+    return group;
+  }
+
+  function updateGridBleedLinesOnly() {
+    if (!designSvg) return;
+    var root = designSvg.querySelector("#layer-pattern-bleed-root");
+    var layer = designSvg.querySelector("#layer-pattern-bleed");
+    if (!root || !layer) return;
+
+    var show = shouldShowGridBleedFill();
+    root.style.display = show ? "" : "none";
+    if (!show) return;
+
+    syncBleedVisibleClipPath();
+    layer.setAttribute("transform", getInnerContentTransformAttr());
+    var segments = buildGridBleedSegments();
+    var oldGroup = layer.querySelector('[data-layer="grid-segments"]');
+    if (!segments.length) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      syncGridBleedStructuralLayer(layer);
+      return;
+    }
+    if (!oldGroup) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      layer.appendChild(segmentsToGroup(segments));
+      syncGridBleedStructuralLayer(layer);
+      return;
+    }
+    layer.replaceChild(segmentsToGroup(segments), oldGroup);
+    syncGridBleedStructuralLayer(layer);
+  }
+
+  function renderGridBleedLayer() {
+    if (!designSvg) return;
+    var root = designSvg.querySelector("#layer-pattern-bleed-root");
+    var layer = designSvg.querySelector("#layer-pattern-bleed");
+    if (!root || !layer) return;
+
+    var show = shouldShowGridBleedFill();
+    root.style.display = show ? "" : "none";
+    if (!show) return;
+
+    syncBleedVisibleClipPath();
+    layer.setAttribute("transform", getInnerContentTransformAttr());
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+    var segments = buildGridBleedSegments();
+    if (segments.length) {
+      layer.appendChild(buildGridBleedSegmentsGroup(segments));
+    }
+    syncGridBleedStructuralLayer(layer);
   }
 
   /** 1 cm outer frame width in logical px (803 ÷ 68 ≈ 11.81). */
@@ -1659,6 +1879,10 @@
     if (fanRoot) {
       fanRoot.setAttribute("transform", transformAttr);
     }
+    var bleedLayer = designSvg.querySelector("#layer-pattern-bleed");
+    if (bleedLayer) {
+      bleedLayer.setAttribute("transform", transformAttr);
+    }
     var emotionRoot = designSvg.querySelector("#emotion-markers-root");
     if (emotionRoot) {
       emotionRoot.setAttribute("transform", transformAttr);
@@ -2961,11 +3185,45 @@
     return kept;
   }
 
+  function mergeHopeStickyCutoutFaces(freshRegions, previousSticky) {
+    if (!previousSticky || !previousSticky.length) return freshRegions;
+    if (!freshRegions.length) return previousSticky;
+
+    var out = freshRegions.slice();
+    var pi;
+    for (pi = 0; pi < previousSticky.length; pi++) {
+      var prev = previousSticky[pi];
+      var fi;
+      var subsumed = false;
+      for (fi = 0; fi < freshRegions.length; fi++) {
+        if (
+          isMergeRegionContainedIn(prev, freshRegions[fi]) ||
+          isMergeRegionContainedIn(freshRegions[fi], prev)
+        ) {
+          subsumed = true;
+          break;
+        }
+      }
+      if (subsumed) continue;
+      if (
+        filterMergeRegionsTouchingRemovedEdges([prev]).length &&
+        out.indexOf(prev) < 0
+      ) {
+        out.push(prev);
+      }
+    }
+    return out;
+  }
+
   function renderGridMaskLayer(trigger) {
     if (!designSvg) return;
     var defs = designSvg.querySelector("defs");
     var layer = designSvg.querySelector("#layer-grid-mask");
     if (!defs || !layer) return;
+
+    // Sticky merge regions are reassigned below, so drop the memo first; the
+    // next getMergedRegionsForMask() call recomputes once against fresh sticky.
+    mergedRegionsForMaskCache = null;
 
     var bounds = getGridContentBounds();
     var mergeSegments = getSegmentsForMergeRegionDetection();
@@ -2982,7 +3240,9 @@
       stickyMergedCutoutFaces = freshRegions;
       mergedRegions = freshRegions;
     } else if (freshRegions.length) {
-      stickyMergedCutoutFaces = dedupeContainedMergeRegions(freshRegions);
+      stickyMergedCutoutFaces = dedupeContainedMergeRegions(
+        mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+      );
       mergedRegions = stickyMergedCutoutFaces;
     } else if (
       rawMergedRegions.length &&
@@ -3063,15 +3323,27 @@
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
   function getMergedRegionsForMask() {
+    if (mergedRegionsForMaskCache !== null) {
+      return mergedRegionsForMaskCache;
+    }
     var freshRegions = filterHopeMergeRegionsForGridType(
       TopkapiGeometry.getMergedPolygonRegions(
         getSegmentsForMergeRegionDetection(),
         removedEdges
       )
     );
-    if (!removedEdges.size) return freshRegions;
-    if (stickyMergedCutoutFaces) return stickyMergedCutoutFaces;
-    return freshRegions;
+    var result;
+    if (!removedEdges.size) {
+      result = freshRegions;
+    } else if (freshRegions.length || stickyMergedCutoutFaces) {
+      result = dedupeContainedMergeRegions(
+        mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+      );
+    } else {
+      result = freshRegions;
+    }
+    mergedRegionsForMaskCache = result;
+    return result;
   }
 
   /**
@@ -5734,6 +6006,9 @@
 
   /** Line network for face tracing / merge (star fills; circles ellipse arcs). */
   function getAllSegmentsForTracing() {
+    if (cachedTracingSegments !== null) {
+      return cachedTracingSegments;
+    }
     var seen = new Set();
     var out = [];
     var i;
@@ -5764,6 +6039,7 @@
       for (i = 0; i < extra.length; i++) {
         pushSegment(extra[i]);
       }
+      cachedTracingSegments = out;
       return out;
     }
 
@@ -5774,6 +6050,7 @@
       }
     }
 
+    cachedTracingSegments = out;
     return out;
   }
 
@@ -5852,6 +6129,15 @@
     );
   }
 
+  function segmentMidpointInRegions(s, regions) {
+    var mx = (s.x1 + s.x2) * 0.5;
+    var my = (s.y1 + s.y2) * 0.5;
+    for (var ri = 0; ri < regions.length; ri++) {
+      if (hopePointInPolygon(mx, my, regions[ri].points)) return true;
+    }
+    return false;
+  }
+
   function isSegmentMidpointInsidePrideFill(s) {
     if (shouldPreserveCirclesGridPatternUnderPride()) return false;
     if (shouldUseSimplePrideAutoMergeMode()) return false;
@@ -5887,6 +6173,7 @@
     hopeMergeStateVersion++;
     hopeMergeRegionsRenderCache = null;
     hopeMergeRegionsCacheVersion = -1;
+    mergedRegionsForMaskCache = null;
   }
 
   function getHopeMergeCutoutRegionsForRendering() {
@@ -5914,12 +6201,32 @@
     var i;
     var s;
     var key;
+    // Hoist invariant pride/merge state out of the per-segment loop. These
+    // helpers each read sliders via document.getElementById; calling them per
+    // segment cost ~900ms on dense star grids (tens of thousands of DOM reads).
+    var prideActive = isEmotionLayerActive("pride");
+    var hasRemoved = removedEdges.size > 0;
+    var checkAutoMerge = prideActive && autoMergeEdgeKeys.size > 0;
+    var needKey = hasRemoved || checkAutoMerge;
+    var prideFillRegions =
+      !shouldPreserveCirclesGridPatternUnderPride() &&
+      !shouldUseSimplePrideAutoMergeMode() &&
+      isStarGrid() &&
+      prideActive &&
+      autoMergeFillRegions &&
+      autoMergeFillRegions.length
+        ? autoMergeFillRegions
+        : null;
     for (i = 0; i < segments.length; i++) {
       s = segments[i];
-      key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
-      if (removedEdges.has(key)) continue;
-      if (isEmotionLayerActive("pride") && autoMergeEdgeKeys.has(key)) continue;
-      if (isSegmentMidpointInsidePrideFill(s)) continue;
+      if (needKey) {
+        key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
+        if (hasRemoved && removedEdges.has(key)) continue;
+        if (checkAutoMerge && autoMergeEdgeKeys.has(key)) continue;
+      }
+      if (prideFillRegions && segmentMidpointInRegions(s, prideFillRegions)) {
+        continue;
+      }
       visible.push(s);
     }
     return visible;
@@ -6124,6 +6431,7 @@
     var oldGroup = patternLayer.querySelector('[data-layer="grid-segments"]');
     if (!oldGroup) {
       renderPatternLayer();
+      updateGridBleedLinesOnly();
       return;
     }
     var visible;
@@ -6163,6 +6471,7 @@
       if (oldDots) patternLayer.removeChild(oldDots);
       appendCirclesGridFrameJunctionDots(patternLayer);
     }
+    updateGridBleedLinesOnly();
   }
 
   function scheduleHopeMergeDragPreview() {
@@ -6394,22 +6703,107 @@
     return out;
   }
 
+  function getHopeMergeMaxRegionAreaPx() {
+    var bounds = getGridContentBounds();
+    var boundsArea = bounds.width * bounds.height;
+    var canvasArea = CANVAS_W * CANVAS_H;
+    var frac =
+      typeof HOPE_MERGE_MAX_REGION_CANVAS_FRACTION !== "undefined"
+        ? HOPE_MERGE_MAX_REGION_CANVAS_FRACTION
+        : 0.32;
+    return Math.min(boundsArea * 0.4, canvasArea * frac);
+  }
+
   /**
-   * Octagon: grow seed holes (touching removed edges) into larger connected merges.
-   * @param {{ points: { x: number, y: number }[] }[]} allRegions
+   * Drop the exterior complement face (swallows most seeds, dwarfs real merges).
+   * Keeps legitimate path/cell merges that stay near seed scale.
+   * @param {{ points: { x: number, y: number }[] }[]} regions
    * @param {{ points: { x: number, y: number }[] }[]} seedRegions
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
-  function expandHopeMergeRegionsFromSeeds(allRegions, seedRegions) {
+  function rejectHopeMergeComplementRegions(regions, seedRegions) {
+    if (!regions.length) return regions;
+
+    var canvasArea = CANVAS_W * CANVAS_H;
+    var absoluteMax = getHopeMergeMaxRegionAreaPx();
+    var largestSeedArea = 0;
+    var seedUnionArea = 0;
+    var si;
+
+    if (seedRegions && seedRegions.length) {
+      for (si = 0; si < seedRegions.length; si++) {
+        var seedArea = polygonAreaAbs(seedRegions[si].points);
+        seedUnionArea += seedArea;
+        if (seedArea > largestSeedArea) largestSeedArea = seedArea;
+      }
+    }
+
+    var out = [];
+    var ri;
+    var area;
+    var seedsInside;
+    var c;
+    for (ri = 0; ri < regions.length; ri++) {
+      area = polygonAreaAbs(regions[ri].points);
+      if (area > absoluteMax) continue;
+
+      if (seedRegions && seedRegions.length >= 2 && largestSeedArea > 0) {
+        seedsInside = 0;
+        for (si = 0; si < seedRegions.length; si++) {
+          c = getMergeRegionCentroid(seedRegions[si].points);
+          if (hopePointInPolygon(c.x, c.y, regions[ri].points)) {
+            seedsInside++;
+          }
+        }
+        if (
+          seedsInside / seedRegions.length >= 0.65 &&
+          area >
+            Math.max(
+              seedUnionArea * 3,
+              largestSeedArea * 8,
+              canvasArea * 0.12
+            )
+        ) {
+          continue;
+        }
+      }
+
+      // Exterior complement that engulfs multiple seeds (log: 400589px² / 23% canvas).
+      if (
+        seedRegions &&
+        seedRegions.length >= 1 &&
+        largestSeedArea > 0 &&
+        area > canvasArea * 0.18 &&
+        area > largestSeedArea * 5
+      ) {
+        continue;
+      }
+
+      out.push(regions[ri]);
+    }
+    return out;
+  }
+
+  /**
+   * Octagon: grow seed holes into connected merges; complement faces filtered after.
+   * @param {{ points: { x: number, y: number }[] }[]} allRegions
+   * @param {{ points: { x: number, y: number }[] }[]} seedRegions
+   * @param {number} maxRegionArea
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function expandHopeMergeRegionsFromSeeds(allRegions, seedRegions, maxRegionArea) {
     if (!seedRegions.length || !allRegions.length) return seedRegions;
 
     var out = seedRegions.slice();
     var ri;
     var si;
-    var c;
     var found;
+    var c;
     for (ri = 0; ri < allRegions.length; ri++) {
       if (out.indexOf(allRegions[ri]) >= 0) continue;
+      var candidateArea = polygonAreaAbs(allRegions[ri].points);
+      if (maxRegionArea && candidateArea > maxRegionArea) continue;
+
       found = false;
       for (si = 0; si < seedRegions.length; si++) {
         if (isMergeRegionContainedIn(seedRegions[si], allRegions[ri])) {
@@ -6424,7 +6818,10 @@
       }
       if (found) out.push(allRegions[ri]);
     }
-    return dedupeContainedMergeRegions(out);
+    return rejectHopeMergeComplementRegions(
+      dedupeContainedMergeRegions(out),
+      seedRegions
+    );
   }
 
   /**
@@ -6434,12 +6831,14 @@
    */
   function filterHopeMergeRegionsForGridType(regions) {
     if (!regions.length) return regions;
+    var maxHoleArea = getHopeMergeMaxRegionAreaPx();
     if (isStarGrid()) {
       var minArea = getStarGridHopeMergeMinAreaPx();
       var out = [];
       var i;
       for (i = 0; i < regions.length; i++) {
         if (polygonAreaAbs(regions[i].points) < minArea) continue;
+        if (polygonAreaAbs(regions[i].points) > maxHoleArea) continue;
         if (countStarFillsInsideMergeRegion(regions[i]) < 2) continue;
         out.push(regions[i]);
       }
@@ -6447,42 +6846,21 @@
     }
 
     if (isCirclesLikeGrid()) {
-      regions = filterMergeRegionsTouchingRemovedEdges(regions);
+      var circleSeeds = filterMergeRegionsTouchingRemovedEdges(regions);
+      regions = expandHopeMergeRegionsFromSeeds(
+        regions,
+        circleSeeds,
+        maxHoleArea
+      );
       if (!regions.length) return regions;
 
-      var circlesBounds = getGridContentBounds();
-      var circlesMaxHoleArea =
-        circlesBounds.width * circlesBounds.height * 0.4;
       var circlesMinArea = getCirclesGridHopeMergeMinAreaPx();
-      var circlesTile = lastTileSize;
-      if (!circlesTile || circlesTile <= 0) {
-        circlesTile = getCirclesLikeGridGeometry().tileSizeFromN(
-          lastOctagonsN,
-          CANVAS_W
-        );
-      }
-      var singleBlockMaxFrac =
-        typeof CIRCLES_GRID_HOPE_SINGLE_BLOCK_MAX_AREA_TILE_FRACTION !==
-        "undefined"
-          ? CIRCLES_GRID_HOPE_SINGLE_BLOCK_MAX_AREA_TILE_FRACTION
-          : 0.75;
-      var singleBlockMaxArea = circlesTile * circlesTile * singleBlockMaxFrac;
-      var partialMaxArea = singleBlockMaxArea * 0.9;
-      var singleBlockBandMax = singleBlockMaxArea * 1.25;
       var circlesOut = [];
       var ci;
-      var circlesInside;
       for (ci = 0; ci < regions.length; ci++) {
         var circlesArea = polygonAreaAbs(regions[ci].points);
         if (circlesArea < circlesMinArea) continue;
-        if (circlesArea > circlesMaxHoleArea) continue;
-        if (circlesArea <= singleBlockBandMax) {
-          circlesInside = countStructuralCirclesInsideMergeRegion(regions[ci]);
-          if (circlesInside === 1 && circlesArea < partialMaxArea) {
-            circlesOut.push(regions[ci]);
-          }
-          continue;
-        }
+        if (circlesArea > maxHoleArea) continue;
         circlesOut.push(regions[ci]);
       }
       return circlesOut;
@@ -6490,11 +6868,13 @@
 
     var octagonRaw = regions;
     var octagonSeeds = filterMergeRegionsTouchingRemovedEdges(octagonRaw);
-    regions = expandHopeMergeRegionsFromSeeds(octagonRaw, octagonSeeds);
+    regions = expandHopeMergeRegionsFromSeeds(
+      octagonRaw,
+      octagonSeeds,
+      maxHoleArea
+    );
     if (!regions.length) return regions;
 
-    var bounds = getGridContentBounds();
-    var maxHoleArea = bounds.width * bounds.height * 0.4;
     var minArea = getOctagonHopeMergeMinAreaPx();
     var octOut = [];
     var oi;
@@ -6609,10 +6989,37 @@
   function getVisibleSegments(segments) {
     var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
     var visible = [];
+    // Hoist invariant pride/merge state out of the per-segment loop (see
+    // getVisibleSegmentsFast). Mirrors isSegmentRemoved() check order exactly.
+    var prideActive = isEmotionLayerActive("pride");
+    var preserveCircles = shouldPreserveCirclesGridPatternUnderPride();
+    var hasRemoved = removedEdges.size > 0;
+    var checkAutoMerge =
+      !preserveCircles && prideActive && autoMergeEdgeKeys.size > 0;
+    var needKey = hasRemoved || checkAutoMerge;
+    var prideFillRegions =
+      !preserveCircles &&
+      !shouldUseSimplePrideAutoMergeMode() &&
+      isStarGrid() &&
+      prideActive &&
+      autoMergeFillRegions &&
+      autoMergeFillRegions.length
+        ? autoMergeFillRegions
+        : null;
     for (var i = 0; i < segments.length; i++) {
       var s = segments[i];
-      var key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
-      if (!isSegmentRemoved(key, s, hopeMergeRegions)) visible.push(s);
+      if (needKey) {
+        var key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
+        if (hasRemoved && removedEdges.has(key)) continue;
+        if (checkAutoMerge && autoMergeEdgeKeys.has(key)) continue;
+      }
+      if (prideFillRegions && segmentMidpointInRegions(s, prideFillRegions)) {
+        continue;
+      }
+      if (hopeMergeRegions && segmentMidpointInRegions(s, hopeMergeRegions)) {
+        continue;
+      }
+      visible.push(s);
     }
     return visible;
   }
@@ -6813,6 +7220,12 @@
    * @param {{x1:number,y1:number,x2:number,y2:number}[]} segments
    * @returns {SVGElement}
    */
+  // All grid segments are drawn with one uniform stroke, so we emit a single
+  // <path> with one "M..L.." subpath per segment instead of thousands of <line>
+  // nodes. Each subpath is independent (square caps, no joins between distinct
+  // segments), so the rendered result is identical — but the DOM goes from
+  // ~thousands of nodes to one, which is the dominant cost for dense grids
+  // (especially the nested-star grid).
   function segmentsToGroup(segments) {
     var g = elSvg("g");
     g.setAttribute("data-layer", "grid-segments");
@@ -6822,18 +7235,96 @@
     g.setAttribute("stroke-linecap", "square");
     g.setAttribute("stroke-linejoin", "miter");
 
-    for (var i = 0; i < segments.length; i++) {
-      var s = segments[i];
-      var key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
-      var line = elSvg("line");
-      line.setAttribute("x1", String(s.x1));
-      line.setAttribute("y1", String(s.y1));
-      line.setAttribute("x2", String(s.x2));
-      line.setAttribute("y2", String(s.y2));
-      line.setAttribute("data-key", key);
-      g.appendChild(line);
+    if (segments.length) {
+      var d = "";
+      for (var i = 0; i < segments.length; i++) {
+        var s = segments[i];
+        d +=
+          "M" + s.x1 + " " + s.y1 + "L" + s.x2 + " " + s.y2;
+      }
+      var path = elSvg("path");
+      path.setAttribute("d", d);
+      g.appendChild(path);
     }
     return g;
+  }
+
+  // Cache for the grid-segments <g> built by segmentsToGroup. The base grid
+  // (thousands of <line> nodes) is unchanged while dragging an emotion slider,
+  // yet renderPatternLayer rebuilds it every frame. We compute a cheap rolling
+  // hash over the segment coordinates + stroke attributes; on a hit we clone the
+  // cached group (much cheaper than re-running thousands of createElement +
+  // setAttribute calls). The hash captures the exact geometry, so any real
+  // change (octagons-n, inner scale, grid type, merge/visibility) misses the
+  // cache and rebuilds.
+  var gridSegmentsGroupCache = null;
+  var gridBleedSegmentsGroupCache = null;
+
+  function gridSegmentsCacheSignature(segments) {
+    var h = 2166136261;
+    for (var i = 0; i < segments.length; i++) {
+      var s = segments[i];
+      var vals = [
+        Math.round(s.x1 * 100),
+        Math.round(s.y1 * 100),
+        Math.round(s.x2 * 100),
+        Math.round(s.y2 * 100),
+      ];
+      for (var j = 0; j < 4; j++) {
+        h ^= vals[j];
+        h = (h * 16777619) >>> 0;
+      }
+    }
+    return (
+      segments.length +
+      ":" +
+      h +
+      ":" +
+      getPatternStrokeColor() +
+      ":" +
+      getGridStrokeWidth()
+    );
+  }
+
+  /** Returns a grid-segments <g>, cloning a cached build when geometry is unchanged. */
+  function buildCachedGridSegmentsGroup(segments) {
+    var sig = gridSegmentsCacheSignature(segments);
+    if (gridSegmentsGroupCache && gridSegmentsGroupCache.sig === sig) {
+      return gridSegmentsGroupCache.group.cloneNode(true);
+    }
+    var group = segmentsToGroup(segments);
+    gridSegmentsGroupCache = { sig: sig, group: group.cloneNode(true) };
+    return group;
+  }
+
+  /**
+   * Octagon grids keep ONLY the grid-segments group in #layer-pattern (emotion
+   * markers live in separate layers). When the segment geometry is unchanged we
+   * leave the existing node untouched, skipping both the removeChild teardown
+   * and rebuilding/cloning thousands of <line> nodes every frame.
+   */
+  function syncOctagonGridSegmentsInPlace(patternLayer, segments) {
+    var sig = gridSegmentsCacheSignature(segments);
+    var existing = patternLayer.querySelector('[data-layer="grid-segments"]');
+    if (
+      existing &&
+      patternLayer.childElementCount === 1 &&
+      existing.getAttribute("data-grid-sig") === sig
+    ) {
+      return;
+    }
+    while (patternLayer.firstChild) {
+      patternLayer.removeChild(patternLayer.firstChild);
+    }
+    var group;
+    if (gridSegmentsGroupCache && gridSegmentsGroupCache.sig === sig) {
+      group = gridSegmentsGroupCache.group.cloneNode(true);
+    } else {
+      group = segmentsToGroup(segments);
+      gridSegmentsGroupCache = { sig: sig, group: group.cloneNode(true) };
+    }
+    group.setAttribute("data-grid-sig", sig);
+    patternLayer.appendChild(group);
   }
 
   /**
@@ -6843,21 +7334,27 @@
    * @param {string} [groupId]
    * @returns {SVGElement}
    */
+  // Star fills are all the same solid color and tile without overlapping, so we
+  // merge them into a single <path> (nonzero fill-rule fills each independent
+  // closed subpath identically) — one node instead of ~hundreds per render.
   function starFillsToGroup(starFills, fillColor, groupId) {
     var g = elSvg("g");
     g.setAttribute("id", groupId || "layer-star-fills");
     var fill = fillColor || getCanvasBackgroundColor();
     var i;
-    var p;
-    var d;
+    var d = "";
+    var segD;
     for (i = 0; i < starFills.length; i++) {
-      d =
+      segD =
         typeof NestedStarOctagonsGeometry !== "undefined" &&
         NestedStarOctagonsGeometry.closedPolygonPathD
           ? NestedStarOctagonsGeometry.closedPolygonPathD(starFills[i].outline)
           : "";
-      if (!d) continue;
-      p = elSvg("path");
+      if (!segD) continue;
+      d += segD + " ";
+    }
+    if (d) {
+      var p = elSvg("path");
       p.setAttribute("d", d);
       p.setAttribute("fill", fill);
       p.setAttribute("fill-rule", "nonzero");
@@ -14658,6 +15155,7 @@
       refreshLabelBarContent();
     }
     updateCanvasEdgeSerialLayer();
+    syncBleedVisibleClipPath();
   }
 
   function pushCanvasEdgeBrownBarExportLines(lines) {
@@ -15456,6 +15954,19 @@
     clipRect.setAttribute("height", String(CANVAS_H));
     clip.appendChild(clipRect);
     defs.appendChild(clip);
+    var bleedClip = elSvg("clipPath");
+    bleedClip.setAttribute("id", "bleed-visible-clip");
+    var bleedClipRect = elSvg("rect");
+    bleedClipRect.setAttribute("id", "bleed-visible-clip-rect");
+    bleedClipRect.setAttribute("x", "0");
+    bleedClipRect.setAttribute("y", "0");
+    bleedClipRect.setAttribute("width", String(CANVAS_W));
+    bleedClipRect.setAttribute(
+      "height",
+      String(getCanvasEdgeBrownBarLayout("bottom").y)
+    );
+    bleedClip.appendChild(bleedClipRect);
+    defs.appendChild(bleedClip);
     appendInnerContentClipPath(defs);
     ensureLabelBarIconTintFilter(defs);
     svg.appendChild(defs);
@@ -15468,6 +15979,16 @@
     borderFill.setAttribute("height", String(CANVAS_H));
     borderFill.setAttribute("fill", getCanvasBackgroundColor());
     svg.appendChild(borderFill);
+
+    var bleedRoot = elSvg("g");
+    bleedRoot.setAttribute("id", "layer-pattern-bleed-root");
+    bleedRoot.setAttribute("clip-path", "url(#bleed-visible-clip)");
+    bleedRoot.style.display = "none";
+    var bleedLayer = elSvg("g");
+    bleedLayer.setAttribute("id", "layer-pattern-bleed");
+    bleedLayer.setAttribute("transform", getInnerContentTransformAttr());
+    bleedRoot.appendChild(bleedLayer);
+    svg.appendChild(bleedRoot);
 
     svg.appendChild(createHandkerchiefOuterFrameLayer());
 
@@ -17966,6 +18487,15 @@
     };
   }
 
+  // Caches the generated stipple DOM per triangle. The dots come from a seeded
+  // RNG (seed = hash of the stable triangleId) clipped to a fixed geometry, so
+  // for unchanged inputs the output is byte-for-byte identical. During a slider
+  // drag that does not move the fan, this lets us clone the cached SVG instead
+  // of re-running the O(dots^2) rejection sampling + rebuilding hundreds of
+  // <circle> nodes every frame. Keyed by triangleId so the cache stays small
+  // (one entry per triangle) and self-updates when the geometry changes.
+  var radialFanMiddleBandStippleCache = {};
+
   /** Random dots clipped to one middle-band triangle (seeded for stable re-renders). */
   function appendRadialFanMiddleBandTriangleStipple(
     parentGroup,
@@ -17976,6 +18506,38 @@
     seed
   ) {
     var clipId = "radial-fan-middle-band-clip-" + triangleId;
+    var bbox = getRadialFanMiddleBandTriangleBbox(bboxPoints);
+    var radius = getRadialFanMiddleBandDotRadius();
+    var minDist = getRadialFanMiddleBandMinDotDistance();
+
+    var cacheKey =
+      triangleId +
+      "|" +
+      pathD +
+      "|" +
+      bbox.minX.toFixed(2) +
+      "," +
+      bbox.minY.toFixed(2) +
+      "," +
+      bbox.width.toFixed(2) +
+      "," +
+      bbox.height.toFixed(2) +
+      "|" +
+      radius +
+      "|" +
+      minDist +
+      "|" +
+      dotColor +
+      "|" +
+      seed;
+
+    var cached = radialFanMiddleBandStippleCache[triangleId];
+    if (cached && cached.key === cacheKey) {
+      parentGroup.appendChild(cached.clip.cloneNode(true));
+      parentGroup.appendChild(cached.group.cloneNode(true));
+      return;
+    }
+
     var clip = elSvg("clipPath");
     clip.setAttribute("id", clipId);
     var clipPath = elSvg("path");
@@ -17983,9 +18545,6 @@
     clip.appendChild(clipPath);
     parentGroup.appendChild(clip);
 
-    var bbox = getRadialFanMiddleBandTriangleBbox(bboxPoints);
-    var radius = getRadialFanMiddleBandDotRadius();
-    var minDist = getRadialFanMiddleBandMinDotDistance();
     var minDistSq = minDist * minDist;
     var padding = radius + 1;
     var area = Math.max(1, bbox.width * bbox.height);
@@ -18027,6 +18586,12 @@
       dotGroup.appendChild(circle);
     }
     parentGroup.appendChild(dotGroup);
+
+    radialFanMiddleBandStippleCache[triangleId] = {
+      key: cacheKey,
+      clip: clip.cloneNode(true),
+      group: dotGroup.cloneNode(true),
+    };
   }
 
   function getRadialFanMiddleRibIndex(endpoints) {
@@ -20149,7 +20714,9 @@
         patternLayer.appendChild(starFillsToGroup(visibleStarFills));
       }
       patternLayer.appendChild(
-        segmentsToGroup(getVisibleSegments(getAllSegmentsForTracing()))
+        buildCachedGridSegmentsGroup(
+          getVisibleSegments(getAllSegmentsForTracing())
+        )
       );
       renderJunctionCircleEmotionMarkers();
       renderAngerDiamondTrianglesLayer();
@@ -20160,8 +20727,15 @@
       renderDiamondFillsLayer();
       renderHollowDiamondFillsLayer();
     }
-    while (patternLayer.firstChild) patternLayer.removeChild(patternLayer.firstChild);
-    patternLayer.appendChild(segmentsToGroup(getVisiblePatternSegments()));
+    if (isCirclesLikeGrid()) {
+      while (patternLayer.firstChild)
+        patternLayer.removeChild(patternLayer.firstChild);
+      patternLayer.appendChild(
+        buildCachedGridSegmentsGroup(getVisiblePatternSegments())
+      );
+    } else {
+      syncOctagonGridSegmentsInPlace(patternLayer, getVisiblePatternSegments());
+    }
     if (isCirclesGrid()) {
       syncCirclesGridStructuralOutlineLayers(patternLayer);
       appendCirclesGridFrameJunctionDots(patternLayer);
@@ -20333,6 +20907,7 @@
     updateBorderDivisionOverlay();
     updateCanvasEdgeBrownBars();
     renderPatternLayer();
+    renderGridBleedLayer();
     renderHalfCircleLayer();
     renderAutoMergeFillsLayer();
     updateFrameInsetOverlayLayer();
@@ -20419,6 +20994,7 @@
     renderVerticalGridLayer();
     renderBackgroundLayer();
     renderPatternLayer();
+    renderGridBleedLayer();
     renderHalfCircleLayer();
     renderGridMaskLayer("render");
     applyMergeReveal();
@@ -20487,6 +21063,8 @@
     setCanvasLayerDisplay("grid-frame-chrome-root", frameOn);
     setCanvasLayerDisplay("fan-half-circle-root", fanOn);
 
+    renderGridBleedLayer();
+
     var feelingsOn = fanOn;
     setCanvasLayerDisplay("emotion-markers-root", feelingsOn);
     setCanvasLayerDisplay("fear-vertical-grid-root", feelingsOn);
@@ -20554,6 +21132,7 @@
     applyGridContentVisibility();
 
     cachedAllSegments = buildAllSegments();
+    cachedTracingSegments = null;
 
     if (isStarGrid()) {
       renderStarGrid();
@@ -20635,6 +21214,7 @@
     updateBorderDivisionOverlay();
     updateCanvasEdgeBrownBars();
     renderPatternLayer();
+    renderGridBleedLayer();
     renderHalfCircleLayer();
     updateFrameInsetOverlayLayer();
     layoutStage();
@@ -20671,6 +21251,7 @@
     }
 
     cachedAllSegments = buildAllSegments();
+    cachedTracingSegments = null;
     updateInnerContentTransformForGridType();
 
     if (isStarGrid()) {
@@ -20709,20 +21290,46 @@
       }
     }
 
-    applyGridRasterPreview();
+    if (isStarGrid()) {
+      // Star segments now render as a single <path>, so updating the SVG
+      // directly is cheap. Skip the per-frame canvas.toDataURL("png") encode
+      // (≈hundreds of ms on the 803×2126 canvas) that made star dragging janky.
+      clearGridRasterPreview();
+      updatePatternGridLinesOnly();
+      gridRasterPreviewActive = true;
+    } else {
+      applyGridRasterPreview();
+      updateGridBleedLinesOnly();
+    }
     layoutStage();
+  }
+
+  function getGridStructureSignature() {
+    return (
+      String(getOctagonsNStepFromSlider()) +
+      ":" +
+      String(getInnerScaleStepFromSlider()) +
+      ":" +
+      String(gridType)
+    );
   }
 
   function commitSliderRelease(hadPreview, previewWasInFlight) {
     lastSliderPreviewSignature = "";
     sliderPreviewRendered = false;
+    var gridSignature = getGridStructureSignature();
+    var gridStructureChanged =
+      gridSignature !== lastCommittedGridStructureSignature;
+    lastCommittedGridStructureSignature = gridSignature;
     var hadAutoMerge = autoMergeEdgeKeys.size > 0;
-    clearMergeState();
-    clearAutoMergeState();
+    if (gridStructureChanged) {
+      clearMergeState();
+      clearAutoMergeState();
+    }
     // Light preview during drag skips emotion/layout sync — full render on release.
     render();
     updateHopeResetButton();
-    if (hadAutoMerge) {
+    if (gridStructureChanged && hadAutoMerge) {
       requestAnimationFrame(function () {
         runAutoMerge();
       });
@@ -21192,11 +21799,14 @@
     }
     page2QuestionnaireCanvasLayoutCache = null;
     if (!wrap || !mode) return null;
-    var main = wrap.closest("#section-design .main");
-    if (!main) return null;
-    var mainRect = main.getBoundingClientRect();
-    var naturalHeight = mainRect.height;
-    var naturalWrapTop = mainRect.top;
+    var anchor =
+      wrap.closest(".canvas-stack__panel-inner") ||
+      wrap.closest("#section-design .main") ||
+      wrap.closest("#section-design");
+    if (!anchor) return null;
+    var anchorRect = anchor.getBoundingClientRect();
+    var naturalHeight = anchorRect.height;
+    var naturalWrapTop = anchorRect.top;
     var focusRect =
       mode === "body-autonomy-top"
         ? getBodyAutonomyTopFocusRect()
@@ -21445,9 +22055,13 @@
     };
   }
 
-  /** Full .main area on page 2 design — grid slot is narrow but scale stays viewport-sized. */
+  /** Full .main area on page 2 design — or canvas-stack panel when wrap lives in questionnaire scroll stack. */
   function getStageLayoutRect(wrap) {
     if (!wrap) return null;
+    var canvasInner = wrap.closest(".canvas-stack__panel-inner");
+    if (canvasInner) {
+      return canvasInner.getBoundingClientRect();
+    }
     var page2 = document.getElementById("page2");
     var sectionDesign = wrap.closest("#section-design");
     if (page2 && sectionDesign) {
@@ -21457,17 +22071,24 @@
     return wrap.getBoundingClientRect();
   }
 
+  function scalePage2ScreenPx(px) {
+    if (window.Page2Units && typeof window.Page2Units.scalePage2Px === "function") {
+      return window.Page2Units.scalePage2Px(px);
+    }
+    return px * Math.min((window.innerWidth || 1728) / 1728, 1.5);
+  }
+
   function getProfileLabelFocusCenterScreenYPx() {
     var offset =
       typeof PROFILE_LABEL_FOCUS_CENTER_OFFSET_UP_PX !== "undefined"
-        ? PROFILE_LABEL_FOCUS_CENTER_OFFSET_UP_PX
+        ? scalePage2ScreenPx(PROFILE_LABEL_FOCUS_CENTER_OFFSET_UP_PX)
         : 0;
     return getViewportCenterYPx() - offset;
   }
 
   function getProfileLabelFocusExtraExtendUpPx() {
     return typeof PROFILE_LABEL_FOCUS_EXTRA_EXTEND_UP_PX !== "undefined"
-      ? PROFILE_LABEL_FOCUS_EXTRA_EXTEND_UP_PX
+      ? scalePage2ScreenPx(PROFILE_LABEL_FOCUS_EXTRA_EXTEND_UP_PX)
       : 0;
   }
 
@@ -21479,10 +22100,11 @@
         ? focusWidth
         : CANVAS_W;
     var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
-    var shadowBleed =
+    var shadowBleed = scalePage2ScreenPx(
       typeof CANVAS_LAYOUT_BOX_SHADOW_BLEED_PX !== "undefined"
         ? CANVAS_LAYOUT_BOX_SHADOW_BLEED_PX
-        : 12;
+        : 12
+    );
     var availW = Math.max(1, slotWidth - 2 * shadowBleed);
     return availW / (innerW + 2 * framePx);
   }
@@ -21510,9 +22132,11 @@
   }
 
   function getBodyAutonomyFocusTopScreenGapPx() {
-    return typeof BODY_AUTONOMY_FOCUS_TOP_SCREEN_GAP_PX !== "undefined"
-      ? BODY_AUTONOMY_FOCUS_TOP_SCREEN_GAP_PX
-      : 100;
+    return scalePage2ScreenPx(
+      typeof BODY_AUTONOMY_FOCUS_TOP_SCREEN_GAP_PX !== "undefined"
+        ? BODY_AUTONOMY_FOCUS_TOP_SCREEN_GAP_PX
+        : 100
+    );
   }
 
   /** Focus rect for body-autonomy questionnaire zoom (top brown bar + fan). */
@@ -21537,19 +22161,21 @@
     return isProfileOnlyQuestionnaireZoomActive();
   }
 
-  /** Grid + palette: large canvas in 5 grid cols, lower than profile label focus. */
+  /** Grid: large canvas in 5 grid cols, lower than profile label focus. */
   function isGridColorQuestionnaireLayoutActive() {
     var q = window.Questionnaire;
     if (!q || !q.getCurrentStepId || !q.isGridStep) return false;
     var stepId = q.getCurrentStepId();
     if (!stepId) return false;
-    return q.isGridStep(stepId) || stepId === "palette";
+    return q.isGridStep(stepId);
   }
 
   function getGridColorFocusBottomScreenGapPx() {
-    return typeof GRID_COLOR_FOCUS_BOTTOM_SCREEN_GAP_PX !== "undefined"
-      ? GRID_COLOR_FOCUS_BOTTOM_SCREEN_GAP_PX
-      : 150;
+    return scalePage2ScreenPx(
+      typeof GRID_COLOR_FOCUS_BOTTOM_SCREEN_GAP_PX !== "undefined"
+        ? GRID_COLOR_FOCUS_BOTTOM_SCREEN_GAP_PX
+        : 150
+    );
   }
 
   function layoutQuestionnaireGridColorCanvas(wrap, svg, rect, f, totalW, totalH) {
@@ -21657,7 +22283,19 @@
   function getPage2CanvasSlot(wrap, colStart, colSpan) {
     var page2 = document.getElementById("page2");
     var sectionDesign = wrap ? wrap.closest("#section-design") : null;
-    if (!page2 || !sectionDesign || !wrap) return null;
+    if (!wrap) return null;
+
+    var canvasInner = wrap.closest(".canvas-stack__panel-inner");
+    if (canvasInner) {
+      var innerRect = canvasInner.getBoundingClientRect();
+      return {
+        slotLeft: innerRect.left,
+        slotWidth: innerRect.width,
+        wrapRect: wrap.getBoundingClientRect(),
+      };
+    }
+
+    if (!page2 || !sectionDesign) return null;
     var gridCols =
       typeof colStart === "number" && typeof colSpan === "number"
         ? { start: colStart, span: colSpan }
@@ -22572,6 +23210,8 @@
         }
         ctx.fillStyle = getCanvasBackgroundColor();
         ctx.fillRect(0, 0, thumbWidth, thumbHeight);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, thumbWidth, thumbHeight);
         URL.revokeObjectURL(url);
         resolve(canvas.toDataURL("image/png"));
@@ -22585,7 +23225,7 @@
   }
 
   function captureArchiveDesignPng(thumbWidth) {
-    var width = thumbWidth || 280;
+    var width = thumbWidth || 560;
     var fontReady =
       typeof document !== "undefined" && document.fonts && document.fonts.ready
         ? document.fonts.ready
@@ -22992,6 +23632,8 @@
       innerSlider.addEventListener("input", scheduleSliderRender);
       innerSlider.addEventListener("change", renderAfterSliderRelease);
     }
+
+    lastCommittedGridStructureSignature = getGridStructureSignature();
 
     var borderFrameDivisionsSlider = document.getElementById(
       "border-frame-divisions"
@@ -23454,6 +24096,20 @@
         refreshLabelBarContent();
         render();
       },
+      /**
+       * Lightweight per-frame update while a feeling slider is being dragged.
+       * Updates emotion intensity + repaints, but skips the commit-grade work
+       * that does not change mid-drag: grid-type slider-range syncs, label-bar
+       * text re-measure (forced reflows), location coordinates, and the random
+       * reshuffle of marker positions (kept stable so the density changes
+       * smoothly without flicker). The full finalizeApply runs once on release.
+       */
+      previewApply: function () {
+        if (!isGridContentUnlocked()) return;
+        resetFeelingsLayoutSignatures();
+        applyFeelingsControlState({ skipRender: true, forceReshuffle: false });
+        render();
+      },
       applyPrideLayers: function () {
         syncAllFeelingsSliderOutputs();
         if (getAutoMergeIntensity() > 0) {
@@ -23492,16 +24148,17 @@
       await window.HandkerchiefCombinations.loadAndApplyInitialCombo();
     }
 
-    if (window.SheetPalettes && window.SheetPalettes.startLiveSync) {
-      window.SheetPalettes.startLiveSync(1500);
-    }
+    // Recurring Google Sheet live-sync polling is disabled for performance: it
+    // refetched the CSV every 1.5s (~1.2s per request) for the whole session.
+    // Colors still load once below (and refresh when the tab is refocused).
+    // To restore live editing, re-enable: SheetPalettes.startLiveSync(1500).
 
     if (
       window.SheetPalettes &&
       window.SheetPalettes.refreshSheetPalettesIfChanged
     ) {
       window.SheetPalettes.refreshSheetPalettesIfChanged().catch(function () {
-        /* background Google sync; embedded palette already applied */
+        /* one-time Google sync at load; embedded palette already applied */
       });
     }
 
@@ -23581,6 +24238,8 @@
     window.render = render;
     window.setGridType = setGridType;
     window.layoutStage = layoutStage;
+    window.resetPage2QuestionnaireCanvasLayoutCache =
+      resetPage2QuestionnaireCanvasLayoutCache;
     window.captureArchiveDesignPng = captureArchiveDesignPng;
 
     window.addEventListener("resize", function () {

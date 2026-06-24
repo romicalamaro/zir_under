@@ -6,6 +6,9 @@
     "@resvg/resvg-js": "^2.6.2",
     "linkedom": "^0.18.9"
   },
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  },
   "scripts": {
     "serve": "node scripts/serve.mjs",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -15,7 +18,8 @@
     "embed:combinations-csv": "node scripts/embed-combinations-csv.mjs",
     "embed:label-bar-svgs": "node scripts/embed-label-bar-svgs.mjs",
     "embed:stipple-assets": "node scripts/embed-stipple-assets.mjs",
-    "rasterize:stipple": "node scripts/rasterize-stipple.mjs"
+    "rasterize:stipple": "node scripts/rasterize-stipple.mjs",
+    "convert:shop-webp": "node scripts/convert-shop-webp.mjs"
   },
   "keywords": [],
   "author": "",

@@ -592,6 +592,152 @@
   }
 
   /**
+   * Extended vertical line X coords for bleed fill (margin columns).
+   * @param {{ tileSize: number, cols: number }} layout
+   * @param {number} innerScale
+   * @param {{ colStart: number, colEnd: number }} stampBounds
+   * @returns {number[]}
+   */
+  function buildBleedVerticalLineXs(layout, innerScale, stampBounds) {
+    var S = layout.tileSize;
+    var sideHalf = sideHalfWidthFromInnerScale(S, innerScale);
+    var xs = [];
+    var seen = {};
+    var b;
+    var center;
+    var bStart = Math.floor(stampBounds.colStart / 2) - 1;
+    var bEnd = Math.ceil(stampBounds.colEnd / 2) + 1;
+
+    function add(x) {
+      x = roundCoord(x);
+      var key = String(x);
+      if (seen[key]) return;
+      seen[key] = true;
+      xs.push(x);
+    }
+
+    for (b = bStart; b < bEnd; b++) {
+      center = (2 * b + 1) * S;
+      add(center - sideHalf);
+      add(center);
+      add(center + sideHalf);
+    }
+    add(stampBounds.colStart * S);
+    add(stampBounds.colEnd * S);
+    add(0);
+    add(layout.cols * S);
+    xs.sort(function (a, bVal) {
+      return a - bVal;
+    });
+    return xs;
+  }
+
+  /**
+   * Extended horizontal line Y coords for bleed fill (margin rows).
+   * @param {{ tileSize: number, rows: number, offsetY: number }} layout
+   * @param {number} innerScale
+   * @param {{ rowStart: number, rowEnd: number, bleedOffsetY?: number }} stampBounds
+   * @returns {number[]}
+   */
+  function buildBleedHorizontalLineYs(layout, innerScale, stampBounds) {
+    var S = layout.tileSize;
+    var sideHalf = sideHalfWidthFromInnerScale(S, innerScale);
+    var bleedOffsetY =
+      typeof stampBounds.bleedOffsetY === "number" ? stampBounds.bleedOffsetY : 0;
+    var ys = [];
+    var seen = {};
+    var b;
+    var center;
+    var bStart = Math.floor(stampBounds.rowStart / 2) - 1;
+    var bEnd = Math.ceil(stampBounds.rowEnd / 2) + 1;
+
+    function add(y) {
+      y = roundCoord(y);
+      var key = String(y);
+      if (seen[key]) return;
+      seen[key] = true;
+      ys.push(y);
+    }
+
+    for (b = bStart; b < bEnd; b++) {
+      center = bleedOffsetY + (2 * b + 1) * S;
+      add(center - sideHalf);
+      add(center);
+      add(center + sideHalf);
+    }
+    add(bleedOffsetY + stampBounds.rowStart * S);
+    add(bleedOffsetY + stampBounds.rowEnd * S);
+    add(bleedOffsetY);
+    add(bleedOffsetY + layout.rows * S);
+    ys.sort(function (a, bVal) {
+      return a - bVal;
+    });
+    return ys;
+  }
+
+  /**
+   * Decorative bleed extension for canvas margin fill before frame.
+   * @param {number} n
+   * @param {number} canvasW
+   * @param {number} canvasH
+   * @param {number} innerScale
+   * @param {{ colStart: number, colEnd: number, rowStart: number, rowEnd: number, bleedOffsetY?: number }} stampBounds
+   * @returns {{ x1: number, y1: number, x2: number, y2: number }[]}
+   */
+  function buildBleedPatternSegments(n, canvasW, canvasH, innerScale, stampBounds) {
+    var layout = computeLayout(n, canvasW, canvasH);
+    return buildSplitGridSegments(
+      buildBleedVerticalLineXs(layout, innerScale, stampBounds),
+      buildBleedHorizontalLineYs(layout, innerScale, stampBounds)
+    );
+  }
+
+  /**
+   * Structural ellipses extended into bleed margin (same phase as main grid).
+   * @param {number} n
+   * @param {number} canvasW
+   * @param {number} canvasH
+   * @param {number} innerScale
+   * @param {{ colStart: number, colEnd: number, rowStart: number, rowEnd: number, bleedOffsetY?: number }} stampBounds
+   * @returns {{ id: string, cx: number, cy: number, rx: number, ry: number }[]}
+   */
+  function buildBleedStructuralCircles(n, canvasW, canvasH, innerScale, stampBounds) {
+    var lineLayout = buildLineLayout(n, canvasW, canvasH, innerScale);
+    var layout = lineLayout.layout;
+    var S = layout.tileSize;
+    var bleedOffsetY =
+      typeof stampBounds.bleedOffsetY === "number"
+        ? stampBounds.bleedOffsetY
+        : layout.offsetY;
+    var rx = lineLayout.sideHalfWidth;
+    var ry = lineLayout.sideHalfWidth;
+    var circles = [];
+    var col;
+    var row;
+    var colMin = stampBounds.colStart;
+    var colMax = stampBounds.colEnd - 2;
+    var rowMin = stampBounds.rowStart;
+    var rowMax = stampBounds.rowEnd - 2;
+
+    if (colMin % 2 !== 0) colMin -= 1;
+    if (rowMin % 2 !== 0) rowMin -= 1;
+
+    for (row = rowMin; row <= rowMax; row += 2) {
+      for (col = colMin; col <= colMax; col += 2) {
+        circles.push({
+          id: "sc-bleed-" + col + "-" + row,
+          cx: roundCoord((col + 1) * S),
+          cy: roundCoord(bleedOffsetY + (row + 1) * S),
+          rx: roundCoord(rx),
+          ry: roundCoord(ry),
+        });
+      }
+    }
+
+    return circles;
+  }
+
+  /**
    * Structural pattern ellipses: one per 2×2 cell block (outline, not emotion layer).
    * @param {number} n
    * @param {number} canvasW
@@ -805,6 +951,8 @@
     buildHopeMergeTessellationSegments: buildHopeMergeTessellationSegments,
     buildCoarseCircleBlockBoundarySegments: buildCoarseCircleBlockBoundarySegments,
     buildPatternSegments: buildPatternSegments,
+    buildBleedPatternSegments: buildBleedPatternSegments,
+    buildBleedStructuralCircles: buildBleedStructuralCircles,
     buildStructuralCircles: buildStructuralCircles,
     buildJunctionCircleCatalog: buildJunctionCircleCatalog,
     buildAdjacentCircleJunctionCatalog: buildAdjacentCircleJunctionCatalog,

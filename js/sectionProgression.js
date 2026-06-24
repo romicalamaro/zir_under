@@ -136,6 +136,16 @@
     notifySectionProgressChange();
   }
 
+  function resetQuestionnaireProgress() {
+    labelBarTagTouched = false;
+    profileWasComplete = false;
+    questionnaireProfileComplete = false;
+    gridTypeChosen = false;
+    frameSectionEngaged = false;
+    fanSectionEngaged = false;
+    notifySectionProgressChange();
+  }
+
   function markFrameSectionEngaged() {
     if (frameSectionEngaged) return;
     frameSectionEngaged = true;
@@ -202,6 +212,7 @@
     isFanContentUnlocked: isFanContentUnlocked,
     markGridTypeChosen: markGridTypeChosen,
     markQuestionnaireProfileComplete: markQuestionnaireProfileComplete,
+    resetQuestionnaireProgress: resetQuestionnaireProgress,
     markFrameSectionEngaged: markFrameSectionEngaged,
     markFanSectionEngaged: markFanSectionEngaged,
     isSectionUnlocked: isSectionUnlocked,

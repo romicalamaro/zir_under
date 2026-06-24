@@ -402,6 +402,52 @@
   }
 
   /**
+   * Decorative bleed extension (lines only) for canvas margin fill before frame.
+   * @param {{ tileSize: number, cols: number, rows: number, offsetY: number }} layout
+   * @param {{ colStart: number, colEnd: number, rowStart: number, rowEnd: number, bleedOffsetY?: number }} stampBounds
+   * @param {number} innerScale
+   * @returns {{ x1: number, y1: number, x2: number, y2: number }[]}
+   */
+  function buildBleedPatternSegments(layout, stampBounds, innerScale) {
+    if (typeof innerScale !== "number") {
+      innerScale = 1;
+    }
+    var T = layout.tileSize;
+    var out = [];
+    var seen = new Set();
+    var bleedOffsetY =
+      stampBounds && typeof stampBounds.bleedOffsetY === "number"
+        ? stampBounds.bleedOffsetY
+        : 0;
+    var row;
+    var col;
+    var i;
+
+    for (row = stampBounds.rowStart; row < stampBounds.rowEnd; row++) {
+      for (col = stampBounds.colStart; col < stampBounds.colEnd; col++) {
+        var ox = col * T;
+        var oy = bleedOffsetY + row * T;
+        var cellOut = [];
+        var cellSeen = new Set();
+        addUnitCellSegments(T, innerScale, cellOut, cellSeen);
+        for (i = 0; i < cellOut.length; i++) {
+          var s = cellOut[i];
+          pushSegment(
+            out,
+            seen,
+            s.x1 + ox,
+            s.y1 + oy,
+            s.x2 + ox,
+            s.y2 + oy
+          );
+        }
+      }
+    }
+
+    return out;
+  }
+
+  /**
    * Squared distance from point (px, py) to segment (x1,y1)-(x2,y2).
    * @returns {number}
    */
@@ -809,7 +855,7 @@
   var FACE_MIN_AREA = 0.5;
   var FACE_MAX_AREA_RATIO = 0.5;
   /** Reject exterior faces that enclose most baseline cells (merge mask holes). */
-  var MERGED_FACE_MAX_BASELINE_FRACTION = 0.85;
+  var MERGED_FACE_MAX_BASELINE_FRACTION = 0.55;
   /** Allow larger merged faces than generic tracing (still below exterior face). */
   var MERGED_FACE_MAX_AREA_RATIO = 0.98;
 
@@ -849,6 +895,40 @@
     }
     var n = points.length || 1;
     return { x: cx / n, y: cy / n };
+  }
+
+  /**
+   * Centroids for a list of faces, computed once for reuse across inside-tests.
+   * @param {{ points: { x: number, y: number }[] }[]} faces
+   * @returns {{ x: number, y: number }[]}
+   */
+  function facesCentroids(faces) {
+    var out = [];
+    for (var i = 0; i < faces.length; i++) {
+      out.push(polygonCentroid(faces[i].points));
+    }
+    return out;
+  }
+
+  /**
+   * Axis-aligned bounding box of polygon points (used as a cheap reject before
+   * point-in-polygon: a point inside a polygon is always inside its bbox).
+   * @param {{ x: number, y: number }[]} points
+   * @returns {{ minX: number, minY: number, maxX: number, maxY: number }}
+   */
+  function polygonPointsBBox(points) {
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
   }
 
   /**
@@ -1045,10 +1125,16 @@
    * @param {{ points: { x: number, y: number }[] }[]} baselineFaces
    * @returns {number}
    */
-  function countBaselineFacesInsideCurrentFace(face, baselineFaces) {
+  function countBaselineFacesInsideCurrentFace(face, baselineFaces, baselineCentroids) {
     var count = 0;
+    var bb = polygonPointsBBox(face.points);
     for (var i = 0; i < baselineFaces.length; i++) {
-      var c = polygonCentroid(baselineFaces[i].points);
+      var c = baselineCentroids
+        ? baselineCentroids[i]
+        : polygonCentroid(baselineFaces[i].points);
+      if (c.x < bb.minX || c.x > bb.maxX || c.y < bb.minY || c.y > bb.maxY) {
+        continue;
+      }
       if (pointInPolygon(c.x, c.y, face.points)) {
         count++;
       }
@@ -1081,11 +1167,17 @@
    * @param {{ points: { x: number, y: number }[] }[]} baselineFaces
    * @returns {boolean}
    */
-  function mergedRegionIncludesSquareCell(face, baselineFaces) {
+  function mergedRegionIncludesSquareCell(face, baselineFaces, baselineCentroids) {
     var i;
+    var bb = polygonPointsBBox(face.points);
     for (i = 0; i < baselineFaces.length; i++) {
       if (!isSquareUnitFace(baselineFaces[i])) continue;
-      var c = polygonCentroid(baselineFaces[i].points);
+      var c = baselineCentroids
+        ? baselineCentroids[i]
+        : polygonCentroid(baselineFaces[i].points);
+      if (c.x < bb.minX || c.x > bb.maxX || c.y < bb.minY || c.y > bb.maxY) {
+        continue;
+      }
       if (pointInPolygon(c.x, c.y, face.points)) return true;
     }
     return false;
@@ -1096,12 +1188,18 @@
    * @param {{ points: { x: number, y: number }[] }[]} baselineFaces
    * @returns {boolean}
    */
-  function isOctagonOnlyMergedRegion(face, baselineFaces) {
+  function isOctagonOnlyMergedRegion(face, baselineFaces, baselineCentroids) {
     var hasOctagon = false;
     var hasSquare = false;
     var i;
+    var bb = polygonPointsBBox(face.points);
     for (i = 0; i < baselineFaces.length; i++) {
-      var c = polygonCentroid(baselineFaces[i].points);
+      var c = baselineCentroids
+        ? baselineCentroids[i]
+        : polygonCentroid(baselineFaces[i].points);
+      if (c.x < bb.minX || c.x > bb.maxX || c.y < bb.minY || c.y > bb.maxY) {
+        continue;
+      }
       if (!pointInPolygon(c.x, c.y, face.points)) continue;
       if (isSquareUnitFace(baselineFaces[i])) hasSquare = true;
       else if (isOctagonUnitFace(baselineFaces[i])) hasOctagon = true;
@@ -1148,6 +1246,7 @@
     options = options || {};
     var skipOctagonSquareChecks = options.skipOctagonSquareChecks === true;
     var merged = getMergedPolygonRegions(allSegments, removedSet);
+    var baselineCentroids = facesCentroids(baselineFaces);
     var out = fillRegions.slice();
     var mi;
     var region;
@@ -1157,12 +1256,22 @@
 
     for (mi = 0; mi < merged.length; mi++) {
       region = merged[mi];
-      if (countBaselineFacesInsideCurrentFace(region, baselineFaces) <= 1) {
+      if (
+        countBaselineFacesInsideCurrentFace(
+          region,
+          baselineFaces,
+          baselineCentroids
+        ) <= 1
+      ) {
         continue;
       }
       if (!skipOctagonSquareChecks) {
-        if (isOctagonOnlyMergedRegion(region, baselineFaces)) continue;
-        if (!mergedRegionIncludesSquareCell(region, baselineFaces)) continue;
+        if (isOctagonOnlyMergedRegion(region, baselineFaces, baselineCentroids))
+          continue;
+        if (
+          !mergedRegionIncludesSquareCell(region, baselineFaces, baselineCentroids)
+        )
+          continue;
       }
 
       c = polygonCentroid(region.points);
@@ -1184,10 +1293,15 @@
   function filterAutoMergeFillRegions(regions, baselineFaces) {
     var out = [];
     var i;
+    var baselineCentroids = facesCentroids(baselineFaces);
     for (i = 0; i < regions.length; i++) {
       var region = regions[i];
-      if (isOctagonOnlyMergedRegion(region, baselineFaces)) continue;
-      if (!mergedRegionIncludesSquareCell(region, baselineFaces)) continue;
+      if (isOctagonOnlyMergedRegion(region, baselineFaces, baselineCentroids))
+        continue;
+      if (
+        !mergedRegionIncludesSquareCell(region, baselineFaces, baselineCentroids)
+      )
+        continue;
       out.push(region);
     }
     return out;
@@ -1203,6 +1317,7 @@
     if (!removedSet || !removedSet.size) return [];
 
     var baselineFaces = traceFaces(allSegments);
+    var baselineCentroids = facesCentroids(baselineFaces);
     var visible = getVisibleSegmentsFromRemoved(allSegments, removedSet);
     var currentFaces = traceFaces(visible, {
       maxAreaRatio: MERGED_FACE_MAX_AREA_RATIO,
@@ -1212,7 +1327,11 @@
 
     for (var i = 0; i < currentFaces.length; i++) {
       var face = currentFaces[i];
-      var insideCount = countBaselineFacesInsideCurrentFace(face, baselineFaces);
+      var insideCount = countBaselineFacesInsideCurrentFace(
+        face,
+        baselineFaces,
+        baselineCentroids
+      );
       if (insideCount <= 1) continue;
       if (
         totalBaseline > 0 &&
@@ -1747,15 +1866,14 @@
     }
     var visible = getVisibleSegmentsFromRemoved(allSegments, removed);
     var currentFaces = traceFaces(visible);
+    var baselineCentroids = facesCentroids(baselineFaces);
     var centroids = [];
     var i;
     var c;
     var face;
 
     for (i = 0; i < clusterFaceIndices.length; i++) {
-      centroids.push(
-        polygonCentroid(baselineFaces[clusterFaceIndices[i]].points)
-      );
+      centroids.push(baselineCentroids[clusterFaceIndices[i]]);
     }
 
     var bestFace = null;
@@ -1774,12 +1892,19 @@
       }
       if (!allInside) continue;
       if (!skipOctagonSquareChecks) {
-        if (isOctagonOnlyMergedRegion(face, baselineFaces)) continue;
-        if (!mergedRegionIncludesSquareCell(face, baselineFaces)) continue;
+        if (isOctagonOnlyMergedRegion(face, baselineFaces, baselineCentroids))
+          continue;
+        if (
+          !mergedRegionIncludesSquareCell(face, baselineFaces, baselineCentroids)
+        )
+          continue;
       }
       if (
-        countBaselineFacesInsideCurrentFace(face, baselineFaces) <
-        clusterFaceIndices.length
+        countBaselineFacesInsideCurrentFace(
+          face,
+          baselineFaces,
+          baselineCentroids
+        ) < clusterFaceIndices.length
       ) {
         continue;
       }
@@ -1799,12 +1924,23 @@
       for (mi = 0; mi < mergedCandidates.length; mi++) {
         var candidate = mergedCandidates[mi];
         if (!skipOctagonSquareChecks) {
-          if (isOctagonOnlyMergedRegion(candidate, baselineFaces)) continue;
-          if (!mergedRegionIncludesSquareCell(candidate, baselineFaces)) continue;
+          if (isOctagonOnlyMergedRegion(candidate, baselineFaces, baselineCentroids))
+            continue;
+          if (
+            !mergedRegionIncludesSquareCell(
+              candidate,
+              baselineFaces,
+              baselineCentroids
+            )
+          )
+            continue;
         }
         if (
-          countBaselineFacesInsideCurrentFace(candidate, baselineFaces) <
-          clusterFaceIndices.length
+          countBaselineFacesInsideCurrentFace(
+            candidate,
+            baselineFaces,
+            baselineCentroids
+          ) < clusterFaceIndices.length
         ) {
           continue;
         }
@@ -1858,6 +1994,7 @@
   global.TopkapiGeometry = {
     buildUnitCellSegments: buildUnitCellSegments,
     buildPatternSegments: buildPatternSegments,
+    buildBleedPatternSegments: buildBleedPatternSegments,
     buildCoarseCellBoundarySegments: buildCoarseCellBoundarySegments,
     computeLayout: computeLayout,
     getGridContentBounds: getGridContentBounds,

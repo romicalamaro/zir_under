@@ -227,6 +227,14 @@
     });
   }
 
+  function resetFamilyState() {
+    closeFamilyInIran = null;
+    iranLossTypes = null;
+    syncCloseFamilyUi();
+    syncLossTypesUi();
+    syncDerivedSliders(false);
+  }
+
   /**
    * @param {{ closeFamilyInIran?: null | string, iranLossTypes?: string[] | null }} row
    * @param {boolean} [silent]
@@ -274,6 +282,7 @@
       return borderSideWhiteFillFromLossTypes(iranLossTypes);
     },
     applyFamilyState: applyFamilyState,
+    resetFamilyState: resetFamilyState,
     setOnFamilyChange: function (fn) {
       onFamilyChange = typeof fn === "function" ? fn : null;
     },

@@ -67,6 +67,16 @@
   box-sizing: border-box;
 }
 
+/* Hide native scrollbars site-wide; wheel / touch / trackpad scrolling still works */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 html,
 body {
   margin: 0;
@@ -1053,7 +1063,7 @@ button.sidebar__grid-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: calc(var(--page2-space-20, 1.25rem) * 1.2);
   overflow: auto;
 }
 
@@ -1113,7 +1123,7 @@ button.sidebar__grid-btn {
   grid-template-columns: repeat(12, 1fr);
   column-gap: var(--page2-gutter, 1.25rem);
   box-sizing: border-box;
-  padding-inline: var(--page2-margin, 3.125rem);
+  padding-inline: var(--page2-margin-inline, 1.25rem);
   align-items: stretch;
   min-width: 0;
   min-height: 0;
@@ -1157,6 +1167,12 @@ button.sidebar__grid-btn {
 /* ── Design section start gate (before questionnaire) ── */
 
 .design-start {
+  --design-intro-step-height: calc(
+    100vh - var(
+      --page2-header-band-height,
+      calc(4 * var(--page2-space-20, 1.25rem))
+    )
+  );
   position: absolute;
   top: var(
     --page2-header-band-height,
@@ -1166,43 +1182,196 @@ button.sidebar__grid-btn {
   bottom: 0;
   left: 0;
   z-index: 3;
-  pointer-events: none;
+  display: block;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--page2-bg, #fff);
+  pointer-events: auto;
+  container-type: size;
+  container-name: design-intro;
 }
 
-.design-start__inner {
+.design-intro {
+  display: contents;
+}
+
+.design-intro__panel {
+  position: sticky;
+  top: 0;
+  box-sizing: border-box;
+  height: var(--design-intro-step-height);
+  min-height: var(--design-intro-step-height);
+  height: 100cqh;
+  min-height: 100cqh;
+}
+
+.design-intro__panel:nth-child(1) {
+  z-index: 1;
+}
+
+.design-intro__panel:nth-child(2) {
+  z-index: 2;
+}
+
+.design-intro__panel:nth-child(3) {
+  z-index: 3;
+}
+
+.design-intro__panel--light {
+  background: var(--page2-bg, #fff);
+  color: var(--color-brown);
+}
+
+.design-intro__panel:nth-child(1).design-intro__panel--light {
+  background-color: var(--page2-bg, #fff);
+}
+
+.design-intro__panel--headscarf {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
   column-gap: var(--page2-gutter, 1.25rem);
+  row-gap: clamp(0.5rem, 1.5cqh, 1rem);
+  padding-block: var(--page2-gutter, 1.25rem);
+  padding-inline: 0;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.design-intro__panel--headscarf .design-intro__headscarf-3d {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 0;
+  isolation: isolate;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.design-intro__panel--headscarf .design-intro__panel-inner {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  z-index: 3;
+  justify-content: center;
+  height: auto;
+  min-height: 0;
+  padding: 0 var(--page2-margin-inline, 1.25rem);
+}
+
+.design-intro__panel--headscarf .design-intro__text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+}
+
+/* Keep design canvas from painting over the intro gate */
+#section-design:not(.section-design--questionnaire-started) > .app-shell {
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.design-intro__panel--light .design-intro__panel-inner,
+.design-intro__panel--brown .design-intro__panel-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.design-intro__panel--brown {
+  background: var(--color-brown);
+  color: var(--page2-bg, #fff);
+}
+
+.design-intro__panel-inner {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
   height: 100%;
   min-height: 100%;
-  padding-inline: var(--page2-margin, 3.125rem);
-  align-items: center;
+  padding-inline: var(--page2-margin-inline, 1.25rem);
+  text-align: center;
+  transform-origin: center center;
 }
 
-.design-start__row {
-  grid-column: 2 / span 4;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem 1.25rem;
-  pointer-events: auto;
+.design-intro__panel--light .design-intro__panel-inner {
+  color: inherit;
 }
 
-.design-start__tagline {
+.design-intro__panel--brown .design-intro__panel-inner {
+  color: inherit;
+}
+
+.design-intro__text {
   margin: 0;
+  max-width: 42rem;
   font-family: "PP Radio Grotesk", sans-serif;
   font-weight: 200;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 1.2);
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5
+  );
   line-height: 1.15;
+  color: inherit;
+}
+
+.design-intro__shop-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.design-intro__panel--light .design-intro__shop-link:hover,
+.design-intro__panel--light .design-intro__shop-link:focus-visible {
   color: var(--color-brown);
+  opacity: 0.75;
+}
+
+.design-intro__panel--light .design-intro__shop-link:focus-visible {
+  outline: 2px solid var(--color-brown);
+  outline-offset: 2px;
+}
+
+.design-intro__panel--brown .design-intro__shop-link:hover,
+.design-intro__panel--brown .design-intro__shop-link:focus-visible {
+  opacity: 0.75;
+}
+
+.design-intro__panel--brown .design-intro__shop-link:focus-visible {
+  outline: 2px solid var(--page2-bg, #fff);
+  outline-offset: 2px;
+}
+
+.design-intro__panel .design-start__btn {
+  margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-intro__panel-inner {
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }
 
 .design-start__btn {
   flex-shrink: 0;
   padding: 0.45rem 1.1rem;
   font-family: "PP Monument Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.85);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1239,6 +1408,11 @@ button.sidebar__grid-btn {
   display: none !important;
 }
 
+#section-design.section-design--questionnaire-started > .app-shell {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* ── Profile questionnaire overlay (design section, grid columns 2–5) ── */
 
 .questionnaire-panel {
@@ -1263,8 +1437,8 @@ button.sidebar__grid-btn {
   position: relative;
   height: 100%;
   min-height: 100%;
-  padding-inline: var(--page2-margin, 3.125rem);
-  align-items: center;
+  padding-inline: var(--page2-margin-inline, 1.25rem);
+  align-items: stretch;
 }
 
 .questionnaire-panel__progress {
@@ -1272,11 +1446,11 @@ button.sidebar__grid-btn {
   top: calc(
     50vh - var(--page2-header-band-height, calc(4 * var(--page2-space-20, 1.25rem)))
   );
-  left: var(--page2-margin, 3.125rem);
-  z-index: 1;
+  left: var(--page2-margin-inline, 1.25rem);
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--page2-progress-gap, calc(var(--page2-space-20, 1.25rem) * 0.5));
   margin: 0;
   padding: 0;
   transform: translateY(-50%);
@@ -1285,8 +1459,8 @@ button.sidebar__grid-btn {
 
 .questionnaire-panel__progress-dot {
   position: relative;
-  width: 13px;
-  height: 13px;
+  width: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
+  height: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
   border-radius: 50%;
   box-sizing: border-box;
   border: 1px solid var(--color-brown);
@@ -1310,8 +1484,8 @@ button.sidebar__grid-btn {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 21px;
-  height: 21px;
+  width: var(--page2-progress-dot-ring, clamp(1.125rem, 1.215vw, 1.5rem));
+  height: var(--page2-progress-dot-ring, clamp(1.125rem, 1.215vw, 1.5rem));
   border: 2px solid var(--color-brown);
   border-radius: 50%;
   box-sizing: border-box;
@@ -1371,8 +1545,8 @@ button.sidebar__grid-btn {
 }
 
 .family-dot-option__circle {
-  width: 13px;
-  height: 13px;
+  width: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
+  height: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
   border-radius: 50%;
   box-sizing: border-box;
   border: 1px solid var(--color-brown);
@@ -1406,42 +1580,189 @@ button.sidebar__grid-btn {
   font-family: "PP Radio Grotesk", sans-serif;
   font-weight: 200;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.55 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
       var(--questionnaire-text-scale, 1)
   );
 }
 
-.questionnaire-panel__content {
-  font-family: "PP Radio Grotesk", sans-serif;
-  font-weight: 200;
-  grid-column: 2 / span 4;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  align-self: center;
-  min-height: 0;
-  pointer-events: none;
-}
-
-.questionnaire-panel__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  pointer-events: auto;
+.questionnaire-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: var(--page2-gutter, 1.25rem);
+  box-sizing: border-box;
+  position: relative;
+  height: 100%;
+  min-height: 100%;
+  padding-inline: var(--page2-margin-inline, 1.25rem);
+  align-items: stretch;
 }
 
 .questionnaire-panel__section-header {
+  grid-column: 1 / span 6;
+  grid-row: 1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
+  flex-shrink: 0;
+  padding-block: 0 1.25rem;
+  padding-inline-start: calc((100% / 6) + var(--page2-gutter, 1.25rem));
+  padding-inline-end: 0;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  font-family: "PP Radio Grotesk", sans-serif;
+  font-weight: 200;
+}
+
+.questionnaire-panel__scroll {
+  --questionnaire-step-height: 100cqh;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  container-type: size;
+  container-name: questionnaire-stack;
+  pointer-events: auto;
+}
+
+.questionnaire-stack {
+  display: contents;
+}
+
+.questionnaire-stack__panel {
+  position: sticky;
+  top: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--page2-gutter, 1.25rem);
+  height: var(--questionnaire-step-height);
+  min-height: var(--questionnaire-step-height);
+  height: 100cqh;
+  min-height: 100cqh;
+}
+
+.questionnaire-stack__panel:nth-child(1) { z-index: 1; }
+.questionnaire-stack__panel:nth-child(2) { z-index: 2; }
+.questionnaire-stack__panel:nth-child(3) { z-index: 3; }
+.questionnaire-stack__panel:nth-child(4) { z-index: 4; }
+.questionnaire-stack__panel:nth-child(5) { z-index: 5; }
+.questionnaire-stack__panel:nth-child(6) { z-index: 6; }
+.questionnaire-stack__panel:nth-child(7) { z-index: 7; }
+
+.questionnaire-stack__panel-bg {
+  grid-column: 1 / span 6;
+  grid-row: 1;
+  align-self: stretch;
+  pointer-events: none;
+}
+
+.canvas-stack__panel-bg {
+  grid-column: 7 / span 6;
+  grid-row: 1;
+  align-self: stretch;
+  pointer-events: none;
+}
+
+.questionnaire-stack__panel--light .questionnaire-stack__panel-bg,
+.questionnaire-stack__panel--light .canvas-stack__panel-bg {
+  background: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel--brown .questionnaire-stack__panel-bg,
+.questionnaire-stack__panel--brown .canvas-stack__panel-bg {
+  background: var(--color-brown);
+}
+
+.questionnaire-stack__panel--light {
+  color: var(--color-brown);
+}
+
+.questionnaire-stack__panel--brown {
+  color: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel-inner {
+  grid-column: 2 / span 4;
+  grid-row: 1;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  transform-origin: center top;
+  position: relative;
+  z-index: 1;
+}
+
+.canvas-stack__panel-inner {
+  grid-column: 7 / span 6;
+  grid-row: 1;
+  position: relative;
+  align-self: stretch;
+  min-height: 0;
+  overflow: hidden;
+  transform-origin: center top;
+  z-index: 1;
+}
+
+.canvas-stack__snapshot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.canvas-stack__snapshot-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.canvas-stack__snapshot svg {
+  pointer-events: none;
+}
+
+.canvas-stack__live-slot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.canvas-stack__live-slot .stage-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.canvas-stack__live-slot .stage-wrap #design-svg {
+  pointer-events: auto;
+}
+
+#section-design.section-design--questionnaire-started > .app-shell > .main:empty {
+  min-height: 0;
+}
+
+.questionnaire-stack__panel--feelings .questionnaire-stack__panel-inner {
+  align-self: stretch;
+  overflow-y: auto;
+  padding-block: 1rem;
 }
 
 .questionnaire-panel__section-label {
   margin: 0;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.85 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -1496,7 +1817,7 @@ button.sidebar__grid-btn {
   padding: 0.25rem 0.65rem;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -1524,148 +1845,25 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
-.questionnaire-panel__viewport {
-  position: relative;
-  min-height: 12rem;
-}
-
-#page2.questionnaire--step-transitioning {
-  overflow: hidden;
-}
-
 .questionnaire-step {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  pointer-events: none;
-}
-
-.questionnaire-step.is-active {
-  position: relative;
   pointer-events: auto;
-}
-
-/* Forward enter: positioning only — transform handled by JS (WAAPI) */
-.questionnaire-step.is-entering-forward {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.questionnaire-step.is-entering-forward.is-active {
-  position: absolute;
-  pointer-events: auto;
-}
-
-.questionnaire-step.is-entering-forward .questionnaire-step__anim-upper,
-.questionnaire-step.is-entering-forward .questionnaire-step__anim-lower {
-  transform: none;
-  transition: none;
-}
-
-.questionnaire-step.is-exiting-forward,
-.questionnaire-step.is-exiting-back {
-  position: absolute;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.questionnaire-step.is-entering-forward:not(.is-active),
-.questionnaire-step.is-entering-back:not(.is-active) {
-  z-index: 1;
-}
-
-.questionnaire-step.is-awaiting-enter {
-  visibility: hidden;
-  position: absolute;
-  pointer-events: none;
 }
 
 .questionnaire-step__anim-upper,
 .questionnaire-step__anim-lower {
-  transition:
-    transform 0.45s cubic-bezier(0.7, 0, 0.3, 1),
-    opacity 0.45s cubic-bezier(0.7, 0, 0.3, 1);
-  will-change: transform, opacity;
-}
-
-/* Back enter: upper first, then lower — slide from above viewport */
-.questionnaire-step.is-entering-back:not(.is-active) .questionnaire-step__anim-upper {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--enter-upper, 100vh)));
-  transition-delay: 0ms;
-}
-
-.questionnaire-step.is-entering-back:not(.is-active) .questionnaire-step__anim-lower,
-.questionnaire-step.is-entering-back:not(.is-active) .questionnaire-step__anim-upper:only-child {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--enter-lower, 100vh)));
-  transition-delay: 80ms;
-}
-
-.questionnaire-step.is-entering-back.is-active .questionnaire-step__anim-upper,
-.questionnaire-step.is-entering-back.is-active .questionnaire-step__anim-lower {
+  transform: none;
   opacity: 1;
-  transform: translateY(0);
-}
-
-/* Forward exit: scroll up to top of screen and vanish */
-.questionnaire-step.is-exiting-forward .questionnaire-step__anim-upper {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--exit-upper, 100vh)));
-  transition-delay: 0ms;
-}
-
-.questionnaire-step.is-exiting-forward .questionnaire-step__anim-lower,
-.questionnaire-step.is-exiting-forward .questionnaire-step__anim-upper:only-child {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--exit-lower, 100vh)));
-  transition-delay: 80ms;
-}
-
-/* Back exit: slide down off screen */
-.questionnaire-step.is-exiting-back .questionnaire-step__anim-lower,
-.questionnaire-step.is-exiting-back .questionnaire-step__anim-upper:only-child {
-  opacity: 0;
-  transform: translateY(var(--exit-lower, 100vh));
-  transition-delay: 0ms;
-}
-
-.questionnaire-step.is-exiting-back .questionnaire-step__anim-upper {
-  opacity: 0;
-  transform: translateY(var(--exit-upper, 100vh));
-  transition-delay: 80ms;
-}
-
-/* Idle active state (e.g. initial load without enter animation) */
-.questionnaire-step.is-active:not(.is-entering-forward):not(.is-entering-back)
-  .questionnaire-step__anim-upper,
-.questionnaire-step.is-active:not(.is-entering-forward):not(.is-entering-back)
-  .questionnaire-step__anim-lower {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .questionnaire-step.is-entering-forward,
-  .questionnaire-step.is-entering-back {
-    transition: none;
-  }
-
-  .questionnaire-step__anim-upper,
-  .questionnaire-step__anim-lower {
-    transition: none;
-  }
-
-  .questionnaire-panel__section-label {
-    transition: none;
+  .questionnaire-stack__panel-inner,
+  .canvas-stack__panel-inner {
+    transform: none !important;
+    opacity: 1 !important;
   }
 }
 
@@ -1673,7 +1871,7 @@ button.sidebar__grid-btn {
   margin: 0;
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 1.2 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -1722,7 +1920,7 @@ button.sidebar__grid-btn {
   padding: 0.5rem 0.75rem;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -1757,7 +1955,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-options--multi .questionnaire-option {
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
       var(--questionnaire-text-scale, 1)
   );
   padding: 0.45rem 0.4rem;
@@ -1802,7 +2000,7 @@ button.sidebar__grid-btn {
   padding: 0.5rem 0.65rem;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.85 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -1829,10 +2027,6 @@ button.sidebar__grid-btn {
 }
 
 /* ── Profile Mad Libs (section 1) ── */
-
-.questionnaire-profile-madlibs.is-typewriting .questionnaire-continue {
-  visibility: hidden;
-}
 
 .questionnaire-profile-madlibs.is-typewriting
   .questionnaire-madlibs-blank:not(.is-typewriter-revealed),
@@ -1948,9 +2142,9 @@ button.sidebar__grid-btn {
   }
 }
 
-.questionnaire-panel__body:has(.questionnaire-step--profile-madlibs)
+.questionnaire-panel__grid:has(.questionnaire-step--profile-madlibs)
   .questionnaire-panel__section-label,
-.questionnaire-panel__body:has(.questionnaire-step--profile-madlibs)
+.questionnaire-panel__grid:has(.questionnaire-step--profile-madlibs)
   .questionnaire-skip {
   text-transform: none;
 }
@@ -1966,7 +2160,7 @@ button.sidebar__grid-btn {
   --madlibs-underline-thickness: 3px;
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 1.35 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.35 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -2308,7 +2502,7 @@ button.sidebar__grid-btn {
 .questionnaire-madlibs-dropdown__option {
   padding: 0.5rem 0.75rem;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   line-height: 1.25;
@@ -2406,13 +2600,13 @@ button.sidebar__grid-btn {
   --madlibs-underline-color: color-mix(in srgb, var(--color-brown) 55%, black);
 }
 
-.questionnaire-continue {
+.questionnaire-archive-btn {
   align-self: flex-end;
   margin-top: 0.25rem;
   padding: 0.45rem 1.1rem;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2424,16 +2618,16 @@ button.sidebar__grid-btn {
   transition: background 0.15s ease;
 }
 
-.questionnaire-continue:hover:not(:disabled) {
+.questionnaire-archive-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-brown) 80%, white);
 }
 
-.questionnaire-continue:disabled {
+.questionnaire-archive-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.questionnaire-continue:focus-visible {
+.questionnaire-archive-btn:focus-visible {
   outline: 2px solid var(--color-brown);
   outline-offset: 2px;
 }
@@ -2450,7 +2644,7 @@ button.sidebar__grid-btn {
   margin: 0;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.9 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.9 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2466,7 +2660,7 @@ button.sidebar__grid-btn {
   margin: 0.5rem 0 0;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2481,36 +2675,6 @@ button.sidebar__grid-btn {
   padding: 2rem 1.5rem 3rem;
 }
 
-.design-archive {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  overflow-y: auto;
-  pointer-events: auto;
-  background: transparent;
-}
-
-.design-archive[hidden] {
-  display: none !important;
-}
-
-#section-design.section-design--archive-visible > .questionnaire-panel,
-#section-design.section-design--archive-visible > .app-shell {
-  display: none !important;
-}
-
-.design-archive__inner {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 2rem var(--page2-margin, 3.125rem) 3rem;
-  min-height: 100%;
-  box-sizing: border-box;
-}
-
-.design-archive .archive-grid {
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-}
-
 .signals-section {
   box-sizing: border-box;
   width: 100%;
@@ -2522,7 +2686,7 @@ button.sidebar__grid-btn {
 .signals-section__title {
   margin: 0 0 1.25rem;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 1.4);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.4);
   font-weight: 700;
   color: #222;
   text-transform: none;
@@ -2531,7 +2695,7 @@ button.sidebar__grid-btn {
 .signals-section__intro {
   margin: 0;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.9);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.9);
   font-weight: 700;
   color: #888;
 }
@@ -2539,42 +2703,52 @@ button.sidebar__grid-btn {
 .archive-section__title {
   margin: 0 0 1.25rem;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 1.4);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.4);
   font-weight: 700;
-  color: #222;
+  color: var(--color-brown);
   text-transform: none;
 }
 
 .archive-section__empty {
   margin: 0;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.9);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.9);
   font-weight: 700;
   color: #888;
 }
 
 .archive-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  /* 12-column system: each card spans 2 columns => 6 cards per row */
+  grid-template-columns: repeat(12, 1fr);
   gap: 1rem;
 }
 
 .archive-card {
+  /* Each handkerchief occupies 2 of the 12 columns (6 per row, wraps left-to-right) */
+  grid-column: span 2;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  padding: 0.65rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  min-width: 0;
 }
 
 .archive-card__thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   aspect-ratio: 70 / 182;
-  overflow: hidden;
-  background: #f5f5f5;
-  border: 1px solid #eee;
-  border-radius: 2px;
+  width: 100%;
+  overflow: visible;
+}
+
+.archive-card__figure {
+  position: relative;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  /* Match exported handkerchief proportions (803×2126) */
+  aspect-ratio: 803 / 2126;
 }
 
 .archive-card__thumbnail img,
@@ -2583,12 +2757,56 @@ button.sidebar__grid-btn {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  image-rendering: auto;
+}
+
+.archive-card__delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--page2-space-20, 1.25rem) * 1.25);
+  height: calc(var(--page2-space-20, 1.25rem) * 1.25);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(34, 34, 34, 0.88);
+  color: #fff;
+  font-family: "DIN Condensed", sans-serif;
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.15);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.archive-card:hover .archive-card__delete,
+.archive-card__delete:focus-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.archive-card__delete:hover {
+  background: rgba(68, 68, 68, 0.95);
+}
+
+.archive-card__delete:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: 2px;
 }
 
 .archive-card__title {
   margin: 0;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.85);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85);
   font-weight: 700;
   color: #222;
   line-height: 1.2;
@@ -2597,7 +2815,7 @@ button.sidebar__grid-btn {
 .archive-card__date {
   margin: 0;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.65);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65);
   font-weight: 700;
   color: #888;
 }
@@ -2612,7 +2830,7 @@ button.sidebar__grid-btn {
   flex: 1;
   padding: 0.35rem 0.5rem;
   font-family: "DIN Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.65);
+  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65);
   font-weight: 700;
   border-radius: 3px;
   border: 1px solid #ccc;
@@ -2653,7 +2871,7 @@ button.sidebar__grid-btn {
 .questionnaire-slider-range-label {
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2786,7 +3004,7 @@ button.sidebar__grid-btn {
   min-width: 1.5rem;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.85 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2795,7 +3013,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-palette-picker {
-  --palette-dot-size: 60px;
+  --palette-dot-size: clamp(3rem, 3.472vw, 4.5rem); /* 60px @ 1728 */
   --palette-dot-overlap: 0.25;
   --palette-dot-gap-default: calc(
     var(--palette-dot-size) * var(--palette-dot-overlap) * -1
@@ -2891,9 +3109,11 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-step--feelings-all {
-  max-height: calc(
-    100vh - var(--page2-header-band-height, 5rem) - 8rem
-  );
+  max-height: none;
+}
+
+.questionnaire-stack__panel--feelings .questionnaire-step--feelings-all {
+  max-height: 100%;
 }
 
 .questionnaire-step--feelings-all .questionnaire-step__anim-lower {
@@ -2926,7 +3146,7 @@ button.sidebar__grid-btn {
   margin: 0;
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.95 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -2944,7 +3164,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-sublabel {
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -2975,7 +3195,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-grid__label-cell {
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.8 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.8 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3002,7 +3222,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-grid__scale-number {
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.75 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3013,7 +3233,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-grid__scale-label {
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.55 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3076,7 +3296,7 @@ button.sidebar__grid-btn {
   margin: 0 0 0.75rem;
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.95 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3124,7 +3344,7 @@ button.sidebar__grid-btn {
   margin: 0;
   font-family: "PP Radio Grotesk", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - 4px) * 0.95 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3132,7 +3352,7 @@ button.sidebar__grid-btn {
   color: var(--color-brown);
 }
 
-.questionnaire-panel__content :is(
+.questionnaire-panel__grid :is(
   .questionnaire-panel__section-label,
   .questionnaire-skip,
   .questionnaire-step__heading,
@@ -3142,7 +3362,6 @@ button.sidebar__grid-btn {
   .questionnaire-profile-madlibs,
   .questionnaire-madlibs-dropdown__menu,
   .questionnaire-madlibs-dropdown__option,
-  .questionnaire-continue,
   .questionnaire-step__complete-text,
   .questionnaire-archive-confirm,
   .questionnaire-slider-range-label,
@@ -3160,7 +3379,7 @@ button.sidebar__grid-btn {
 }
 
 /* Questionnaire answers only — DIN Condensed */
-.questionnaire-panel__content :is(
+.questionnaire-panel__grid :is(
   .questionnaire-input,
   .questionnaire-option,
   .questionnaire-slider-output,
@@ -3174,20 +3393,49 @@ button.sidebar__grid-btn {
   font-weight: 700;
 }
 
-.questionnaire-panel__content
+.questionnaire-panel__grid
   .questionnaire-profile-madlibs
   input.questionnaire-madlibs-blank::placeholder,
-.questionnaire-panel__content
+.questionnaire-panel__grid
   .questionnaire-profile-madlibs
   .questionnaire-madlibs-name-mode__input::placeholder,
-.questionnaire-panel__content
+.questionnaire-panel__grid
   .questionnaire-profile-madlibs
   .questionnaire-madlibs-dropdown__label.is-placeholder {
   font-family: inherit;
   font-weight: inherit;
 }
 
-.questionnaire-panel__content .questionnaire-input::placeholder {
+.questionnaire-panel__grid .questionnaire-input::placeholder {
   font-family: "PP Radio Grotesk", sans-serif;
   font-weight: 200;
+}
+
+/* Brown stack panels — invert text/controls for contrast */
+.questionnaire-stack__panel--brown .questionnaire-profile-madlibs,
+.questionnaire-stack__panel--brown .questionnaire-step__heading,
+.questionnaire-stack__panel--brown .questionnaire-feelings-intro,
+.questionnaire-stack__panel--brown .questionnaire-feelings-emotion-heading,
+.questionnaire-stack__panel--brown .questionnaire-section-question-heading,
+.questionnaire-stack__panel--brown .questionnaire-slider-range-label,
+.questionnaire-stack__panel--brown .questionnaire-slider-output,
+.questionnaire-stack__panel--brown .family-dot-option__label {
+  color: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel--brown .family-dot-option__circle {
+  border-color: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel--brown .family-dot-option.is-selected .family-dot-option__circle {
+  background: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel--brown .questionnaire-option {
+  color: var(--page2-bg, #fff);
+  border-color: var(--page2-bg, #fff);
+}
+
+.questionnaire-stack__panel--brown .questionnaire-profile-madlibs {
+  --madlibs-underline-color: var(--page2-bg, #fff);
 }

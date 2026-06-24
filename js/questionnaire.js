@@ -17,7 +17,19 @@
   var profileTypewriterState = null;
 
   /** @type {HTMLElement | null} */
-  var viewport = null;
+  var scrollEl = null;
+
+  /** @type {HTMLElement | null} */
+  var stackEl = null;
+
+  /** @type {number} */
+  var currentSectionIndex = 0;
+
+  /** @type {number} */
+  var scrollClampActive = false;
+
+  /** @type {number} */
+  var canvasHostSectionIndex = -1;
 
   /** @type {HTMLElement | null} */
   var sectionLabelEl = null;
@@ -41,9 +53,6 @@
   var activePalettePickerGroup = null;
 
   /** @type {HTMLElement | null} */
-  var profileContinueBtn = null;
-
-  /** @type {HTMLElement | null} */
   var activeMadlibsDropdown = null;
 
   var madlibsDropdownDismissRegistered = false;
@@ -65,41 +74,176 @@
     }
   }
 
-  var answers = {
-    livingInIran: null,
-    livingDuration: null,
-    leavingYear: "",
-    from: "",
-    nowIn: "",
-    name: "",
-    nameDisplayMode: "anonymous",
-    age: "",
-    homeAt: null,
-    gridType: null,
-    octagonsN: 5,
-    innerScale: 10,
-    palette:
-      typeof DEFAULT_SHEET_PALETTE_NUM !== "undefined"
-        ? DEFAULT_SHEET_PALETTE_NUM
-        : 3,
-    closeFamilyInIran: null,
-    iranLossTypes: null,
-    borderFrameDivisions: 2,
-    borderSideWhiteFill: 0,
-    fanLeaves: 0,
-    angerVerticalLength: 0,
-    anxietyVerticalStroke: 0,
-    angerTriangleDensity: 0,
-    hopeMode: "view",
-    circleDensity: 0,
-    longingCircleDensity: 0,
-    griefCircleDensity: 0,
-    strengthDensity: 0,
-    autoMergeIntensity: 0,
-    prideFillPercent: 0,
-    guiltShameFillPercent: 0,
-    helplessnessPercent: 0,
-  };
+  var answers = createDefaultAnswers();
+
+  function createDefaultAnswers() {
+    return {
+      livingInIran: null,
+      livingDuration: null,
+      leavingYear: "",
+      from: "",
+      nowIn: "",
+      name: "",
+      nameDisplayMode: "anonymous",
+      age: "",
+      homeAt: null,
+      gridType: null,
+      octagonsN: 5,
+      innerScale: 10,
+      palette:
+        typeof DEFAULT_SHEET_PALETTE_NUM !== "undefined"
+          ? DEFAULT_SHEET_PALETTE_NUM
+          : 3,
+      closeFamilyInIran: null,
+      iranLossTypes: null,
+      borderFrameDivisions: 2,
+      borderSideWhiteFill: 0,
+      fanLeaves: 0,
+      angerVerticalLength: 0,
+      anxietyVerticalStroke: 0,
+      angerTriangleDensity: 0,
+      hopeMode: "view",
+      circleDensity: 0,
+      longingCircleDensity: 0,
+      griefCircleDensity: 0,
+      strengthDensity: 0,
+      autoMergeIntensity: 0,
+      prideFillPercent: 0,
+      guiltShameFillPercent: 0,
+      helplessnessPercent: 0,
+    };
+  }
+
+  function resetRecordToFalse(record) {
+    var key;
+    for (key in record) {
+      if (Object.prototype.hasOwnProperty.call(record, key)) {
+        record[key] = false;
+      }
+    }
+  }
+
+  function applyPanelDefaultsAfterReset() {
+    if (
+      typeof window.IdentityControls !== "undefined" &&
+      window.IdentityControls.resetProfileState
+    ) {
+      window.IdentityControls.resetProfileState({ silent: true });
+    }
+
+    syncPaletteToPanel(answers.palette);
+
+    if (
+      typeof window.FamilyControls !== "undefined" &&
+      window.FamilyControls.resetFamilyState
+    ) {
+      window.FamilyControls.resetFamilyState();
+    }
+
+    var stepId;
+    for (stepId in PANEL_SLIDER_DOM) {
+      if (!Object.prototype.hasOwnProperty.call(PANEL_SLIDER_DOM, stepId)) {
+        continue;
+      }
+      var defaultValue = answers[stepId];
+      if (defaultValue === undefined) continue;
+      var domIds = PANEL_SLIDER_DOM[stepId];
+      syncPanelSliderDom(domIds[0], domIds[1], defaultValue, true);
+    }
+
+    syncHopeModeToPanel(answers.hopeMode);
+
+    if (window.UnderCoverComboBridge) {
+      if (window.UnderCoverComboBridge.resetHopeMergeState) {
+        window.UnderCoverComboBridge.resetHopeMergeState();
+      }
+      if (window.UnderCoverComboBridge.finalizeApplySilent) {
+        window.UnderCoverComboBridge.finalizeApplySilent();
+      }
+    }
+  }
+
+  function restoreDesignStartAfterSubmit() {
+    var sectionDesign = document.getElementById("section-design");
+    var designStart = document.getElementById("design-start");
+    var questionnairePanel = document.getElementById("questionnaire-panel");
+
+    questionnaireStarted = false;
+    profileTypewriterPlayed = false;
+    currentStepId = null;
+    displayStepId = null;
+    clearStack();
+    restoreCanvasToAppShell();
+
+    if (sectionDesign) {
+      sectionDesign.classList.remove("section-design--questionnaire-started");
+    }
+    if (designStart) {
+      designStart.hidden = false;
+    }
+    if (questionnairePanel) {
+      questionnairePanel.hidden = true;
+    }
+    if (sectionLabelEl) {
+      sectionLabelEl.textContent = "";
+      sectionLabelEl.classList.remove("is-active");
+    }
+    if (progressEl) {
+      progressEl.innerHTML = "";
+    }
+  }
+
+  function resetQuestionnaireAfterSubmit() {
+    var defaults = createDefaultAnswers();
+    var key;
+    for (key in defaults) {
+      if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+        answers[key] = defaults[key];
+      }
+    }
+
+    resetRecordToFalse(profileStepsReached);
+    resetRecordToFalse(gridStepsReached);
+    resetRecordToFalse(colorStepsReached);
+    resetRecordToFalse(familyStepsReached);
+    resetRecordToFalse(bodyAutonomyStepsReached);
+    resetRecordToFalse(feelingsStepsReached);
+    resetRecordToFalse(sectionsPassed);
+
+    currentProfileBlankId = "nameDisplayMode";
+    activePalettePickerGroup = null;
+    setTransitionLock(false);
+
+    if (
+      typeof window.SectionProgression !== "undefined" &&
+      window.SectionProgression.resetQuestionnaireProgress
+    ) {
+      window.SectionProgression.resetQuestionnaireProgress();
+    }
+
+    applyPanelDefaultsAfterReset();
+    restoreDesignStartAfterSubmit();
+    triggerCanvasRender();
+    if (typeof window.layoutStage === "function") {
+      window.layoutStage();
+    }
+  }
+
+  function navigateToArchiveAfterSubmit() {
+    if (
+      window.HandkerchiefArchive &&
+      typeof window.HandkerchiefArchive.revealDesignArchive === "function"
+    ) {
+      window.HandkerchiefArchive.revealDesignArchive();
+      return;
+    }
+    if (
+      window.Page2Navigation &&
+      typeof window.Page2Navigation.showSection === "function"
+    ) {
+      window.Page2Navigation.showSection(5);
+    }
+  }
 
   var PROFILE_STEP_ORDER = [
     "livingInIran",
@@ -827,7 +971,7 @@
         console.warn("[Questionnaire] Profile sync failed:", err);
       }
     }
-    syncProfileContinueBtn();
+    checkSectionCompletion("profile");
     updateProgressDotsForProfile();
   }
 
@@ -870,18 +1014,15 @@
   }
 
   function focusProfileContinueBtn() {
-    if (!activeStepEl) return;
-    var btn = activeStepEl.querySelector(".questionnaire-continue");
-    if (btn) focusWithoutScroll(btn);
+    checkSectionCompletion("profile");
   }
 
-  /** Profile + grid + palette: keep large canvas zoom until Family section. */
+  /** Profile + grid: keep large canvas zoom until Family section. */
   function isPreFamilyQuestionnaireStep(stepId) {
     return (
       stepId === PROFILE_ALL_STEP_ID ||
       isProfileStep(stepId) ||
-      isGridStep(stepId) ||
-      isColorStep(stepId)
+      isGridStep(stepId)
     );
   }
 
@@ -968,21 +1109,13 @@
     }
 
     if (fromId === GRID_ALL_STEP_ID) {
-      return "palette";
+      return FAMILY_ALL_STEP_ID;
     }
 
     if (isGridStep(fromId)) {
       var gridIndex = GRID_STEP_ORDER.indexOf(fromId) + 1;
       if (gridIndex < GRID_STEP_ORDER.length) {
         return GRID_STEP_ORDER[gridIndex];
-      }
-      return "palette";
-    }
-
-    if (isColorStep(fromId)) {
-      var colorIndex = COLORS_STEP_ORDER.indexOf(fromId) + 1;
-      if (colorIndex < COLORS_STEP_ORDER.length) {
-        return COLORS_STEP_ORDER[colorIndex];
       }
       return FAMILY_ALL_STEP_ID;
     }
@@ -1008,6 +1141,14 @@
     }
 
     if (fromId === FEELINGS_ALL_STEP_ID) {
+      return "palette";
+    }
+
+    if (isColorStep(fromId)) {
+      var colorIndex = COLORS_STEP_ORDER.indexOf(fromId) + 1;
+      if (colorIndex < COLORS_STEP_ORDER.length) {
+        return COLORS_STEP_ORDER[colorIndex];
+      }
       return SUBMIT_ORDER_STEP_ID;
     }
 
@@ -1239,37 +1380,81 @@
     triggerFeelingsCanvasUpdate();
   }
 
-  function triggerFeelingsCanvasUpdate() {
-    if (
-      window.UnderCoverComboBridge &&
-      window.UnderCoverComboBridge.finalizeApply
-    ) {
-      window.UnderCoverComboBridge.finalizeApply();
+  // When `preview` is true we run the lightweight per-frame update used while a
+  // slider is actively being dragged (skips the random reshuffle + label-bar
+  // re-measure). The full commit (finalizeApply) runs once on release.
+  function triggerFeelingsCanvasUpdate(preview) {
+    var bridge = window.UnderCoverComboBridge;
+    if (bridge) {
+      if (preview && bridge.previewApply) {
+        bridge.previewApply();
+        return;
+      }
+      if (bridge.refreshQuestionnaireCanvas) {
+        bridge.refreshQuestionnaireCanvas();
+        return;
+      }
+      if (bridge.finalizeApply) {
+        bridge.finalizeApply();
+        return;
+      }
+    }
+    triggerCanvasRender();
+  }
+
+  // Grid-structure sliders rebuild the full tessellation, which is very
+  // expensive for the nested-star grid. While dragging, the panel slider's own
+  // "input" listener already produces a fast raster bitmap preview
+  // (scheduleSliderRender), so we skip the heavy vector render here and let the
+  // "change" (release) handler run the single full render on the final value.
+  function isGridStructureSliderStep(stepId) {
+    return stepId === "octagonsN" || stepId === "innerScale";
+  }
+
+  function triggerCanvasUpdateAfterSync(stepId, preview) {
+    ensureQuestionnaireGridReady();
+    ensureQuestionnaireCanvasUnlock(stepId);
+    if (preview && isGridStructureSliderStep(stepId)) {
       return;
     }
-    if (
-      window.UnderCoverComboBridge &&
-      window.UnderCoverComboBridge.refreshQuestionnaireCanvas
-    ) {
-      window.UnderCoverComboBridge.refreshQuestionnaireCanvas();
+    if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) {
+      triggerFeelingsCanvasUpdate(preview);
+      return;
+    }
+    if (hasFeelingsProgress()) {
+      triggerFeelingsCanvasUpdate(preview);
       return;
     }
     triggerCanvasRender();
   }
 
-  function triggerCanvasUpdateAfterSync(stepId) {
-    ensureQuestionnaireGridReady();
-    ensureQuestionnaireCanvasUnlock(stepId);
-    if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) {
-      triggerFeelingsCanvasUpdate();
-      return;
-    }
-    if (hasFeelingsProgress()) {
-      triggerFeelingsCanvasUpdate();
-      return;
-    }
-    triggerCanvasRender();
-  }
+  // Coalesces rapid slider "input" events into at most one canvas update per
+  // animation frame. While dragging a slider the browser fires many "input"
+  // events (sometimes faster than the screen refreshes); running the full
+  // (expensive) canvas re-render on every single one is what made dragging feel
+  // stuck. We keep the cheap visual feedback (handle fill, output number)
+  // synchronous and only defer the heavy canvas work. The latest value always
+  // renders because the most recent scheduled callback is the one that runs.
+  var coalescedCanvasUpdate = (function () {
+    var frameId = 0;
+    var pendingFn = null;
+    var raf =
+      (typeof window !== "undefined" && window.requestAnimationFrame
+        ? window.requestAnimationFrame.bind(window)
+        : function (cb) {
+            return window.setTimeout(cb, 16);
+          });
+    return function scheduleCoalescedCanvasUpdate(fn) {
+      pendingFn = fn;
+      if (frameId) return;
+      frameId = raf(function () {
+        frameId = 0;
+        var run = pendingFn;
+        pendingFn = null;
+        if (typeof run === "function") run();
+      });
+    };
+  })();
 
   function ensureQuestionnaireCanvasUnlock(stepId) {
     if (!window.SectionProgression) return;
@@ -1324,14 +1509,18 @@
         outputValue = domValue;
       }
     }
-    slider.value = String(domValue);
+    var nextValue = String(domValue);
+    var valueChanged = slider.value !== nextValue;
+    slider.value = nextValue;
     if (outputId) {
       var output = document.getElementById(outputId);
       if (output) output.textContent = String(outputValue);
     }
-    slider.dispatchEvent(new Event("input", { bubbles: true }));
-    if (commit) {
-      slider.dispatchEvent(new Event("change", { bubbles: true }));
+    if (valueChanged) {
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      if (commit) {
+        slider.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     }
   }
 
@@ -1459,6 +1648,13 @@
   }
 
   function syncHopeModeToPanel(mode) {
+    if (
+      window.UnderCoverComboBridge &&
+      typeof window.UnderCoverComboBridge.setHopeMode === "function"
+    ) {
+      window.UnderCoverComboBridge.setHopeMode(mode);
+      return;
+    }
     var btnId =
       mode === "merge" ? "hope-mode-merge-btn" : "hope-mode-view-btn";
     var btn = document.getElementById(btnId);
@@ -1550,20 +1746,20 @@
   var SECTION_LABELS = {
     profile: { num: 1, name: "profile" },
     grid: { num: 2, name: "Grid" },
-    colors: { num: 3, name: "Colors" },
-    family: { num: 4, name: "Family and friends in Iran" },
-    bodyAutonomy: { num: 5, name: "Body autonomy" },
-    feelings: { num: 6, name: "Feelings" },
+    family: { num: 3, name: "Family and friends in Iran" },
+    bodyAutonomy: { num: 4, name: "Body autonomy" },
+    feelings: { num: 5, name: "Feelings" },
+    colors: { num: 6, name: "Colors" },
     submitOrder: { num: 7, name: "submit&order" },
   };
 
   var QUESTIONNAIRE_SECTION_ORDER = [
     { key: "profile", entryStepId: PROFILE_ALL_STEP_ID },
     { key: "grid", entryStepId: GRID_ALL_STEP_ID },
-    { key: "colors", entryStepId: "palette" },
     { key: "family", entryStepId: FAMILY_ALL_STEP_ID },
     { key: "bodyAutonomy", entryStepId: "fanLeaves" },
     { key: "feelings", entryStepId: FEELINGS_ALL_STEP_ID },
+    { key: "colors", entryStepId: "palette" },
     { key: "submitOrder", entryStepId: SUBMIT_ORDER_STEP_ID },
   ];
 
@@ -1644,7 +1840,7 @@
 
     var fromSectionKey = getSectionKeyFromStepId(fromStepId);
     if (nextStepId === SUBMIT_ORDER_STEP_ID) {
-      markSectionPassed("feelings");
+      markSectionPassed("colors");
       return;
     }
 
@@ -1674,10 +1870,8 @@
       return;
     }
 
-    var currentIndex = getCurrentSectionIndex(stepId);
     var targetIndex = getSectionIndex(targetSectionKey);
-    var direction = targetIndex < currentIndex ? "back" : "forward";
-    var entryStepId = getSectionEntryStepId(targetSectionKey);
+    if (targetIndex < 0) return;
 
     if (targetSectionKey === "profile") {
       cancelProfileTypewriter();
@@ -1687,7 +1881,16 @@
       }
     }
 
-    runStepTransition(entryStepId, direction);
+    scrollToSection(targetIndex, "smooth");
+
+    window.setTimeout(function () {
+      setCurrentSectionByIndex(targetIndex);
+      if (targetSectionKey === "profile") {
+        var blankId =
+          currentProfileBlankId || getFirstIncompleteProfileBlank() || "nameDisplayMode";
+        focusProfileBlank(blankId);
+      }
+    }, 350);
   }
 
   function formatSectionLabel(sectionKey) {
@@ -1806,15 +2009,395 @@
     }
   }
 
-  function clearViewport() {
-    if (!viewport) return;
+  function clearStack() {
+    if (!stackEl) return;
     cancelProfileTypewriter();
     if (activeMadlibsDropdown) {
       closeMadlibsDropdown(activeMadlibsDropdown);
     }
-    viewport.innerHTML = "";
+    stackEl.innerHTML = "";
     activeStepEl = null;
-    profileContinueBtn = null;
+    currentSectionIndex = -1;
+    canvasHostSectionIndex = -1;
+  }
+
+  function getStackPanelByIndex(index) {
+    if (!stackEl || index < 0) return null;
+    return stackEl.children[index] || null;
+  }
+
+  function getCanvasLiveSlot(sectionKey) {
+    if (!stackEl) return null;
+    var panel = stackEl.querySelector(
+      '[data-section-key="' + sectionKey + '"]'
+    );
+    return panel ? panel.querySelector(".canvas-stack__live-slot") : null;
+  }
+
+  function resetStageWrapLayoutStyles(wrap) {
+    if (!wrap) return;
+    wrap.style.marginTop = "";
+    wrap.style.height = "";
+    wrap.classList.remove("is-questionnaire-focus-zoom");
+  }
+
+  function copyElementLayoutStyles(source, target) {
+    if (!source || !target) return;
+    var props = [
+      "width",
+      "height",
+      "position",
+      "top",
+      "left",
+      "bottom",
+      "right",
+      "transform",
+      "display",
+      "marginTop",
+      "marginLeft",
+    ];
+    var i;
+    for (i = 0; i < props.length; i++) {
+      target.style[props[i]] = source.style[props[i]];
+    }
+  }
+
+  function clearCanvasSnapshot(sectionIndex) {
+    var panel = getStackPanelByIndex(sectionIndex);
+    if (!panel) return;
+    var snapshotEl = panel.querySelector(".canvas-stack__snapshot");
+    if (snapshotEl) snapshotEl.innerHTML = "";
+  }
+
+  function freezeCanvasSnapshot(sectionIndex) {
+    if (canvasHostSectionIndex !== sectionIndex) return;
+
+    var panel = getStackPanelByIndex(sectionIndex);
+    var snapshotEl = panel ? panel.querySelector(".canvas-stack__snapshot") : null;
+    var svg = document.getElementById("design-svg");
+    var wrap = document.getElementById("stage-wrap");
+    if (!snapshotEl || !svg || !wrap) return;
+
+    var clone = svg.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.setAttribute("aria-hidden", "true");
+    copyElementLayoutStyles(svg, clone);
+
+    var wrapClone = document.createElement("div");
+    wrapClone.className = "canvas-stack__snapshot-wrap stage-wrap";
+    copyElementLayoutStyles(wrap, wrapClone);
+    wrapClone.style.pointerEvents = "none";
+    wrapClone.appendChild(clone);
+
+    snapshotEl.innerHTML = "";
+    snapshotEl.appendChild(wrapClone);
+  }
+
+  function resetQuestionnaireCanvasLayoutCache() {
+    if (typeof window.resetPage2QuestionnaireCanvasLayoutCache === "function") {
+      window.resetPage2QuestionnaireCanvasLayoutCache();
+    }
+  }
+
+  function reparentCanvasToSection(sectionIndex) {
+    if (sectionIndex < 0) return;
+
+    var wrap = document.getElementById("stage-wrap");
+    if (!wrap) return;
+
+    if (
+      canvasHostSectionIndex >= 0 &&
+      canvasHostSectionIndex !== sectionIndex
+    ) {
+      freezeCanvasSnapshot(canvasHostSectionIndex);
+    }
+
+    if (canvasHostSectionIndex === sectionIndex) {
+      return;
+    }
+
+    var panel = getStackPanelByIndex(sectionIndex);
+    if (!panel) return;
+    var liveSlot = panel.querySelector(".canvas-stack__live-slot");
+    if (!liveSlot) return;
+
+    clearCanvasSnapshot(sectionIndex);
+    resetStageWrapLayoutStyles(wrap);
+    liveSlot.appendChild(wrap);
+    canvasHostSectionIndex = sectionIndex;
+    resetQuestionnaireCanvasLayoutCache();
+    syncCanvasLayoutForStep();
+  }
+
+  function restoreCanvasToAppShell() {
+    var wrap = document.getElementById("stage-wrap");
+    var main = document.querySelector("#section-design .app-shell .main");
+    if (!wrap || !main) return;
+
+    resetStageWrapLayoutStyles(wrap);
+    if (wrap.parentNode !== main) {
+      main.appendChild(wrap);
+    }
+    canvasHostSectionIndex = -1;
+
+    if (stackEl) {
+      var snapshots = stackEl.querySelectorAll(".canvas-stack__snapshot");
+      var i;
+      for (i = 0; i < snapshots.length; i++) {
+        snapshots[i].innerHTML = "";
+      }
+    }
+
+    resetQuestionnaireCanvasLayoutCache();
+  }
+
+  function getStepElForSection(sectionKey) {
+    if (!stackEl) return null;
+    var panel = stackEl.querySelector(
+      '[data-section-key="' + sectionKey + '"]'
+    );
+    if (!panel) return null;
+    return panel.querySelector(".questionnaire-step");
+  }
+
+  function isSectionComplete(sectionKey) {
+    switch (sectionKey) {
+      case "profile":
+        return isAllProfileComplete();
+      case "grid":
+        return isAllGridComplete();
+      case "family":
+        return isAllFamilyComplete();
+      case "bodyAutonomy":
+        return isStepComplete("fanLeaves");
+      case "feelings":
+        return isAllFeelingsComplete();
+      case "colors":
+        return isStepComplete("palette");
+      case "submitOrder":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function checkSectionCompletion(sectionKey) {
+    if (!sectionKey || !isSectionComplete(sectionKey)) return;
+    if (sectionsPassed[sectionKey]) return;
+
+    if (sectionKey === "profile") {
+      answers.livingInIran = true;
+      markAllProfileStepsReached();
+      markQuestionnaireProfileComplete();
+    }
+
+    var entryStepId = getSectionEntryStepId(sectionKey);
+    markStepReached(entryStepId);
+    markSectionPassed(sectionKey);
+    syncToPanel();
+    triggerCanvasUpdateAfterSync(entryStepId);
+    updateProgressDots(displayStepId || entryStepId);
+  }
+
+  function getMaxAccessibleSectionIndex() {
+    var max = 0;
+    var i;
+    for (i = 0; i < QUESTIONNAIRE_SECTION_ORDER.length - 1; i++) {
+      if (hasSectionBeenPassed(QUESTIONNAIRE_SECTION_ORDER[i].key)) {
+        max = i + 1;
+      } else {
+        break;
+      }
+    }
+    return max;
+  }
+
+  function getQuestionnaireStepHeight() {
+    if (!scrollEl) return 0;
+    return scrollEl.clientHeight;
+  }
+
+  function getActiveSectionIndexFromScroll() {
+    var stepHeight = getQuestionnaireStepHeight();
+    if (!stepHeight) return 0;
+    var raw = Math.round(scrollEl.scrollTop / stepHeight);
+    return Math.min(
+      QUESTIONNAIRE_SECTION_ORDER.length - 1,
+      Math.max(0, raw)
+    );
+  }
+
+  function scrollToSection(index, behavior) {
+    if (!scrollEl) return;
+    var stepHeight = getQuestionnaireStepHeight();
+    if (!stepHeight) return;
+    var maxIndex = getMaxAccessibleSectionIndex();
+    var targetIndex = Math.min(index, maxIndex);
+    targetIndex = Math.max(0, targetIndex);
+    scrollEl.scrollTo({
+      top: targetIndex * stepHeight,
+      behavior: behavior || "smooth",
+    });
+  }
+
+  function clampScrollToAccessible() {
+    if (!scrollEl || scrollClampActive) return;
+    var stepHeight = getQuestionnaireStepHeight();
+    if (!stepHeight) return;
+    var maxIndex = getMaxAccessibleSectionIndex();
+    var maxScrollTop = maxIndex * stepHeight;
+    if (scrollEl.scrollTop > maxScrollTop + 2) {
+      scrollClampActive = true;
+      scrollEl.scrollTo({ top: maxScrollTop, behavior: "smooth" });
+      window.setTimeout(function () {
+        scrollClampActive = false;
+      }, 400);
+    }
+  }
+
+  function setCurrentSectionByIndex(index, options) {
+    options = options || {};
+    if (index < 0 || index >= QUESTIONNAIRE_SECTION_ORDER.length) return;
+
+    var section = QUESTIONNAIRE_SECTION_ORDER[index];
+    var stepId = section.entryStepId;
+    var stepEl = getStepElForSection(section.key);
+    if (!stepEl) return;
+
+    if (index !== currentSectionIndex) {
+      currentSectionIndex = index;
+      applyStepUIState(stepId, stepEl);
+      checkSectionCompletion(section.key);
+      reparentCanvasToSection(index);
+    }
+
+    if (!options.deferFocus && !options.skipFocus) {
+      var focusTarget = getStepFocusTarget(stepEl, stepId);
+      if (focusTarget) focusWithoutScroll(focusTarget);
+    }
+  }
+
+  function handleQuestionnaireScroll() {
+    clampScrollToAccessible();
+    updateQuestionnaireScrollPolish();
+    var activeIndex = getActiveSectionIndexFromScroll();
+    if (activeIndex !== currentSectionIndex) {
+      setCurrentSectionByIndex(activeIndex, { skipFocus: true });
+    }
+  }
+
+  function updateQuestionnaireScrollPolish() {
+    if (!scrollEl || !stackEl || prefersReducedMotion()) return;
+
+    var panels = stackEl.querySelectorAll(".questionnaire-stack__panel");
+    if (!panels.length) return;
+
+    var stepHeight = getQuestionnaireStepHeight();
+    if (!stepHeight) return;
+
+    var scrollTop = scrollEl.scrollTop;
+
+    for (var i = 0; i < panels.length; i++) {
+      var inner = panels[i].querySelector(".questionnaire-stack__panel-inner");
+      var canvasInner = panels[i].querySelector(".canvas-stack__panel-inner");
+
+      if (i === panels.length - 1) {
+        if (inner) {
+          inner.style.transform = "";
+          inner.style.opacity = "";
+        }
+        if (canvasInner) {
+          canvasInner.style.transform = "";
+          canvasInner.style.opacity = "";
+        }
+        continue;
+      }
+
+      var progress = Math.min(
+        1,
+        Math.max(0, (scrollTop - i * stepHeight) / stepHeight)
+      );
+      var scale = 1 - progress * 0.06;
+      var opacity = String(1 - progress * 0.25);
+      if (inner) {
+        inner.style.transform = "scale(" + scale + ")";
+        inner.style.opacity = opacity;
+      }
+      if (canvasInner) {
+        canvasInner.style.transform = "scale(" + scale + ")";
+        canvasInner.style.opacity = opacity;
+      }
+    }
+  }
+
+  function initQuestionnaireScroll() {
+    if (!scrollEl) return;
+
+    scrollEl.addEventListener("scroll", handleQuestionnaireScroll, {
+      passive: true,
+    });
+    window.addEventListener("resize", handleQuestionnaireScroll, {
+      passive: true,
+    });
+  }
+
+  function buildQuestionnaireStack() {
+    if (!stackEl) return;
+    clearStack();
+
+    var i;
+    for (i = 0; i < QUESTIONNAIRE_SECTION_ORDER.length; i++) {
+      var section = QUESTIONNAIRE_SECTION_ORDER[i];
+      var panel = document.createElement("section");
+      panel.className = "questionnaire-stack__panel";
+      panel.classList.add(
+        i % 2 === 0
+          ? "questionnaire-stack__panel--light"
+          : "questionnaire-stack__panel--brown"
+      );
+      panel.setAttribute("data-section-key", section.key);
+      if (section.key === "feelings") {
+        panel.classList.add("questionnaire-stack__panel--feelings");
+      }
+
+      var bg = document.createElement("div");
+      bg.className = "questionnaire-stack__panel-bg";
+      bg.setAttribute("aria-hidden", "true");
+
+      var inner = document.createElement("div");
+      inner.className = "questionnaire-stack__panel-inner";
+
+      var stepEl = buildStepElement(section.entryStepId);
+      if (stepEl) {
+        inner.appendChild(stepEl);
+      }
+
+      var canvasBg = document.createElement("div");
+      canvasBg.className = "canvas-stack__panel-bg";
+      canvasBg.setAttribute("aria-hidden", "true");
+
+      var canvasInner = document.createElement("div");
+      canvasInner.className = "canvas-stack__panel-inner";
+
+      var snapshot = document.createElement("div");
+      snapshot.className = "canvas-stack__snapshot";
+      snapshot.setAttribute("aria-hidden", "true");
+
+      var liveSlot = document.createElement("div");
+      liveSlot.className = "canvas-stack__live-slot";
+
+      canvasInner.appendChild(snapshot);
+      canvasInner.appendChild(liveSlot);
+
+      panel.appendChild(bg);
+      panel.appendChild(inner);
+      panel.appendChild(canvasBg);
+      panel.appendChild(canvasInner);
+      stackEl.appendChild(panel);
+    }
+
+    setCurrentSectionByIndex(0, { deferFocus: true, skipFocus: true });
+    updateQuestionnaireScrollPolish();
   }
 
   function createHeading(step) {
@@ -1832,21 +2415,11 @@
   }
 
   function bindImmediateAdvance() {
-    window.setTimeout(function () {
-      advance();
-    }, prefersReducedMotion() ? 0 : 120);
+    /* removed — scroll stack navigation replaces step advance */
   }
 
-  function appendContinueIfComplete(answersWrap, stepId) {
-    if (!isStepComplete(stepId)) return;
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.addEventListener("click", function () {
-      advance();
-    });
-    answersWrap.appendChild(continueBtn);
+  function appendContinueIfComplete() {
+    /* removed — scroll stack navigation replaces Continue buttons */
   }
 
   function appendQuestionnaireYesNoControl(parent, stepConfig, stepId, onChange) {
@@ -2390,10 +2963,29 @@
       }
       var domIds = PANEL_SLIDER_DOM[stepId];
       if (domIds) {
-        syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
-        triggerCanvasUpdateAfterSync(stepId);
+        coalescedCanvasUpdate(function () {
+          syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
+          triggerCanvasUpdateAfterSync(stepId, true);
+        });
       }
       if (onChange) onChange();
+    });
+
+    // Release: run the full commit once (reshuffle + label bar) on the final value.
+    slider.addEventListener("change", function () {
+      var domIds = PANEL_SLIDER_DOM[stepId];
+      if (domIds) {
+        // Grid-structure sliders skip the per-frame vector render while dragging
+        // (raster preview only). Commit through the real slider's "change" event
+        // so its release handler cancels the pending preview and runs one full
+        // vector render on the final value.
+        if (isGridStructureSliderStep(stepId)) {
+          syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], true);
+        } else {
+          syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
+          triggerCanvasUpdateAfterSync(stepId, false);
+        }
+      }
     });
 
     control.appendChild(createQuestionnaireSliderTrack(slider));
@@ -2763,13 +3355,14 @@
   }
 
   function updateProfileMadlibsFieldIcon(stepId) {
-    if (!viewport) return;
+    var profileStep = getStepElForSection("profile");
+    if (!profileStep) return;
     var file = getProfileMadlibsIconFile(stepId);
     if (!file) return;
     var innerMarkup = getProfileMadlibsIconInnerMarkup(file);
     if (!innerMarkup) return;
     var dims = getProfileMadlibsIconDimensions(file);
-    var fieldWrap = viewport.querySelector(
+    var fieldWrap = profileStep.querySelector(
       '.questionnaire-madlibs-field[data-field-id="' + stepId + '"]'
     );
     if (!fieldWrap) return;
@@ -3361,8 +3954,7 @@
   }
 
   function syncProfileContinueBtn() {
-    if (!profileContinueBtn) return;
-    profileContinueBtn.disabled = !isAllProfileComplete();
+    checkSectionCompletion("profile");
   }
 
   function createTypewriterController() {
@@ -3732,18 +4324,7 @@
 
     answersWrap.appendChild(madlibs);
 
-    profileContinueBtn = document.createElement("button");
-    profileContinueBtn.type = "button";
-    profileContinueBtn.className = "questionnaire-continue";
-    profileContinueBtn.textContent = "Continue";
-    profileContinueBtn.disabled = !isAllProfileComplete();
-    profileContinueBtn.addEventListener("click", function () {
-      if (isAllProfileComplete()) advance();
-    });
-    answersWrap.appendChild(profileContinueBtn);
-
     syncProfileMadlibsAnswersFromDom();
-    syncProfileContinueBtn();
     syncAllProfileMadlibsBlankWidths(madlibs);
 
     stepEl.appendChild(answersWrap);
@@ -3771,17 +4352,11 @@
     list.setAttribute("role", "group");
     list.setAttribute("aria-label", "Feelings");
 
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.disabled = !isAllFeelingsComplete();
-
-    function syncContinue() {
-      continueBtn.disabled = !isAllFeelingsComplete();
+    function syncSectionChange() {
+      checkSectionCompletion("feelings");
     }
 
-    appendFeelingsGridTable(list, syncContinue);
+    appendFeelingsGridTable(list, syncSectionChange);
 
     var hopeBlock = document.createElement("div");
     hopeBlock.className = "questionnaire-feelings-hope-block";
@@ -3797,17 +4372,12 @@
         hopeBlock,
         hopeStepConfig,
         "hopeMode",
-        syncContinue
+        syncSectionChange
       );
     }
     list.appendChild(hopeBlock);
 
-    continueBtn.addEventListener("click", function () {
-      if (isAllFeelingsComplete()) advance();
-    });
-
     answersWrap.appendChild(list);
-    answersWrap.appendChild(continueBtn);
     stepEl.appendChild(answersWrap);
 
     applyQuestionnaireFeelingsToCanvas();
@@ -3828,19 +4398,13 @@
     list.setAttribute("role", "group");
     list.setAttribute("aria-label", "Grid");
 
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.disabled = !isAllGridComplete();
-
-    function syncContinue() {
-      continueBtn.disabled = !isAllGridComplete();
+    function syncSectionChange() {
+      checkSectionCompletion("grid");
     }
 
     var gridTypeBlock = document.createElement("div");
     gridTypeBlock.className = "questionnaire-section-question";
-    appendQuestionnaireGridTypeChoice(gridTypeBlock, syncContinue);
+    appendQuestionnaireGridTypeChoice(gridTypeBlock, syncSectionChange);
     list.appendChild(gridTypeBlock);
 
     var octagonsBlock = document.createElement("div");
@@ -3853,7 +4417,7 @@
       octagonsBlock,
       STEPS.octagonsN,
       "octagonsN",
-      syncContinue
+      syncSectionChange
     );
     list.appendChild(octagonsBlock);
 
@@ -3867,16 +4431,11 @@
       innerScaleBlock,
       STEPS.innerScale,
       "innerScale",
-      syncContinue
+      syncSectionChange
     );
     list.appendChild(innerScaleBlock);
 
-    continueBtn.addEventListener("click", function () {
-      if (isAllGridComplete()) advance();
-    });
-
     answersWrap.appendChild(list);
-    answersWrap.appendChild(continueBtn);
     stepEl.appendChild(answersWrap);
     return stepEl;
   }
@@ -3894,14 +4453,12 @@
     list.setAttribute("role", "group");
     list.setAttribute("aria-label", "Family and friends in Iran");
 
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.disabled = !isAllFamilyComplete();
-
-    function syncContinue() {
-      continueBtn.disabled = !isAllFamilyComplete();
+    function syncSectionChange() {
+      if (answers.iranLossTypes === null && isAllFamilyComplete()) {
+        answers.iranLossTypes = [];
+        applyFamilyAnswersToPanel(false);
+      }
+      checkSectionCompletion("family");
     }
 
     FAMILY_STEP_ORDER.forEach(function (stepId) {
@@ -3916,43 +4473,34 @@
           questionBlock,
           stepConfig,
           stepId,
-          syncContinue
+          syncSectionChange
         );
       } else if (stepConfig.type === "yesno") {
         appendQuestionnaireYesNoControl(
           questionBlock,
           stepConfig,
           stepId,
-          syncContinue
+          syncSectionChange
         );
       } else if (stepConfig.type === "multi-choice") {
         appendQuestionnaireMultiChoiceControl(
           questionBlock,
           stepConfig,
           stepId,
-          syncContinue
+          syncSectionChange
         );
       } else if (stepConfig.type === "slider") {
         appendQuestionnaireSliderControl(
           questionBlock,
           stepConfig,
           stepId,
-          syncContinue
+          syncSectionChange
         );
       }
       list.appendChild(questionBlock);
     });
 
-    continueBtn.addEventListener("click", function () {
-      if (answers.iranLossTypes === null) {
-        answers.iranLossTypes = [];
-        applyFamilyAnswersToPanel(false);
-      }
-      if (isAllFamilyComplete()) advance();
-    });
-
     answersWrap.appendChild(list);
-    answersWrap.appendChild(continueBtn);
     stepEl.appendChild(answersWrap);
     return stepEl;
   }
@@ -3997,30 +4545,37 @@
     output.textContent =
       String(answers[stepId]) + (stepConfig.outputSuffix || "");
 
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.disabled = !isStepComplete(stepId);
-
     slider.addEventListener("input", function () {
       syncQuestionnaireSliderBarFill(slider);
       answers[stepId] = Number(slider.value);
       output.textContent = slider.value + (stepConfig.outputSuffix || "");
-      continueBtn.disabled = !isStepComplete(stepId);
+      if (stepId === "fanLeaves") {
+        checkSectionCompletion("bodyAutonomy");
+      }
       if (stepConfig.sync === "palette") {
         syncPaletteToPanel(answers[stepId]);
         return;
       }
       var domIds = PANEL_SLIDER_DOM[stepId];
       if (domIds) {
-        syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
-        triggerCanvasUpdateAfterSync(stepId);
+        coalescedCanvasUpdate(function () {
+          syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
+          triggerCanvasUpdateAfterSync(stepId, true);
+        });
       }
     });
 
-    continueBtn.addEventListener("click", function () {
-      if (isStepComplete(stepId)) advance();
+    // Release: run the full commit once on the final value.
+    slider.addEventListener("change", function () {
+      if (stepConfig.sync === "palette") return;
+      var domIds = PANEL_SLIDER_DOM[stepId];
+      if (domIds) {
+        syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
+        triggerCanvasUpdateAfterSync(stepId, false);
+      }
+      if (stepId === "fanLeaves") {
+        checkSectionCompletion("bodyAutonomy");
+      }
     });
 
     control.appendChild(createQuestionnaireSliderTrack(slider));
@@ -4028,7 +4583,6 @@
     control.appendChild(output);
     sliderWrap.appendChild(control);
     answersWrap.appendChild(sliderWrap);
-    answersWrap.appendChild(continueBtn);
     return answersWrap;
   }
 
@@ -4118,12 +4672,6 @@
     group.setAttribute("role", "radiogroup");
     group.setAttribute("aria-label", stepConfig.ariaLabel);
 
-    var continueBtn = document.createElement("button");
-    continueBtn.type = "button";
-    continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
-    continueBtn.disabled = !isStepComplete(stepId);
-
     var n;
     for (n = 1; n <= 12; n++) {
       var btn = document.createElement("button");
@@ -4154,7 +4702,7 @@
           button.classList.add("is-selected");
           button.setAttribute("aria-pressed", "true");
           syncPaletteToPanel(paletteNum);
-          continueBtn.disabled = !isStepComplete(stepId);
+          checkSectionCompletion("colors");
         });
       })(n, btn);
       group.appendChild(btn);
@@ -4196,12 +4744,7 @@
     ensurePaletteLoadedRefreshHook();
     refreshPalettePickerGradients();
 
-    continueBtn.addEventListener("click", function () {
-      if (isStepComplete(stepId)) advance();
-    });
-
     answersWrap.appendChild(group);
-    answersWrap.appendChild(continueBtn);
     return answersWrap;
   }
 
@@ -4212,7 +4755,7 @@
 
     var saveBtn = document.createElement("button");
     saveBtn.type = "button";
-    saveBtn.className = "questionnaire-continue questionnaire-archive-btn";
+    saveBtn.className = "questionnaire-archive-btn";
     saveBtn.textContent = "submit & order";
 
     var confirmEl = document.createElement("p");
@@ -4221,8 +4764,17 @@
     confirmEl.textContent = "Saved to archive";
 
     saveBtn.addEventListener("click", function () {
-      syncToPanel();
-      triggerFeelingsCanvasUpdate();
+      // Canvas already reflects questionnaire choices — resyncing the hidden
+      // panel clears hope merge and reshuffles emotion marks.
+      if (answers.hopeMode) {
+        syncHopeModeToPanel(answers.hopeMode);
+      }
+      if (typeof window.render === "function") {
+        window.render();
+      }
+      if (typeof window.layoutStage === "function") {
+        window.layoutStage();
+      }
       if (
         !window.HandkerchiefArchive ||
         !window.HandkerchiefArchive.saveCurrentDesign
@@ -4235,12 +4787,10 @@
         window.requestAnimationFrame(function () {
           window.HandkerchiefArchive.saveCurrentDesign()
             .then(function () {
+              confirmEl.textContent = "Saved to archive";
               confirmEl.hidden = false;
-              if (
-                window.HandkerchiefArchive.revealDesignArchive
-              ) {
-                window.HandkerchiefArchive.revealDesignArchive();
-              }
+              resetQuestionnaireAfterSubmit();
+              navigateToArchiveAfterSubmit();
             })
             .catch(function (err) {
               console.warn("[Questionnaire] Save failed:", err);
@@ -4396,7 +4946,7 @@
       );
     }
     return stepEl.querySelector(
-      "input, button.questionnaire-option, button.questionnaire-continue, input.questionnaire-slider"
+      "input, button.questionnaire-option, button.questionnaire-archive-btn, input.questionnaire-slider"
     );
   }
 
@@ -4407,6 +4957,9 @@
     updateSectionLabel(stepId);
     updateSkipButtonVisibility(stepId);
     updateProgressDots(stepId);
+    if (sectionLabelEl) {
+      sectionLabelEl.classList.add("is-active");
+    }
     ensureQuestionnaireCanvasUnlock(stepId);
     syncCanvasLayoutForStep();
     if (
@@ -4651,43 +5204,18 @@
 
   function showStep(stepId, options) {
     options = options || {};
-    if (!viewport) return;
+    if (!stackEl) return;
 
     if (currentStepId === "palette" && stepId !== "palette") {
       activePalettePickerGroup = null;
     }
 
-    clearViewport();
+    var sectionKey = getSectionKeyFromStepId(stepId);
+    var index = getSectionIndex(sectionKey);
+    if (index < 0) return;
 
-    var stepEl = buildStepElement(stepId);
-    if (!stepEl) return;
-
-    applyStepUIState(stepId, stepEl);
-
-    var skipAnim = options.skipEnterAnimation || prefersReducedMotion();
-    if (skipAnim) {
-      viewport.appendChild(stepEl);
-      stepEl.classList.add("is-active");
-      if (sectionLabelEl) sectionLabelEl.classList.add("is-active");
-      if (!options.deferFocus) {
-        var focusTarget = getStepFocusTarget(stepEl, stepId);
-        if (focusTarget) focusWithoutScroll(focusTarget);
-      }
-      return;
-    }
-
-    stepEl.classList.add("is-awaiting-enter");
-    viewport.appendChild(stepEl);
-    measureEnterDistances(stepEl, "forward");
-    stepEl.classList.remove("is-awaiting-enter");
-    stepEl.classList.add("is-entering-forward");
-    startSectionEnterAnimation("forward", "is-entering-forward");
-    playEnterSlide(stepEl, function () {
-      stepEl.classList.remove("is-entering-forward");
-      clearSlideDistances(stepEl);
-      var focusTarget = getStepFocusTarget(stepEl, stepId);
-      if (focusTarget) focusWithoutScroll(focusTarget);
-    });
+    scrollToSection(index, "auto");
+    setCurrentSectionByIndex(index, options);
   }
 
   function goToStep(nextId) {
@@ -4698,142 +5226,26 @@
     showStep(SUBMIT_ORDER_STEP_ID);
   }
 
-  function startEnterAnimation(nextStepEl, resolvedId, direction, enteringClass) {
-    var completed = false;
-
-    applyStepUIState(resolvedId, nextStepEl);
-
-    nextStepEl.classList.add("is-awaiting-enter");
-    viewport.appendChild(nextStepEl);
-    measureEnterDistances(nextStepEl, direction);
-    nextStepEl.classList.remove("is-awaiting-enter");
-    nextStepEl.classList.add(enteringClass);
-    startSectionEnterAnimation(direction, enteringClass);
-
-    function finishTransition() {
-      if (completed) return;
-      completed = true;
-      nextStepEl.classList.remove(enteringClass);
-      nextStepEl.style.removeProperty("transition");
-      nextStepEl.style.removeProperty("transform");
-      clearSlideDistances(nextStepEl);
-      setTransitionLock(false);
-      activeStepEl = nextStepEl;
-      var focusTarget = getStepFocusTarget(nextStepEl, resolvedId);
-      if (focusTarget) focusWithoutScroll(focusTarget);
-    }
-
-    if (direction === "forward") {
-      playEnterSlide(nextStepEl, finishTransition);
-      return;
-    }
-
-    var enterTarget = getEnterTransitionTarget(nextStepEl, direction);
-    void nextStepEl.offsetHeight;
-
-    function onEnterEnd(event) {
-      if (completed) return;
-      if (event.target !== enterTarget) return;
-      if (event.propertyName !== "transform") return;
-      finishTransition();
-    }
-
-    if (enterTarget) {
-      enterTarget.addEventListener("transitionend", onEnterEnd);
-    }
-
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        nextStepEl.classList.add("is-active");
-      });
-    });
-
-    window.setTimeout(finishTransition, TRANSITION_MS + STAGGER_MS + 50);
-  }
-
   function runStepTransition(nextId, direction) {
     var resolvedId = nextId || SUBMIT_ORDER_STEP_ID;
-    direction = direction === "back" ? "back" : "forward";
-
-    if (!activeStepEl || !viewport) {
-      goToStep(nextId);
-      return;
-    }
-
-    if (prefersReducedMotion()) {
-      goToStep(nextId);
-      return;
-    }
-
-    var exitingEl = activeStepEl;
-    var nextStepEl = buildStepElement(resolvedId);
-    if (!nextStepEl) return;
-
     if (currentStepId === "palette" && resolvedId !== "palette") {
       activePalettePickerGroup = null;
     }
-
-    var enteringClass =
-      direction === "back" ? "is-entering-back" : "is-entering-forward";
-    var exitingClass =
-      direction === "back" ? "is-exiting-back" : "is-exiting-forward";
-
-    setTransitionLock(true);
-
-    var exitDone = false;
-    var enterStarted = false;
-    var exitLastPart = getLastAnimPart(exitingEl, "exit", direction);
-
-    function cleanupExit() {
-      if (exitDone) return;
-      exitDone = true;
-      if (exitLastPart) {
-        exitLastPart.removeEventListener("transitionend", onExitEnd);
-      }
-      if (exitingEl.parentNode) {
-        exitingEl.parentNode.removeChild(exitingEl);
-      }
-      clearSlideDistances(exitingEl);
-    }
-
-    function beginEnter() {
-      if (enterStarted) return;
-      enterStarted = true;
-      startEnterAnimation(nextStepEl, resolvedId, direction, enteringClass);
-    }
-
-    function onExitEnd(event) {
-      if (exitDone) return;
-      if (event.target !== exitLastPart) return;
-      if (event.propertyName !== "transform") return;
-      cleanupExit();
-      if (!enterStarted) {
-        beginEnter();
-      }
-    }
-
-    measureExitDistances(exitingEl, direction);
-    exitingEl.classList.remove("is-active");
-    exitingEl.classList.add(exitingClass);
-    startSectionExitAnimation(direction, exitingClass);
-    void exitingEl.offsetHeight;
-
-    if (exitLastPart) {
-      exitLastPart.addEventListener("transitionend", onExitEnd);
-    }
-
-    window.setTimeout(beginEnter, ENTER_START_AFTER_EXIT_MS);
-
-    window.setTimeout(function () {
-      cleanupExit();
-      if (!enterStarted) {
-        beginEnter();
-      }
-    }, TRANSITION_MS + STAGGER_MS + 50);
+    showStep(resolvedId, { skipFocus: direction === "back" });
   }
 
   function transitionToStep(nextId) {
     runStepTransition(nextId, "forward");
+  }
+
+  function advance() {
+    var nextIndex = Math.min(
+      currentSectionIndex + 1,
+      getMaxAccessibleSectionIndex()
+    );
+    if (nextIndex !== currentSectionIndex) {
+      scrollToSection(nextIndex, "smooth");
+    }
   }
 
   function skipProfileSection() {
@@ -4846,33 +5258,185 @@
     markSectionPassed("profile");
     syncToPanel();
     triggerCanvasUpdateAfterSync("homeAt");
-    transitionToStep(GRID_ALL_STEP_ID);
-  }
-
-  function advance() {
-    if (!currentStepId) return;
-
-    if (currentStepId === PROFILE_ALL_STEP_ID) {
-      answers.livingInIran = true;
-      markAllProfileStepsReached();
-      markQuestionnaireProfileComplete();
-    } else if (currentStepId === "homeAt") {
-      markQuestionnaireProfileComplete();
-    }
-
-    markStepReached(currentStepId);
-    syncToPanel();
-    triggerCanvasUpdateAfterSync(currentStepId);
-
-    var nextId = getNextStepId(currentStepId);
-    markSectionPassedOnAdvance(currentStepId, nextId);
-    transitionToStep(nextId);
+    updateProgressDots(GRID_ALL_STEP_ID);
+    scrollToSection(1, "smooth");
+    window.setTimeout(function () {
+      setCurrentSectionByIndex(1);
+    }, 350);
   }
 
   var questionnaireStarted = false;
+  var headscarf3dInstance = null;
+  var headscarf3dObserver = null;
+  var headscarf3dInitPromise = null;
+  var headscarf3dRetryCount = 0;
+
+  function scheduleHeadscarf3dRetry() {
+    if (headscarf3dRetryCount >= 4 || headscarf3dInstance) return;
+    headscarf3dRetryCount += 1;
+    window.setTimeout(function () {
+      var root = document.getElementById("design-intro-headscarf-3d");
+      if (!root || headscarf3dInstance) return;
+      if (root.querySelector("canvas")) return;
+      headscarf3dInitPromise = null;
+      var page2 = document.getElementById("page2");
+      if (!page2 || !page2.classList.contains("page2--design-active")) return;
+      ensureDesignIntroHeadscarf3d();
+    }, 400 * headscarf3dRetryCount);
+  }
+
+  function destroyDesignIntroHeadscarf3d() {
+    if (headscarf3dObserver) {
+      headscarf3dObserver.disconnect();
+      headscarf3dObserver = null;
+    }
+    if (
+      headscarf3dInstance &&
+      typeof headscarf3dInstance.destroy === "function"
+    ) {
+      headscarf3dInstance.destroy();
+      headscarf3dInstance = null;
+    }
+    headscarf3dInitPromise = null;
+    headscarf3dRetryCount = 0;
+  }
+
+  function ensureDesignIntroHeadscarf3d() {
+    var root = document.getElementById("design-intro-headscarf-3d");
+    if (!root || headscarf3dInstance || prefersReducedMotion()) {
+      return Promise.resolve(null);
+    }
+    if (root.clientWidth <= 0 || root.clientHeight <= 0) {
+      scheduleHeadscarf3dRetry();
+      return Promise.resolve(null);
+    }
+
+    if (!headscarf3dInitPromise) {
+      headscarf3dInitPromise = import("/js/headscarf3d.js?v=20260624-static-flutter")
+        .then(function (mod) {
+          if (!root.isConnected || headscarf3dInstance) return headscarf3dInstance;
+          if (!mod || typeof mod.initHeadscarf3d !== "function") return null;
+          headscarf3dInstance = mod.initHeadscarf3d(root, {
+            textureUrl: "website/design/headscarf-3d-texture.png",
+            config: {
+              camY: 0,
+              fitToWidth: true,
+              fitToWidthScale: 1.1,
+              cameraFov: 50,
+              flagWidth: 10,
+              flagHeight: 2.4,
+              meshScale: 1,
+              anchorPreset: "Soft Float",
+              softAnchorStrength: 0.9,
+              enablePointerWind: true,
+              pointerWindMode: "flutter",
+              pointerWindInfluence: 0.25,
+              pointerTurbulenceBoost: 0.02,
+              windStrength: 8,
+              windDirection: { x: 0, y: 0 },
+              turbulence: 25,
+              stiffness: 70,
+              weight: 0.15,
+              damping: 5,
+              gustFrequency: 12,
+            },
+          });
+          if (!headscarf3dInstance) {
+            headscarf3dInitPromise = null;
+            scheduleHeadscarf3dRetry();
+            return null;
+          }
+          window.requestAnimationFrame(function () {
+            window.dispatchEvent(new Event("resize"));
+          });
+          return headscarf3dInstance;
+        })
+        .catch(function (err) {
+          console.error("headscarf3d init failed:", err);
+          headscarf3dInitPromise = null;
+          scheduleHeadscarf3dRetry();
+          return null;
+        });
+    }
+
+    return headscarf3dInitPromise.then(function (inst) {
+      if (!inst) scheduleHeadscarf3dRetry();
+      return inst;
+    });
+  }
+
+  function initDesignIntroHeadscarf3d() {
+    var root = document.getElementById("design-intro-headscarf-3d");
+    if (!root || prefersReducedMotion()) return;
+
+    function maybeInitIfDesignVisible() {
+      var page2 = document.getElementById("page2");
+      if (!page2 || !page2.classList.contains("page2--design-active")) return;
+      ensureDesignIntroHeadscarf3d().then(function (inst) {
+        if (inst && typeof inst.play === "function") inst.play();
+      });
+    }
+
+    maybeInitIfDesignVisible();
+
+    var page2 = document.getElementById("page2");
+    if (page2 && typeof MutationObserver !== "undefined") {
+      new MutationObserver(function () {
+        maybeInitIfDesignVisible();
+      }).observe(page2, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    headscarf3dObserver = new IntersectionObserver(
+      function (entries) {
+        var visible = false;
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting && entries[i].intersectionRatio > 0.05) {
+            visible = true;
+            break;
+          }
+        }
+
+        if (visible) {
+          ensureDesignIntroHeadscarf3d().then(function (inst) {
+            if (inst && typeof inst.play === "function") inst.play();
+          });
+        } else if (
+          headscarf3dInstance &&
+          typeof headscarf3dInstance.pause === "function"
+        ) {
+          headscarf3dInstance.pause();
+        }
+      },
+      { threshold: [0, 0.05, 0.25] }
+    );
+    headscarf3dObserver.observe(root);
+
+    if (
+      window.Page2Navigation &&
+      typeof window.Page2Navigation.showSection === "function" &&
+      !window.Page2Navigation.__headscarf3dHooked
+    ) {
+      var originalShowSection = window.Page2Navigation.showSection;
+      window.Page2Navigation.showSection = function (colIndex, options) {
+        var result = originalShowSection.call(this, colIndex, options);
+        if (colIndex === 4) {
+          window.requestAnimationFrame(function () {
+            maybeInitIfDesignVisible();
+            window.setTimeout(maybeInitIfDesignVisible, 600);
+          });
+        }
+        return result;
+      };
+      window.Page2Navigation.__headscarf3dHooked = true;
+    }
+  }
 
   function beginQuestionnaire() {
-    if (questionnaireStarted || !viewport) return;
+    if (questionnaireStarted || !scrollEl || !stackEl) return;
     questionnaireStarted = true;
 
     var sectionDesign = document.getElementById("section-design");
@@ -4884,20 +5448,21 @@
     if (designStart) {
       designStart.hidden = true;
     }
+    destroyDesignIntroHeadscarf3d();
     if (questionnairePanel) {
       questionnairePanel.hidden = false;
     }
 
-    showStep(PROFILE_ALL_STEP_ID, {
-      skipEnterAnimation: true,
-      deferFocus: true,
-    });
+    buildQuestionnaireStack();
 
     if (typeof window.render === "function") {
       window.render();
     }
 
-    var madlibs = viewport.querySelector(".questionnaire-profile-madlibs");
+    var profileStep = getStepElForSection("profile");
+    var madlibs = profileStep
+      ? profileStep.querySelector(".questionnaire-profile-madlibs")
+      : null;
     if (madlibs && !profileTypewriterPlayed && !prefersReducedMotion()) {
       runProfileTypewriter(/** @type {HTMLElement} */ (madlibs), function () {
         profileTypewriterPlayed = true;
@@ -4909,8 +5474,57 @@
     focusProfileBlank("nameDisplayMode");
   }
 
+  function clampDesignIntroProgress(value) {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  function updateDesignIntroScrollPolish() {
+    var designStart = document.getElementById("design-start");
+    if (!designStart || designStart.hidden) return;
+
+    var panels = designStart.querySelectorAll(".design-intro__panel");
+    if (!panels.length) return;
+
+    var stepHeight = designStart.clientHeight;
+    if (!stepHeight) return;
+
+    var scrollTop = designStart.scrollTop;
+
+    for (var i = 0; i < panels.length; i++) {
+      var inner = panels[i].querySelector(".design-intro__panel-inner");
+      if (!inner) continue;
+
+      if (i === panels.length - 1) {
+        inner.style.transform = "";
+        inner.style.opacity = "";
+        continue;
+      }
+
+      var progress = clampDesignIntroProgress(
+        (scrollTop - i * stepHeight) / stepHeight
+      );
+      var scale = 1 - progress * 0.06;
+      inner.style.transform = "scale(" + scale + ")";
+      inner.style.opacity = String(1 - progress * 0.25);
+    }
+  }
+
+  function initDesignIntroScrollPolish() {
+    var designStart = document.getElementById("design-start");
+    if (!designStart || prefersReducedMotion()) return;
+
+    designStart.addEventListener("scroll", updateDesignIntroScrollPolish, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateDesignIntroScrollPolish, {
+      passive: true,
+    });
+    updateDesignIntroScrollPolish();
+  }
+
   function init() {
-    viewport = document.getElementById("questionnaire-viewport");
+    scrollEl = document.getElementById("questionnaire-scroll");
+    stackEl = document.getElementById("questionnaire-stack");
     sectionLabelEl = document.getElementById("questionnaire-section-label");
     progressEl = document.getElementById("questionnaire-progress");
     skipSectionBtn = document.getElementById("questionnaire-skip-btn");
@@ -4920,6 +5534,17 @@
     var startBtn = document.getElementById("design-start-btn");
     if (startBtn) {
       startBtn.addEventListener("click", beginQuestionnaire);
+    }
+    var shopLink = document.getElementById("design-intro-shop-link");
+    if (shopLink) {
+      shopLink.addEventListener("click", function () {
+        if (
+          window.Page2Navigation &&
+          typeof window.Page2Navigation.showSection === "function"
+        ) {
+          window.Page2Navigation.showSection(3);
+        }
+      });
     }
     if (
       typeof window.FamilyControls !== "undefined" &&
@@ -4942,6 +5567,9 @@
         triggerCanvasUpdateAfterSync("closeFamilyInIran");
       });
     }
+    initDesignIntroScrollPolish();
+    initDesignIntroHeadscarf3d();
+    initQuestionnaireScroll();
   }
 
   if (document.readyState === "loading") {

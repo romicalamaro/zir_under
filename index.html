@@ -9,10 +9,72 @@
       }
     </script>
     <title>Octagons Grid — 68×180cm @ 300 DPI</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260619-madlibs-dropdown" />
+    <link rel="stylesheet" href="css/styles.css?v=20260624-headscarf-static" />
+    <!-- Header grid must exist before body paints — JS refines track widths later. -->
+    <style id="page2-header-critical">
+      #page2 {
+        --page2-gutter: clamp(0.875rem, 1.157vw, 2.5rem);
+        --page2-margin-inline: var(--page2-gutter);
+        --page2-space-20: var(--page2-gutter);
+        --page2-header-top-offset: calc(var(--page2-space-20) * 0.85); /* 17px @ ref (−15% vs gutter) */
+        --page2-space-4: clamp(0.125rem, 0.231vw, 0.3125rem);
+        --page2-header-row-height: calc(var(--page2-space-20) * 1.3);
+        --page2-header-row-height-bottom: var(--page2-header-top-offset);
+        --page2-grid-col: calc(
+          (100% - 2 * var(--page2-margin-inline) - 11 * var(--page2-gutter)) /
+            12
+        );
+        --page2-header-track-edge: calc(
+          var(--page2-grid-col) + var(--page2-gutter) + var(--page2-margin-inline)
+        );
+        --page2-header-track-single: calc(
+          var(--page2-grid-col) + var(--page2-gutter)
+        );
+        --page2-header-track-home: calc(
+          6 * var(--page2-grid-col) + 6 * var(--page2-gutter)
+        );
+        --page2-header-track-edge-last: calc(
+          var(--page2-grid-col) + var(--page2-margin-inline)
+        );
+      }
+
+      #page2 .page2-header {
+        display: grid;
+        column-gap: 0;
+        box-sizing: border-box;
+        position: fixed;
+        top: var(--page2-header-top-offset);
+        right: 0;
+        left: 0;
+        z-index: 3;
+        pointer-events: auto;
+        transition: none;
+        grid-template-columns:
+          var(--page2-header-track-edge) var(--page2-header-track-home)
+          var(--page2-header-track-single) var(--page2-header-track-single)
+          var(--page2-header-track-single) var(--page2-header-track-single)
+          var(--page2-header-track-edge-last);
+      }
+
+      #page2 .page2-header-col {
+        display: grid;
+        grid-template-rows:
+          var(--page2-header-row-height) var(--page2-header-row-height)
+          var(--page2-header-row-height-bottom);
+        align-content: start;
+      }
+
+      #page2 .page2-header-cell {
+        height: var(--page2-header-row-height);
+      }
+
+      #page2 .page2-header-cell:nth-child(3) {
+        height: var(--page2-header-row-height-bottom);
+      }
+    </style>
   </head>
   <body>
-    <div id="page2">
+    <div id="page2" class="page2--section-home page2--scrollable">
       <div class="page2-layout">
         <div class="page2-guides" aria-hidden="true">
           <div class="page2-col"></div>
@@ -29,7 +91,7 @@
           <div class="page2-col"></div>
         </div>
 
-        <header class="page2-header" aria-label="Header grid">
+        <header class="page2-header" style="display: grid" aria-label="Header grid">
           <div
             class="page2-header-col page2-header-col--left-edge"
             data-col="0"
@@ -55,30 +117,16 @@
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell">
               <span class="page2-col-title">
-                <span class="page2-col-title__en">about</span
+                <span class="page2-col-title__en">signals</span
                 ><span class="page2-col-title__sep">/ </span
                 ><span class="page2-col-title__fa" lang="fa" dir="rtl"
-                  >درباره</span
+                  >سیگنال‌ها</span
                 >
               </span>
             </div>
             <div class="page2-header-cell"></div>
           </div>
           <div class="page2-header-col" data-col="3">
-            <div class="page2-header-cell">
-              <span class="page2-col-title">
-                <span class="page2-col-title__en">design</span
-                ><span class="page2-col-title__sep">/ </span
-                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
-                  >طراحی</span
-                >
-              </span>
-            </div>
-            <div class="page2-header-cell"></div>
-            <div class="page2-header-cell"></div>
-          </div>
-          <div class="page2-header-col" data-col="4">
-            <div class="page2-header-cell"></div>
             <div class="page2-header-cell">
               <span class="page2-col-title">
                 <span class="page2-col-title__en">shop</span
@@ -89,14 +137,28 @@
               </span>
             </div>
             <div class="page2-header-cell"></div>
+            <div class="page2-header-cell"></div>
+          </div>
+          <div class="page2-header-col" data-col="4">
+            <div class="page2-header-cell"></div>
+            <div class="page2-header-cell">
+              <span class="page2-col-title">
+                <span class="page2-col-title__en">design</span
+                ><span class="page2-col-title__sep">/ </span
+                ><span class="page2-col-title__fa" lang="fa" dir="rtl"
+                  >طراحی</span
+                >
+              </span>
+            </div>
+            <div class="page2-header-cell"></div>
           </div>
           <div class="page2-header-col" data-col="5">
             <div class="page2-header-cell">
               <span class="page2-col-title">
-                <span class="page2-col-title__en">signals</span
+                <span class="page2-col-title__en">archive</span
                 ><span class="page2-col-title__sep">/ </span
                 ><span class="page2-col-title__fa" lang="fa" dir="rtl"
-                  >سیگنال‌ها</span
+                  >بایگانی</span
                 >
               </span>
             </div>
@@ -108,18 +170,45 @@
             data-col="6"
           >
             <div class="page2-header-cell"></div>
-            <div class="page2-header-cell"></div>
+            <div class="page2-header-cell">
+              <button
+                type="button"
+                class="page2-cart-trigger"
+                aria-label="Open cart"
+                aria-expanded="false"
+                aria-controls="page2-cart-drawer"
+              >
+                <svg
+                  class="page2-cart-trigger__icon"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.625"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6h15l-1.5 9h-12L6 6z" />
+                  <path d="M6 6L5 3H2" />
+                  <circle cx="9" cy="20" r="1.75" fill="currentColor" stroke="none" />
+                  <circle cx="18" cy="20" r="1.75" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
+            </div>
             <div class="page2-header-cell"></div>
           </div>
         </header>
 
+        <p class="page2-header-section-banner page2-header-shop-banner">
+          All designed by Iranian women who lived outside Iran
+        </p>
+
+        <p class="page2-header-section-banner page2-header-design-banner">
+          Design your own
+        </p>
+
         <div class="page2-logo" aria-label="Site logo">
-          <div
-            class="page2-logo__slot"
-            role="button"
-            tabindex="0"
-            aria-label="Go to home"
-          >
+          <div class="page2-logo__slot">
             <img
               class="page2-logo__image"
               src="website/logo.svg"
@@ -131,90 +220,440 @@
           </div>
         </div>
 
-        <main class="page2-sections" aria-label="Site sections">
-          <section
-            class="page2-section"
+        <main class="page2-sections" aria-label="Site sections">          <section
+            class="page2-section is-active"
             id="section-home"
             data-section-col="1"
             aria-label="home"
           >
-            <div class="page2-home-bg" aria-hidden="true">
-              <div
-                class="page2-home-bg__slide is-active"
-                style="background-image: url('website/background%20home3.png')"
-              ></div>
-              <div
-                class="page2-home-bg__slide"
-                style="background-image: url('website/background%20home.png')"
-              ></div>
-              <div
-                class="page2-home-bg__slide"
-                style="background-image: url('website/background%20home2.png')"
-              ></div>
-              <div
-                class="page2-home-bg__slide"
-                style="background-image: url('website/background%20home4.jpeg')"
-              ></div>
+            <div class="page2-home-hero">
+              <div class="page2-home-bg" aria-hidden="true"></div>
+              <div class="page2-home-content">
+                <p class="page2-home-intro page2-home-intro--en">
+                  Modular fashion scarves expressing solidarity with Iranian
+                  women&rsquo;s protest for bodily autonomy
+                </p>
+                <div
+                  class="page2-home-marker page2-home-marker--en"
+                  aria-hidden="true"
+                ></div>
+                <div
+                  class="page2-home-marker page2-home-marker--fa"
+                  aria-hidden="true"
+                ></div>
+                <p
+                  class="page2-home-intro page2-home-intro--fa"
+                  lang="fa"
+                  dir="rtl"
+                >
+                  روسری&zwnj;های مدولار؛ ابراز همبستگی با اعتراض زنان ایران برای
+                  خودمختاری بدنشان
+                </p>
+              </div>
             </div>
-            <div class="page2-home-content">
-              <p class="page2-home-intro page2-home-intro--en">
-                Modular fashion scarves expressing solidarity with Iranian
-                women&rsquo;s protest for bodily autonomy
-              </p>
-              <div
-                class="page2-home-marker page2-home-marker--en"
-                aria-hidden="true"
-              ></div>
-              <div
-                class="page2-home-marker page2-home-marker--fa"
-                aria-hidden="true"
-              ></div>
-              <p
-                class="page2-home-intro page2-home-intro--fa"
-                lang="fa"
-                dir="rtl"
-              >
-                روسری&zwnj;های مدولار؛ ابراز همبستگی با اعتراض زنان ایران برای
-                خودمختاری بدنشان
-              </p>
+            <div class="page2-home-about">
+              <div class="page2-about-content">
+                <h2 class="page2-about-heading">about</h2>
+                <p class="page2-about-text">
+                  Under is a modular headscarf brand that expresses solidarity
+                  and support for Iranian women. Its designs are based on a
+                  visual sign language that translates emotional states into
+                  graphic patterns, giving voice to women for whom Iran is part
+                  of their identity.<br />
+                  All designs on this website were created by Iranian women
+                  living outside Iran.
+                </p>
+              </div>
             </div>
           </section>
           <section
             class="page2-section"
-            id="section-about"
+            id="section-signals"
             data-section-col="2"
-            aria-label="about"
+            aria-label="signals"
           >
-            <div class="page2-about-content">
-              <h2 class="page2-about-heading">about</h2>
-              <p class="page2-about-text">
-                Under is a modular headscarf brand that expresses solidarity and
-                support for Iranian women. Its designs are based on a visual sign
-                language that translates emotional states into graphic patterns,
-                giving voice to women for whom Iran is part of their identity.<br />
-                All designs on this website were created by Iranian women living
-                outside Iran.
-              </p>
+            <div class="signals-section">
+              <p class="signals-section__intro"></p>
+            </div>
+          </section>
+          <section
+            class="page2-section"
+            id="section-shop"
+            data-section-col="3"
+            aria-label="shop"
+          >
+            <div class="shop-section">
+              <div class="shop-section__grid">
+                <div class="shop-section__item shop-card" data-shop-folder="name 01">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 1</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 02">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 2</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 03">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 3</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 04">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 4</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 05">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 5</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 06">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 6</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 07">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 7</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 08">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 8</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 09">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 9</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 10">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 10</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 11">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 11</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="shop-section__item shop-card" data-shop-folder="name 12">
+                  <article class="shop-album" aria-label="Product gallery">
+                    <div class="shop-album__viewport">
+                      <div class="shop-album__track">
+                        <div class="shop-album__slide" aria-hidden="false"></div>
+                      </div>
+                    </div>
+                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
+                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
+                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
+                    </button>
+                  </article>
+                  <div class="shop-card__meta">
+                    <p class="shop-card__name">name 12</p>
+                    <div class="shop-card__swatches" aria-label="Color options">
+                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
+                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
           <section
             class="page2-section"
             id="section-design"
-            data-section-col="3"
+            data-section-col="4"
             aria-label="design"
           >
             <div class="design-start" id="design-start">
-              <div class="design-start__inner">
-                <div class="design-start__row">
-                  <p class="design-start__tagline">design your own</p>
-                  <button
-                    type="button"
-                    class="design-start__btn"
-                    id="design-start-btn"
-                  >
-                    Start
-                  </button>
-                </div>
+              <div class="design-intro" id="design-intro">
+                <section
+                  class="design-intro__panel design-intro__panel--light design-intro__panel--headscarf"
+                  lang="en"
+                  aria-label="Design protest invitation"
+                >
+                  <div
+                    class="design-intro__headscarf-3d"
+                    id="design-intro-headscarf-3d"
+                    aria-hidden="true"
+                  ></div>
+                  <div class="design-intro__panel-inner">
+                    <p class="design-intro__text">
+                      Design your own headscarf and join the protest for
+                      women&rsquo;s right to their own bodies.
+                    </p>
+                  </div>
+                </section>
+                <section
+                  class="design-intro__panel design-intro__panel--brown"
+                  lang="en"
+                  aria-label="Design welcome"
+                >
+                  <div class="design-intro__panel-inner">
+                    <p class="design-intro__text">
+                      Welcome to Under&rsquo;s personal design space, created
+                      especially for Iranian women. Here, you are invited to
+                      create a headscarf that tells your story, step by step.
+                    </p>
+                  </div>
+                </section>
+                <section
+                  class="design-intro__panel design-intro__panel--light"
+                  lang="en"
+                  aria-label="Design eligibility"
+                >
+                  <div class="design-intro__panel-inner">
+                    <p class="design-intro__text">
+                      This custom design journey is intended only for Iranian
+                      women, for whom Iran is part of their personal or cultural
+                      identity. If you are here to express solidarity and support,
+                      you are warmly invited to visit the
+                      <button
+                        type="button"
+                        class="design-intro__shop-link"
+                        id="design-intro-shop-link"
+                      >
+                        main shop
+                      </button>
+                      and explore the existing collections.
+                    </p>
+                    <button
+                      type="button"
+                      class="design-start__btn"
+                      id="design-start-btn"
+                    >
+                      Start
+                    </button>
+                  </div>
+                </section>
               </div>
             </div>
             <div
@@ -229,44 +668,32 @@
                   id="questionnaire-progress"
                   aria-label="Section progress"
                 ></nav>
-                <div class="questionnaire-panel__content">
-                  <div class="questionnaire-panel__body">
-                    <div class="questionnaire-panel__section-header">
-                      <p
-                        class="questionnaire-panel__section-label"
-                        id="questionnaire-section-label"
-                      >
-                        1/ profile
-                      </p>
-                      <button
-                        type="button"
-                        class="questionnaire-skip"
-                        id="questionnaire-skip-btn"
-                        hidden
-                      >
-                        Skip
-                      </button>
-                    </div>
-                    <div
-                      class="questionnaire-panel__viewport"
-                      id="questionnaire-viewport"
-                      aria-live="polite"
-                    ></div>
-                  </div>
+                <div class="questionnaire-panel__section-header">
+                  <p
+                    class="questionnaire-panel__section-label"
+                    id="questionnaire-section-label"
+                  >
+                    1/ profile
+                  </p>
+                  <button
+                    type="button"
+                    class="questionnaire-skip"
+                    id="questionnaire-skip-btn"
+                    hidden
+                  >
+                    Skip
+                  </button>
                 </div>
-              </div>
-            </div>
-            <div class="design-archive" id="design-archive" hidden>
-              <div class="archive-section design-archive__inner">
-                <h2 class="archive-section__title">Your handkerchiefs</h2>
-                <p class="archive-section__empty" id="archive-empty" hidden>
-                  No saved handkerchiefs yet.
-                </p>
                 <div
-                  class="archive-grid"
-                  id="handkerchief-archive-grid"
-                  role="list"
-                ></div>
+                  class="questionnaire-panel__scroll"
+                  id="questionnaire-scroll"
+                >
+                  <div
+                    class="questionnaire-stack"
+                    id="questionnaire-stack"
+                    aria-live="polite"
+                  ></div>
+                </div>
               </div>
             </div>
 <div class="app-shell">
@@ -374,327 +801,93 @@
           </section>
           <section
             class="page2-section"
-            id="section-shop"
-            data-section-col="4"
-            aria-label="shop"
-          >
-            <div class="shop-section">
-              <div class="shop-section__grid">
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 1</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 2</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 3</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 4</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 5</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 6</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 7</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 8</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 9</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 10</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 11</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="shop-section__item shop-card">
-                  <article class="shop-album" aria-label="Product gallery">
-                    <div class="shop-album__viewport">
-                      <div class="shop-album__track">
-                        <div class="shop-album__slide" aria-hidden="false"></div>
-                      </div>
-                    </div>
-                    <button type="button" class="shop-album__nav shop-album__nav--prev" aria-label="Previous image">
-                      <span class="shop-album__arrow shop-album__arrow--left" aria-hidden="true"></span>
-                    </button>
-                    <button type="button" class="shop-album__nav shop-album__nav--next" aria-label="Next image">
-                      <span class="shop-album__arrow shop-album__arrow--right" aria-hidden="true"></span>
-                    </button>
-                  </article>
-                  <div class="shop-card__meta">
-                    <p class="shop-card__name">name 12</p>
-                    <div class="shop-card__swatches" aria-label="Color options">
-                      <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #1A1A1A"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #2D4A3E"></span>
-                      <span class="shop-card__swatch" style="--swatch-color: #3D4F5C"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-          <section
-            class="page2-section"
-            id="section-signals"
+            id="section-archive"
             data-section-col="5"
-            aria-label="signals"
+            aria-label="archive"
           >
-            <div class="signals-section">
-              <p class="signals-section__intro"></p>
+            <div class="archive-section">
+              <p class="archive-section__empty" id="archive-empty" hidden>
+                No saved handkerchiefs yet.
+              </p>
+              <div
+                class="archive-grid"
+                id="handkerchief-archive-grid"
+                role="list"
+              ></div>
             </div>
           </section>
-        </main>
+</main>
       </div>
+
+      <div
+        class="page2-product-page"
+        id="section-product"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Product page"
+        hidden
+      >
+        <button
+          type="button"
+          class="page2-product-page__close"
+          aria-label="Back to shop gallery"
+        >
+          &times;
+        </button>
+        <div class="product-guides" aria-hidden="true">
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+          <div class="page2-col"></div>
+        </div>
+        <div class="product-section">
+          <div class="product-grid">
+            <div
+              class="product-gallery"
+              id="product-gallery"
+              aria-label="Product thumbnails"
+            ></div>
+            <div class="product-hero" id="product-hero" aria-label="Selected product image"></div>
+            <div class="product-details">
+              <p class="product-title" id="product-title"></p>
+              <div
+                class="product-spec"
+                id="product-spec"
+                aria-label="Handkerchief profile"
+                hidden
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page2-cart-scrim" hidden aria-hidden="true"></div>
+      <aside
+        id="page2-cart-drawer"
+        class="page2-cart-drawer"
+        hidden
+        aria-hidden="true"
+        aria-label="Shopping cart"
+      >
+        <button
+          type="button"
+          class="page2-cart-drawer__close"
+          aria-label="Close cart"
+        >
+          &times;
+        </button>
+        <div class="page2-cart-drawer__body">
+          <p class="page2-cart-drawer__empty">Your cart is empty.</p>
+        </div>
+      </aside>
     </div>
 
     <style id="page2-isolated-styles">
@@ -707,28 +900,96 @@
       */
       #page2 {
         --page2-ref-width: 1728;
-        --page2-margin: clamp(2rem, 2.894vw, 3.125rem); /* 50px @ ref */
-        --page2-gutter: clamp(0.875rem, 1.157vw, 1.25rem); /* 20px @ ref */
+        --page2-ref-height: 1117;
+        --page2-gutter: clamp(0.875rem, 1.157vw, 2.5rem); /* 20px @ ref; scales up on large screens */
+        --page2-margin-inline: var(--page2-gutter); /* horizontal grid margins = gutter */
+        --page2-margin-block-end: clamp(2rem, 2.894vw, 4.5rem); /* 50px @ ref — bottom padding */
         --page2-space-20: var(--page2-gutter);
+        --page2-header-top-offset: calc(var(--page2-space-20) * 0.85); /* 17px @ ref (−15% vs gutter) */
+        --page2-space-4: clamp(0.125rem, 0.231vw, 0.3125rem); /* 4px @ ref */
+        --page2-space-50: clamp(2rem, 2.894vw, 4.5rem); /* 50px @ ref */
+        --page2-space-30: calc(var(--page2-space-20) * 1.5); /* 30px @ ref */
+        --page2-marker-size: clamp(0.75rem, 0.868vw, 1.125rem); /* 15px @ ref */
+        --page2-header-hover-expand: clamp(1rem, 1.157vw, 1.5rem); /* 20px @ ref */
+        --page2-product-viewport-h: calc(100vh - var(--page2-header-band-height));
+        --page2-product-gallery-gap: var(--page2-gutter); /* 20px @ ref */
+        --page2-product-spec-heading-size: clamp(1rem, 1.157vw, 1.5rem); /* 20px @ ref */
+        --page2-product-spec-body-size: clamp(0.875rem, 0.926vw, 1.125rem); /* 16px @ ref */
+        --page2-product-spec-section-gap: clamp(1.25rem, 1.736vw, 2.5rem); /* 30px @ ref */
+        --page2-product-spec-row-gap: clamp(0.375rem, 0.463vw, 0.625rem); /* 8px @ ref */
+        --page2-progress-dot: clamp(0.6875rem, 0.752vw, 0.9375rem); /* 13px @ ref */
+        --page2-progress-dot-ring: clamp(1.125rem, 1.215vw, 1.5rem); /* 21px @ ref */
+        --page2-progress-gap: calc(var(--page2-space-20) * 0.5); /* 10px @ ref */
+        --page2-about-heading-size: clamp(8.125rem, 7.52vw, 11.25rem); /* 130px @ ref */
+        --page2-about-text-size: clamp(2.1875rem, 2.03vw, 3rem); /* 35px @ ref */
+        --page2-about-letter-spacing: clamp(-0.5625rem, -0.52vw, -0.3125rem); /* -9px @ ref */
+        --page2-about-top-offset: clamp(12.5rem, 11.57vw, 17.5rem); /* 200px @ ref */
+        --page2-about-row-gap: clamp(3.125rem, 2.894vw, 4.5rem); /* 50px @ ref */
         --page2-header-row-height: calc(var(--page2-space-20) * 1.3);
-        --page2-header-row-height-bottom: calc(
-          var(--page2-header-row-height) * 0.5
-        );
-        --page2-header-band-height: calc(
-          var(--page2-space-20) + 2 * var(--page2-header-row-height) +
+        --page2-header-row-height-bottom: var(--page2-header-top-offset);
+        --page2-header-nav-height: calc(
+          2 * var(--page2-header-row-height) +
             var(--page2-header-row-height-bottom)
         );
+        --page2-header-shop-banner-height: calc(
+          2 * var(--page2-space-4) +
+            var(--page2-header-shop-banner-font-size) * 1.1
+        ); /* matches .page2-header-shop-banner box (padding + line) */
+        --page2-header-shop-surface: #ededed;
+        --page2-header-shop-banner-surface: #ec2f1e;
+        --page2-header-shop-banner-color: #fff;
+        --page2-header-shop-banner-font-size: calc(
+          (var(--page2-space-20) - var(--page2-space-4)) * 0.85 * 1.15
+        ); /* +15% vs base */
+        --page2-header-band-height: calc(
+          var(--page2-header-top-offset) + var(--page2-header-nav-height)
+        );
         --page2-header-cell-fill: #685450;
+        --page2-cart-drawer-width: calc(
+          3 * var(--page2-grid-col) + 2 * var(--page2-gutter) +
+            var(--page2-margin-inline)
+        ); /* 3 cols + gutters + right margin @ ref */
+        --page2-product-panel-cols: 10;
+        --page2-product-panel-width: calc(
+          var(--page2-margin-inline) + var(--page2-product-panel-cols) *
+            var(--page2-grid-col) + (var(--page2-product-panel-cols) - 1) *
+            var(--page2-gutter)
+        ); /* overlay: site cols 1–10; cols 11–12 = shop peek */
+        --page2-grid-col: calc(
+          (100% - 2 * var(--page2-margin-inline) - 11 * var(--page2-gutter)) /
+            12
+        );
+        --page2-header-track-edge: calc(
+          var(--page2-grid-col) + var(--page2-gutter) + var(--page2-margin-inline)
+        );
+        --page2-header-track-single: calc(
+          var(--page2-grid-col) + var(--page2-gutter)
+        );
+        --page2-header-track-home: calc(
+          6 * var(--page2-grid-col) + 6 * var(--page2-gutter)
+        );
+        --page2-header-track-edge-last: calc(
+          var(--page2-grid-col) + var(--page2-margin-inline)
+        );
         --page2-bg: #fff;
-        --page2-section-count: 5;
+        --page2-soft-drop-shadow: drop-shadow(0 0 8px rgba(0, 0, 0, 0.18))
+          drop-shadow(0 0 20px rgba(0, 0, 0, 0.1));
+        --page2-panel-ease-in: cubic-bezier(0.16, 1, 0.3, 1);
+        --page2-panel-ease-out: cubic-bezier(0.55, 0, 1, 0.45);
+        --page2-panel-duration-in: 0.52s;
+        --page2-panel-duration-out: 0.4s;
 
         display: block;
         position: fixed;
         inset: 0;
         height: 100vh;
         background: var(--page2-bg);
+        overflow: hidden;
+        scroll-behavior: smooth;
+      }
+
+      #page2.page2--scrollable {
         overflow: auto;
-        scroll-snap-type: y mandatory;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -739,14 +1000,13 @@
 
       #page2 .page2-layout {
         position: relative;
-        min-height: calc(var(--page2-section-count) * 100vh);
       }
 
       #page2 .page2-guides {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
         column-gap: var(--page2-gutter);
-        padding-inline: var(--page2-margin);
+        padding-inline: var(--page2-margin-inline);
         box-sizing: border-box;
       }
 
@@ -756,13 +1016,23 @@
         right: 0;
         bottom: 0;
         left: 0;
-        min-height: calc(var(--page2-section-count) * 100vh);
+        min-height: 100%;
         pointer-events: none;
       }
 
-      /* Grid overlay above section content (images, canvas, etc.) when toggled on */
+      /* Grid overlay above section content and product popup when toggled on */
       #page2.page2--grid-lines-visible .page2-guides {
-        z-index: 2;
+        z-index: 3;
+      }
+
+      /* Fixed to viewport while popup is open so lines stay aligned with the panel */
+      #page2.page2--grid-lines-visible.page2--product-open .page2-guides {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        min-height: 100vh;
       }
 
       #page2 .page2-col {
@@ -777,33 +1047,52 @@
       }
 
       #page2 .page2-section {
-        height: 100vh;
-        scroll-snap-align: start;
-        scroll-snap-stop: always;
+        height: auto;
+        min-height: 0;
         cursor: pointer;
+      }
+
+      #page2 .page2-section:not(.is-active) {
+        display: none;
       }
 
       #page2 #section-home {
         position: relative;
-        overflow: hidden;
+        height: auto;
         background-color: #fff;
         cursor: default;
       }
 
-      #page2 #section-about {
+      #page2:not(.page2--section-home) .page2-logo {
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      /* Hero panel: first full screen of home (background carousel + intro). */
+      #page2 #section-home .page2-home-hero {
         position: relative;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* About panel: second screen of home, reached by scrolling down. */
+      #page2 #section-home .page2-home-about {
+        position: relative;
+        min-height: 100vh;
         background-color: var(--page2-bg);
       }
 
-      #page2 #section-about .page2-about-content {
+      #page2 #section-home .page2-about-content {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
         column-gap: var(--page2-gutter);
-        row-gap: 50px;
+        row-gap: var(--page2-about-row-gap);
         box-sizing: border-box;
-        height: 100%;
-        padding-inline: var(--page2-margin);
-        padding-top: calc(var(--page2-header-band-height) + 200px);
+        min-height: 100vh;
+        padding-inline: var(--page2-margin-inline);
+        padding-top: calc(
+          var(--page2-header-band-height) + var(--page2-about-top-offset)
+        );
         align-content: start;
         align-items: start;
         justify-items: start;
@@ -822,9 +1111,9 @@
       #page2 .page2-about-heading {
         font-family: "OT2049", sans-serif;
         font-weight: 400;
-        font-size: 130px;
+        font-size: var(--page2-about-heading-size);
         line-height: 0.72;
-        letter-spacing: -9px;
+        letter-spacing: var(--page2-about-letter-spacing);
         color: var(--color-brown);
         text-box-trim: trim-both;
         text-box-edge: cap alphabetic;
@@ -832,55 +1121,92 @@
 
       @supports not (text-box-trim: trim-both) {
         #page2 .page2-about-heading {
-          margin-bottom: calc(-130px * 0.28);
+          margin-bottom: calc(var(--page2-about-heading-size) * -0.28);
         }
       }
 
       #page2 .page2-about-text {
         font-family: "PP Radio Grotesk", sans-serif;
         font-weight: 200;
-        font-size: 35px;
+        font-size: var(--page2-about-text-size);
         line-height: 1.1;
         color: var(--color-brown);
       }
 
-      #page2 #section-shop {
+      #page2 #section-archive {
         height: auto;
-        min-height: 100vh;
         background-color: var(--page2-bg);
         box-sizing: border-box;
         cursor: default;
       }
 
+      #page2 #section-archive .archive-section {
+        box-sizing: border-box;
+        max-width: none;
+        margin: 0;
+        padding-top: calc(
+          var(--page2-header-band-height) + var(--page2-space-30)
+        );
+        padding-inline: var(--page2-margin-inline);
+        padding-bottom: var(--page2-margin-block-end);
+      }
+
+      #page2 #section-signals .signals-section {
+        box-sizing: border-box;
+        max-width: none;
+        margin: 0;
+        padding-top: calc(
+          var(--page2-header-band-height) + var(--page2-space-50)
+        );
+        padding-inline: var(--page2-margin-inline);
+        padding-bottom: var(--page2-margin-block-end);
+      }
+
+      #page2 #section-shop {
+        height: auto;
+        background-color: var(--page2-bg);
+        box-sizing: border-box;
+        cursor: default;
+      }
+
+      #page2.page2--section-shop,
+      #page2.page2--section-design {
+        --page2-header-band-height: calc(
+          var(--page2-header-top-offset) + var(--page2-header-nav-height) +
+            var(--page2-header-shop-banner-height)
+        );
+      }
+
       #page2 #section-shop .shop-section {
         box-sizing: border-box;
-        padding-top: calc(var(--page2-header-band-height) + 50px);
-        padding-inline: var(--page2-margin);
-        padding-bottom: var(--page2-margin);
+        padding-top: var(--page2-header-band-height);
+        padding-inline: var(--page2-margin-inline);
+        padding-bottom: var(--page2-margin-block-end);
       }
 
       #page2 #section-shop .shop-section__grid {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
-        column-gap: var(--page2-gutter);
-        row-gap: calc(var(--page2-gutter) * 2);
+        column-gap: 0;
+        row-gap: var(--page2-gutter);
         box-sizing: border-box;
       }
 
       #page2 #section-shop .shop-section__item,
       #page2 #section-shop .shop-card {
         grid-column: span 3;
+        min-width: 0;
         box-sizing: border-box;
       }
 
       #page2 #section-shop .shop-album {
         position: relative;
         width: 100%;
-        aspect-ratio: 4 / 5;
+        aspect-ratio: 2 / 3;
         margin: 0;
         padding: 0;
         background: transparent;
-        border: 1px solid rgba(80, 70, 60, 0.35);
+        border: none;
         overflow: hidden;
         box-sizing: border-box;
       }
@@ -888,7 +1214,6 @@
       #page2 #section-shop .shop-card__meta {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 0.5rem;
         margin-top: 0.5rem;
       }
@@ -896,28 +1221,18 @@
       #page2 #section-shop .shop-card__name {
         margin: 0;
         font-family: "DIN Condensed", sans-serif;
-        font-size: calc((var(--page2-space-20, 1.25rem) - 4px) * 0.85);
+        font-size: calc(
+          (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85
+        );
         font-weight: 700;
         line-height: 1.1;
         color: #000;
         text-align: left;
       }
 
+      /* Hidden from view; still used by shopAlbums.js to build carousel slides */
       #page2 #section-shop .shop-card__swatches {
-        display: flex;
-        flex-shrink: 0;
-        align-items: center;
-        gap: 0.35rem;
-      }
-
-      #page2 #section-shop .shop-card__swatch {
-        display: block;
-        width: 0.875rem;
-        height: 0.875rem;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 50%;
-        background: var(--swatch-color, #ccc);
-        box-sizing: border-box;
+        display: none;
       }
 
       #page2 #section-shop .shop-album__viewport {
@@ -941,6 +1256,9 @@
         flex: 0 0 100%;
         height: 100%;
         min-width: 0;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
       }
 
       #page2 #section-shop .shop-album__slide img {
@@ -993,15 +1311,287 @@
       }
 
       #page2 #section-shop .shop-album__arrow--left {
-        border-left: 2px solid #000;
-        border-bottom: 2px solid #000;
+        border-left: 2px solid #fff;
+        border-bottom: 2px solid #fff;
         transform: rotate(45deg);
       }
 
       #page2 #section-shop .shop-album__arrow--right {
-        border-right: 2px solid #000;
-        border-top: 2px solid #000;
+        border-right: 2px solid #fff;
+        border-top: 2px solid #fff;
         transform: rotate(45deg);
+      }
+
+      /* The image area of each card is clickable to open the product page */
+      #page2 #section-shop .shop-album__viewport {
+        cursor: pointer;
+      }
+
+      /* Product popup — 10 site grid cols (1–10); shop cols 11–12 visible behind */
+      #page2 .page2-product-page {
+        /* 100vw keeps column width tied to the site viewport, not the 10-col panel */
+        --page2-grid-col: calc(
+          (100vw - 2 * var(--page2-margin-inline) - 11 * var(--page2-gutter)) /
+            12
+        );
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 2;
+        width: var(--page2-product-panel-width);
+        height: 100vh;
+        background-color: var(--page2-bg);
+        border-right: 2px solid var(--page2-header-cell-fill);
+        overflow-x: hidden;
+        overflow-y: auto;
+        box-sizing: border-box;
+        cursor: default;
+        transform: translate3d(-100%, 0, 0);
+        backface-visibility: hidden;
+        transition: transform var(--page2-panel-duration-in)
+          var(--page2-panel-ease-in);
+        will-change: transform;
+      }
+
+      #page2.page2--product-open .page2-product-page:not([hidden]) {
+        transform: translate3d(0, 0, 0);
+      }
+
+      #page2.page2--product-closing .page2-product-page:not([hidden]) {
+        transition-duration: var(--page2-panel-duration-out);
+        transition-timing-function: var(--page2-panel-ease-out);
+      }
+
+      #page2 .page2-product-page[hidden] {
+        display: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2 .page2-product-page {
+          transition: none;
+          transform: translate3d(0, 0, 0);
+        }
+      }
+
+      #page2 .page2-product-page__close {
+        position: absolute;
+        top: calc(var(--page2-header-band-height) + var(--page2-gutter));
+        right: var(--page2-gutter);
+        z-index: 3;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
+        line-height: 1;
+        color: var(--page2-header-cell-fill);
+        cursor: pointer;
+      }
+
+      #page2 .page2-product-page__close:focus-visible {
+        outline: 2px solid var(--page2-header-cell-fill);
+        outline-offset: 2px;
+      }
+
+      /* Column guides for the product page — reuses .page2-col so it picks up
+         the same coloring when the header "show grid" toggle is active. */
+      #page2 .page2-product-page .product-guides {
+        display: none;
+      }
+
+      #page2 .page2-product-page .product-section {
+        position: relative;
+        z-index: 1;
+      }
+
+      #page2 #section-product .product-section {
+        box-sizing: border-box;
+        padding-top: var(--page2-header-band-height);
+        padding-inline: 0;
+        padding-bottom: 0;
+        overflow: visible;
+      }
+
+      #page2 #section-product .product-grid {
+        display: grid;
+        box-sizing: border-box;
+        width: calc(
+          2 * var(--page2-margin-inline) + 12 * var(--page2-grid-col) +
+            11 * var(--page2-gutter)
+        );
+        padding-inline: var(--page2-margin-inline);
+        grid-template-columns: repeat(12, var(--page2-grid-col));
+        column-gap: var(--page2-gutter);
+        height: var(--page2-product-viewport-h);
+        min-height: var(--page2-product-viewport-h);
+      }
+
+      #page2 #section-product .product-gallery {
+        grid-column: 1;
+        width: var(--page2-grid-col);
+        max-width: var(--page2-grid-col);
+        min-width: 0;
+        justify-self: start;
+        align-self: stretch;
+        height: var(--page2-product-viewport-h);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-snap-type: y mandatory;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      #page2 #section-product .product-gallery--single {
+        overflow: hidden;
+      }
+
+      #page2 #section-product .product-gallery::-webkit-scrollbar {
+        display: none;
+      }
+
+      #page2 #section-product .product-gallery__track {
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-product-gallery-gap);
+        width: 100%;
+        padding-block: var(--product-gallery-edge-pad, 0);
+        box-sizing: border-box;
+      }
+
+      #page2 #section-product .product-gallery__thumb {
+        flex: 0 0 auto;
+        flex-shrink: 0;
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        margin: 0;
+        border: 1px solid rgba(80, 70, 60, 0.35);
+        background-color: var(--product-hero-color, #d8d2cc);
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        padding: 0;
+        cursor: pointer;
+        box-sizing: border-box;
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
+      }
+
+      #page2 #section-product .product-gallery__thumb--active {
+        border-color: var(--page2-header-shop-banner-surface);
+        border-width: 1.5px;
+        box-shadow: inset 0 0 0 1.5px var(--page2-header-shop-banner-surface);
+      }
+
+      #page2 #section-product .product-gallery__thumb:focus-visible {
+        outline: 2px solid var(--color-brown);
+        outline-offset: 2px;
+      }
+
+      #page2 #section-product .product-hero {
+        grid-column: 2 / span 4;
+        align-self: start;
+        justify-self: start;
+        width: calc(var(--page2-product-viewport-h) * 2 / 3);
+        height: var(--page2-product-viewport-h);
+        max-height: var(--page2-product-viewport-h);
+        aspect-ratio: 2 / 3;
+        border: 1px solid rgba(80, 70, 60, 0.35);
+        background-color: var(--product-hero-color, #d8d2cc);
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        box-sizing: border-box;
+      }
+
+      #page2 #section-product .product-details {
+        grid-column: 6 / 11;
+        align-self: start;
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-gutter);
+        margin: calc(var(--page2-space-50) * 2) 0 0; /* 100px @ ref */
+        padding-bottom: var(--page2-margin-block-end);
+        box-sizing: border-box;
+        min-width: 0;
+      }
+
+      #page2 #section-product .product-title {
+        margin: 0;
+        padding-inline-start: calc(
+          (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
+        );
+        font-family: "DIN Condensed", sans-serif;
+        font-size: calc(var(--page2-header-row-height) - var(--page2-space-4));
+        font-weight: 700;
+        line-height: 1.05;
+        color: #000;
+        text-align: left;
+      }
+
+      #page2 #section-product .product-spec {
+        margin: 0;
+        box-sizing: border-box;
+      }
+
+      #page2 #section-product .product-spec[hidden] {
+        display: none;
+      }
+
+      #page2 #section-product .product-spec__section + .product-spec__section {
+        margin-top: var(--page2-product-spec-section-gap);
+      }
+
+      #page2 #section-product .product-spec__heading {
+        margin: 0 0 var(--page2-product-spec-row-gap);
+        padding-inline-start: calc(
+          (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
+        );
+        font-family: "DIN Condensed", sans-serif;
+        font-size: var(--page2-product-spec-heading-size);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--page2-header-cell-fill, #685450);
+      }
+
+      #page2 #section-product .product-spec__list {
+        display: grid;
+        /* Matches site cols 6–10 inside .product-details */
+        grid-template-columns: repeat(5, 1fr);
+        column-gap: var(--page2-gutter);
+        row-gap: var(--page2-product-spec-row-gap);
+        margin: 0;
+      }
+
+      #page2 #section-product .product-spec__label,
+      #page2 #section-product .product-spec__value {
+        margin: 0;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: var(--page2-product-spec-body-size);
+        line-height: 1.25;
+      }
+
+      #page2 #section-product .product-spec__label {
+        grid-column: 2 / 4;
+        font-weight: 400;
+        color: rgba(0, 0, 0, 0.55);
+        text-align: left;
+      }
+
+      #page2 #section-product .product-spec__value {
+        grid-column: 4;
+        font-weight: 700;
+        color: #000;
+        text-align: right;
+      }
+
+      #page2 #section-product .product-spec__unavailable {
+        margin: 0;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: var(--page2-product-spec-body-size);
+        color: rgba(0, 0, 0, 0.45);
       }
 
       #page2 #section-design {
@@ -1025,8 +1615,7 @@
       /* Hide design UI when another site section is active (prevents canvas bleed on home). */
       #page2:not(.page2--design-active) #section-design > .app-shell,
       #page2:not(.page2--design-active) #section-design > .design-start,
-      #page2:not(.page2--design-active) #section-design > .questionnaire-panel,
-      #page2:not(.page2--design-active) #section-design > .design-archive {
+      #page2:not(.page2--design-active) #section-design > .questionnaire-panel {
         display: none !important;
       }
 
@@ -1038,17 +1627,20 @@
         column-gap: var(--page2-gutter);
         box-sizing: border-box;
         height: 100%;
-        padding-inline: var(--page2-margin);
+        padding-inline: var(--page2-margin-inline);
         align-items: center;
         pointer-events: none;
       }
 
       #page2 .page2-home-intro {
         margin: 0;
-        font-size: calc((var(--page2-space-20) - 4px) * 1.2);
+        font-size: calc(
+          (var(--page2-space-20) - var(--page2-space-4)) * 1.2 * 1.15
+        );
         font-weight: 700;
         line-height: 1.15;
         color: #fff;
+        filter: var(--page2-soft-drop-shadow);
       }
 
       #page2 .page2-home-intro--en {
@@ -1066,8 +1658,8 @@
 
       #page2 .page2-home-marker {
         position: absolute;
-        width: 15px;
-        height: 15px;
+        width: var(--page2-marker-size);
+        height: var(--page2-marker-size);
         background: #fff;
         pointer-events: none;
       }
@@ -1119,6 +1711,7 @@
         }
       }
 
+
       #page2.page2--grid-lines-visible .page2-col {
         background: rgba(100, 120, 160, 0.07);
         box-shadow: inset 0 0 0 1px rgba(100, 120, 160, 0.18);
@@ -1135,15 +1728,69 @@
       #page2 .page2-header {
         display: grid;
         column-gap: 0;
-        padding-inline: var(--page2-margin);
+        padding-inline: 0;
         box-sizing: border-box;
         position: fixed;
-        top: var(--page2-space-20);
+        top: var(--page2-header-top-offset);
         right: 0;
         left: 0;
         z-index: 3;
         pointer-events: auto;
+        grid-template-columns:
+          var(--page2-header-track-edge) var(--page2-header-track-home)
+          var(--page2-header-track-single) var(--page2-header-track-single)
+          var(--page2-header-track-single) var(--page2-header-track-single)
+          var(--page2-header-track-edge-last);
+        transition: none;
+      }
+
+      #page2.page2--header-layout-ready .page2-header {
         transition: grid-template-columns 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      #page2 .page2-header-section-banner {
+        display: none;
+        position: fixed;
+        top: calc(var(--page2-header-top-offset) + var(--page2-header-nav-height));
+        right: 0;
+        left: 0;
+        z-index: 3;
+        margin: 0;
+        padding-inline: var(--page2-margin-inline);
+        padding-top: calc(var(--page2-space-4) + 1px);
+        padding-bottom: calc(var(--page2-space-4) - 1px);
+        box-sizing: border-box;
+        background: var(--page2-header-shop-banner-surface);
+        font-family: "DIN Condensed", sans-serif;
+        font-weight: 700;
+        font-size: var(--page2-header-shop-banner-font-size);
+        line-height: 1.1;
+        color: var(--page2-header-shop-banner-color);
+        text-align: center;
+      }
+
+      #page2.page2--section-shop .page2-header-shop-banner {
+        display: block;
+      }
+
+      #page2.page2--section-design .page2-header-design-banner {
+        display: block;
+      }
+
+      /* Shop: light gray header band behind the brown grid rectangles */
+      #page2.page2--section-shop .page2-header {
+        background: var(--page2-header-shop-surface);
+      }
+
+      #page2.page2--section-shop .page2-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 100%;
+        height: var(--page2-header-top-offset);
+        background: var(--page2-header-shop-surface);
+        pointer-events: none;
       }
 
       #page2 .page2-header-col:has(.page2-col-title) {
@@ -1213,6 +1860,17 @@
         cursor: pointer;
       }
 
+      /* Full-bleed side rectangles into viewport margins */
+      #page2 .page2-header-col--left-edge .page2-header-cell:nth-child(2) {
+        box-shadow: calc(-1 * var(--page2-margin-inline)) 0 0 0
+          var(--page2-header-cell-fill);
+      }
+
+      #page2 .page2-header-col--right-edge .page2-header-cell:nth-child(2) {
+        box-shadow: var(--page2-margin-inline) 0 0 0
+          var(--page2-header-cell-fill);
+      }
+
       /* Remaining columns keep the original 6-column checkerboard */
       #page2 .page2-header-col:nth-child(even) .page2-header-cell:nth-child(1),
       #page2 .page2-header-col:nth-child(even) .page2-header-cell:nth-child(3) {
@@ -1221,7 +1879,9 @@
       }
 
       #page2
-        .page2-header-col:nth-child(odd):not(:first-child)
+        .page2-header-col:nth-child(odd):not(:first-child):not(
+          .page2-header-col--right-edge
+        )
         .page2-header-cell:nth-child(2) {
         background: var(--page2-header-cell-fill);
         box-shadow: none;
@@ -1231,8 +1891,10 @@
         display: flex;
         align-items: center;
         box-sizing: border-box;
-        padding: 2px;
-        padding-top: calc(2px + var(--page2-header-row-height) * 0.24);
+        padding: var(--page2-space-4);
+        padding-top: calc(
+          var(--page2-space-4) + var(--page2-header-row-height) * 0.24
+        );
         overflow: hidden;
       }
 
@@ -1241,7 +1903,7 @@
         direction: ltr;
         align-items: baseline;
         font-family: "DIN Condensed", sans-serif;
-        font-size: calc(var(--page2-header-row-height) - 4px);
+        font-size: calc(var(--page2-header-row-height) - var(--page2-space-4));
         font-weight: 700;
         line-height: 1.05;
         color: var(--page2-bg);
@@ -1277,7 +1939,6 @@
         .page2-header-col--right-edge
         .page2-header-cell:nth-child(2) {
         background: #fff;
-        box-shadow: none;
       }
 
       #page2.page2--header-invert
@@ -1291,10 +1952,24 @@
       }
 
       #page2.page2--header-invert
-        .page2-header-col:nth-child(odd):not(:first-child)
+        .page2-header-col:nth-child(odd):not(:first-child):not(
+          .page2-header-col--right-edge
+        )
         .page2-header-cell:nth-child(2) {
         background: #fff;
         box-shadow: none;
+      }
+
+      #page2.page2--header-invert
+        .page2-header-col--left-edge
+        .page2-header-cell:nth-child(2) {
+        box-shadow: calc(-1 * var(--page2-margin-inline)) 0 0 0 #fff;
+      }
+
+      #page2.page2--header-invert
+        .page2-header-col--right-edge
+        .page2-header-cell:nth-child(2) {
+        box-shadow: var(--page2-margin-inline) 0 0 0 #fff;
       }
 
       /* Home: photo shows through letterforms; checkerboard cells stay solid white */
@@ -1304,7 +1979,7 @@
       #page2.page2--header-invert .page2-col-title__fa {
         background-image: var(
           --page2-home-bg,
-          url("website/background%20home3.png")
+          url("website/home/YuvalUrbach056%20Large.jpeg")
         );
         background-size: cover;
         background-position: center center;
@@ -1325,7 +2000,7 @@
         display: grid;
         grid-template-columns: repeat(12, 1fr);
         column-gap: var(--page2-gutter);
-        padding-inline: var(--page2-margin);
+        padding-inline: var(--page2-margin-inline);
         box-sizing: border-box;
         align-items: start;
         pointer-events: none;
@@ -1337,8 +2012,7 @@
         width: 100%;
         min-width: 0;
         will-change: transform, opacity;
-        pointer-events: auto;
-        cursor: pointer;
+        pointer-events: none;
       }
 
       #page2 .page2-logo__image {
@@ -1346,6 +2020,129 @@
         height: auto;
         aspect-ratio: 207 / 93;
         display: block;
+        pointer-events: none;
+        filter: var(--page2-soft-drop-shadow);
+      }
+
+      /* Cart trigger — right-edge header middle cell */
+      #page2 .page2-header-col--right-edge .page2-header-cell:nth-child(2) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #page2 .page2-cart-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      #page2.page2--header-invert
+        .page2-header-col--right-edge
+        .page2-header-cell:nth-child(2)
+        .page2-cart-trigger {
+        color: var(--page2-header-cell-fill);
+      }
+
+      #page2 .page2-cart-trigger__icon {
+        width: calc(var(--page2-header-row-height) - var(--page2-space-4));
+        height: calc(var(--page2-header-row-height) - var(--page2-space-4));
+        display: block;
+      }
+
+      #page2 .page2-cart-trigger:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
+
+      /* Cart drawer */
+      #page2 .page2-cart-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 3.5;
+        background: rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      #page2 .page2-cart-scrim[hidden] {
+        display: none;
+      }
+
+      #page2.page2--cart-open .page2-cart-scrim:not([hidden]) {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #page2 .page2-cart-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 4;
+        width: var(--page2-cart-drawer-width);
+        height: 100vh;
+        box-sizing: border-box;
+        background: var(--page2-bg);
+        border-left: 2px solid var(--page2-header-cell-fill);
+        transform: translateX(100%);
+        transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+        overflow-y: auto;
+      }
+
+      #page2 .page2-cart-drawer[hidden] {
+        display: none;
+      }
+
+      #page2.page2--cart-open .page2-cart-drawer:not([hidden]) {
+        transform: translateX(0);
+      }
+
+      #page2 .page2-cart-drawer__close {
+        position: absolute;
+        top: var(--page2-gutter);
+        right: var(--page2-gutter);
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
+        line-height: 1;
+        color: var(--page2-header-cell-fill);
+        cursor: pointer;
+      }
+
+      #page2 .page2-cart-drawer__close:focus-visible {
+        outline: 2px solid var(--page2-header-cell-fill);
+        outline-offset: 2px;
+      }
+
+      #page2 .page2-cart-drawer__body {
+        padding: calc(var(--page2-gutter) * 2.5) var(--page2-gutter)
+          var(--page2-gutter);
+      }
+
+      #page2 .page2-cart-drawer__empty {
+        margin: 0;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: clamp(1rem, 1.157vw, 1.25rem); /* 16px @ ref */
+        color: var(--page2-header-cell-fill);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2 .page2-cart-scrim,
+        #page2 .page2-cart-drawer {
+          transition: none;
+        }
       }
     </style>
 
@@ -1384,6 +2181,7 @@
       })();
     </script>
 
+    <script src="js/page2Units.js"></script>
     <script id="page2-scroll-script">
       (function () {
         var page2 = document.getElementById("page2");
@@ -1402,7 +2200,6 @@
 
         var MIN_SPAN = 1;
         var MAX_SPAN = 6;
-        var HEADER_HOVER_EXPAND_PX = 20;
         var DEFAULT_OPEN_INDEX = 1; /* home — second column from the left */
         var columnSpans = [];
         var headerCols = header.querySelectorAll(".page2-header-col");
@@ -1410,7 +2207,6 @@
         var scrollActiveIndex = DEFAULT_OPEN_INDEX;
         var hoveredHeaderColIndex = -1;
         var lastColIndex = headerCols.length - 1;
-        var sectionObserver = null;
         var prefersReducedMotion = window.matchMedia(
           "(prefers-reduced-motion: reduce)"
         ).matches;
@@ -1419,11 +2215,71 @@
         var postHeaderAnimRefreshTimer = null;
         var headerAnimLockUntil = 0;
         var scrollBootstrapComplete = false;
+        var SECTION_PAGE_CLASSES = [
+          "",
+          "page2--section-home",
+          "page2--section-signals",
+          "page2--section-shop",
+          "page2--section-design",
+          "page2--section-archive",
+        ];
+        /* Scroll only when active section content exceeds the viewport. */
+        function updatePage2Scrollability() {
+          var layout = page2.querySelector(".page2-layout");
+          if (!layout) return;
+          var contentHeight = Math.ceil(layout.getBoundingClientRect().height);
+          var viewportHeight = page2.clientHeight;
+          var needsScroll = contentHeight > viewportHeight + 1;
+          page2.classList.toggle("page2--scrollable", needsScroll);
+          if (!needsScroll) {
+            page2.scrollTop = 0;
+          }
+        }
+
+        function updateSectionPageClass(colIndex) {
+          SECTION_PAGE_CLASSES.forEach(function (cls) {
+            if (cls) page2.classList.remove(cls);
+          });
+          var nextClass = SECTION_PAGE_CLASSES[colIndex];
+          if (nextClass) page2.classList.add(nextClass);
+          updatePage2Scrollability();
+        }
+
+        function showSection(colIndex, options) {
+          options = options || {};
+          if (!isPage2Visible()) return;
+          if (isLockedColumn(colIndex)) return;
+          var section = sectionForColumn(colIndex);
+          if (!section) return;
+
+          if (
+            window.Page2Cart &&
+            typeof window.Page2Cart.close === "function"
+          ) {
+            window.Page2Cart.close();
+          }
+
+          var animate = options.animate !== false;
+          applyExpandedColumn(colIndex, animate === false ? false : undefined);
+
+          sections.forEach(function (s) {
+            s.classList.toggle("is-active", s === section);
+          });
+          updateSectionPageClass(colIndex);
+
+          page2.scrollTop = 0;
+          if (colIndex === HOME_COL_INDEX) {
+            updateLogoPosition();
+          }
+          /* Hero is display:none until is-active above — re-check after layout. */
+          updateHeaderInvertState();
+          scheduleRefresh();
+        }
 
         function openHomeSection(animate) {
-          page2.scrollTop = 0;
-          applyExpandedColumn(DEFAULT_OPEN_INDEX, animate === false ? false : undefined);
-          updateLogoPosition();
+          showSection(HOME_COL_INDEX, {
+            animate: animate !== false,
+          });
         }
 
         function spansForExpandedColumn(index) {
@@ -1434,13 +2290,23 @@
         }
 
         var HOME_COL_INDEX = DEFAULT_OPEN_INDEX;
-        var DESIGN_COL_INDEX = 3;
+        var DESIGN_COL_INDEX = 4;
+
+        function shouldInvertHeader() {
+          /* Invert (white text over the photo) only while the home hero panel
+             is the one sitting behind the header. Once the about panel scrolls
+             up to the header, fall back to the normal brown header. */
+          if (scrollActiveIndex !== HOME_COL_INDEX) return false;
+          var hero =
+            homeSection && homeSection.querySelector(".page2-home-hero");
+          if (!hero) return true;
+          var heroRect = hero.getBoundingClientRect();
+          var headerRect = header.getBoundingClientRect();
+          return heroRect.bottom > headerRect.bottom;
+        }
 
         function updateHeaderInvertState() {
-          page2.classList.toggle(
-            "page2--header-invert",
-            scrollActiveIndex === HOME_COL_INDEX
-          );
+          page2.classList.toggle("page2--header-invert", shouldInvertHeader());
         }
 
         function updateDesignActiveState() {
@@ -1517,9 +2383,35 @@
           updateHeaderHoverClasses();
         }
 
+        function getHeaderHoverExpandPx() {
+          if (
+            window.Page2Units &&
+            typeof window.Page2Units.readPage2CssLengthPx === "function"
+          ) {
+            var px = window.Page2Units.readPage2CssLengthPx(
+              "--page2-header-hover-expand"
+            );
+            if (px > 0) return px;
+          }
+          return 20;
+        }
+
+        function getMarginInlinePx() {
+          if (
+            window.Page2Units &&
+            typeof window.Page2Units.readPage2CssLengthPx === "function"
+          ) {
+            var px = window.Page2Units.readPage2CssLengthPx(
+              "--page2-margin-inline"
+            );
+            if (px > 0) return px;
+          }
+          return 20;
+        }
+
         function getMinOpenColumnWidthPx() {
           var metrics = getGridMetrics();
-          if (!metrics) return HEADER_HOVER_EXPAND_PX;
+          if (!metrics) return getHeaderHoverExpandPx();
           return spanToPixels(
             MIN_SPAN,
             scrollActiveIndex === lastColIndex,
@@ -1541,12 +2433,13 @@
         function applyHeaderHoverOffset(widths, hoveredCol, openCol) {
           if (hoveredCol < 0 || hoveredCol === openCol) return widths;
           if (isLockedColumn(hoveredCol) || isLockedColumn(openCol)) return widths;
-          if (widths[openCol] - HEADER_HOVER_EXPAND_PX < getMinOpenColumnWidthPx()) {
+          if (widths[openCol] - getHeaderHoverExpandPx() < getMinOpenColumnWidthPx()) {
             return widths;
           }
           var next = widths.slice();
-          next[hoveredCol] += HEADER_HOVER_EXPAND_PX;
-          next[openCol] -= HEADER_HOVER_EXPAND_PX;
+          var expandPx = getHeaderHoverExpandPx();
+          next[hoveredCol] += expandPx;
+          next[openCol] -= expandPx;
           return next;
         }
 
@@ -1559,11 +2452,12 @@
         }
 
         function edgeTrackPx(index, metrics) {
+          var marginPx = getMarginInlinePx();
           if (index === 0) {
-            return spanToPixels(MIN_SPAN, false, metrics);
+            return spanToPixels(MIN_SPAN, false, metrics) + marginPx;
           }
           if (index === lastColIndex) {
-            return spanToPixels(MIN_SPAN, true, metrics);
+            return spanToPixels(MIN_SPAN, true, metrics) + marginPx;
           }
           return null;
         }
@@ -1608,6 +2502,10 @@
             .join(" ");
         }
 
+        function markHeaderLayoutReady() {
+          page2.classList.add("page2--header-layout-ready");
+        }
+
         function applyColumnSpans(spans, animate) {
           var tracks = buildTrackTemplate(spans);
           if (!tracks) return;
@@ -1621,6 +2519,7 @@
             void header.offsetWidth;
             header.style.transition = "";
           }
+          markHeaderLayoutReady();
         }
 
         function refreshLayout(animate) {
@@ -1632,14 +2531,20 @@
           requestAnimationFrame(function () {
             refreshLayout(false);
             updateLogoPosition();
+            updateHeaderInvertState();
+            updatePage2Scrollability();
             requestAnimationFrame(function () {
               refreshLayout(false);
               updateLogoPosition();
+              updateHeaderInvertState();
+              updatePage2Scrollability();
             });
           });
           window.setTimeout(function () {
             refreshLayout(false);
             updateLogoPosition();
+            updateHeaderInvertState();
+            updatePage2Scrollability();
           }, 60);
         }
 
@@ -1679,86 +2584,14 @@
           return -1;
         }
 
-        function scrollToSection(section) {
-          if (!section) return;
-          section.scrollIntoView({
-            behavior: prefersReducedMotion ? "auto" : "smooth",
-            block: "start",
-          });
-        }
-
-        function initSectionObserver() {
-          if (sectionObserver) {
-            sectionObserver.disconnect();
-            sectionObserver = null;
-          }
-          if (!sections.length || typeof IntersectionObserver === "undefined") {
-            return;
-          }
-          sectionObserver = new IntersectionObserver(
-            function (entries) {
-              if (!scrollBootstrapComplete || !isPage2Visible()) return;
-              entries.forEach(function (entry) {
-                if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
-                  return;
-                }
-                var colIndex = parseInt(
-                  entry.target.getAttribute("data-section-col"),
-                  10
-                );
-                if (isNaN(colIndex) || isLockedColumn(colIndex)) return;
-                if (scrollActiveIndex === colIndex) return;
-                ensureLayoutReady();
-                applyExpandedColumn(colIndex);
-              });
-            },
-            {
-              root: page2,
-              threshold: [0.5],
-            }
-          );
-          sections.forEach(function (section) {
-            sectionObserver.observe(section);
-          });
-        }
-
-        function destroySectionObserver() {
-          if (!sectionObserver) return;
-          sectionObserver.disconnect();
-          sectionObserver = null;
-        }
-
-        function goToHomeSection() {
-          if (!isPage2Visible() || !homeSection) return;
-          applyExpandedColumn(HOME_COL_INDEX);
-          scrollToSection(homeSection);
-          updateLogoPosition();
-        }
-
         headerCols.forEach(function (col, index) {
           if (isLockedColumn(index)) return;
           if (!col.querySelector(".page2-col-title")) return;
           col.addEventListener("click", function () {
             if (!isPage2Visible()) return;
-            applyExpandedColumn(index);
-            scrollToSection(sectionForColumn(index));
+            showSection(index);
           });
         });
-
-        var logoSlot = logoEl && logoEl.querySelector(".page2-logo__slot");
-        if (logoSlot) {
-          logoSlot.addEventListener("click", function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            goToHomeSection();
-          });
-          logoSlot.addEventListener("keydown", function (event) {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              goToHomeSection();
-            }
-          });
-        }
 
         header.querySelectorAll(".page2-header-cell").forEach(function (cell) {
           cell.addEventListener("mouseenter", function () {
@@ -1786,6 +2619,8 @@
           if (header.contains(event.target)) return;
           if (event.target.closest("#section-design")) return;
           if (event.target.closest("#section-shop")) return;
+          if (event.target.closest("#section-archive")) return;
+          if (event.target.closest("#section-product")) return;
 
           var gridColIndex = gridColIndexAtClientX(event.clientX);
           if (gridColIndex < 0) return;
@@ -1793,7 +2628,7 @@
           var headerColIndex = headerColForGridCol(gridColIndex);
           if (headerColIndex === null || isLockedColumn(headerColIndex)) return;
 
-          scrollToSection(sectionForColumn(headerColIndex));
+          showSection(headerColIndex);
         });
 
         function getLogoBottomPaddingPx() {
@@ -1812,7 +2647,16 @@
           return middleColLeft - leftColLeft;
         }
 
-        var HOME_MARKER_SIZE_PX = 15;
+        function getHomeMarkerSizePx() {
+          if (
+            window.Page2Units &&
+            typeof window.Page2Units.readPage2CssLengthPx === "function"
+          ) {
+            var px = window.Page2Units.readPage2CssLengthPx("--page2-marker-size");
+            if (px > 0) return px;
+          }
+          return 15;
+        }
 
         function updateHomeMarkers() {
           if (
@@ -1844,7 +2688,7 @@
           var introEnRect = homeIntroEn.getBoundingClientRect();
           var introFaRect = homeIntroFa.getBoundingClientRect();
           var logoRect = slot.getBoundingClientRect();
-          var markerHalf = HOME_MARKER_SIZE_PX / 2;
+          var markerHalf = getHomeMarkerSizePx() / 2;
           var logoCenterY = logoRect.top + logoRect.height / 2;
           var enCenterY =
             (introEnRect.top +
@@ -1902,48 +2746,24 @@
             centerTop + (bottomTop - centerTop) * yProgress + "px";
           slot.style.transform = "translateX(" + middleOffsetX + "px)";
           slot.style.opacity = String(1 - fadeProgress);
-          slot.style.pointerEvents = fadeProgress >= 1 ? "none" : "auto";
           updateHomeMarkers();
-        }
-
-        function syncActiveSectionFromScroll() {
-          if (!scrollBootstrapComplete || !isPage2Visible()) return;
-          var viewportMid =
-            page2.getBoundingClientRect().top + page2.clientHeight / 2;
-          for (var i = 0; i < sections.length; i++) {
-            var section = sections[i];
-            var rect = section.getBoundingClientRect();
-            if (rect.top <= viewportMid && rect.bottom > viewportMid) {
-              var colIndex = parseInt(
-                section.getAttribute("data-section-col"),
-                10
-              );
-              if (isNaN(colIndex) || isLockedColumn(colIndex)) return;
-              if (scrollActiveIndex !== colIndex) {
-                ensureLayoutReady();
-                applyExpandedColumn(colIndex);
-              }
-              return;
-            }
-          }
         }
 
         page2.addEventListener(
           "scroll",
           function () {
+            if (scrollActiveIndex !== HOME_COL_INDEX) return;
             updateLogoPosition();
-            syncActiveSectionFromScroll();
+            updateHeaderInvertState();
           },
           { passive: true }
         );
 
         page2.addEventListener("page2:show", function () {
           openHomeSection(false);
-          initSectionObserver();
           scheduleRefresh();
         });
         page2.addEventListener("page2:hide", function () {
-          destroySectionObserver();
           clearHeaderCellHover();
           openHomeSection(false);
         });
@@ -1966,18 +2786,53 @@
         });
 
         openHomeSection(false);
-        initSectionObserver();
+        scrollBootstrapComplete = true;
         scheduleRefresh();
+
+        window.Page2Navigation = {
+          showSection: showSection,
+          getActiveCol: function () {
+            return scrollActiveIndex;
+          },
+          updateScrollability: updatePage2Scrollability,
+        };
       })();
     </script>
 
     <script id="page2-home-bg-script">
       (function () {
         var page2 = document.getElementById("page2");
-        var slides = document.querySelectorAll(
-          "#section-home .page2-home-bg__slide"
-        );
-        if (!page2 || slides.length < 2) return;
+        var bgContainer = document.querySelector("#section-home .page2-home-bg");
+        if (!page2 || !bgContainer) return;
+
+        var HOME_BG_IMAGES = [
+          "YuvalUrbach056 Large.jpeg",
+          "YuvalUrbach058 Large.jpeg",
+          "YuvalUrbach061 Large.jpeg",
+          "YuvalUrbach062 Large.jpeg",
+          "YuvalUrbach063 Large.jpeg",
+          "YuvalUrbach068 Large.jpeg",
+        ];
+
+        HOME_BG_IMAGES.forEach(function (filename, index) {
+          var slide = document.createElement("div");
+          slide.className =
+            "page2-home-bg__slide" + (index === 0 ? " is-active" : "");
+          slide.style.backgroundImage =
+            "url('website/home/" + encodeURIComponent(filename) + "')";
+          bgContainer.appendChild(slide);
+        });
+
+        var slides = bgContainer.querySelectorAll(".page2-home-bg__slide");
+        if (slides.length < 2) {
+          if (slides[0]) {
+            page2.style.setProperty(
+              "--page2-home-bg",
+              slides[0].style.backgroundImage
+            );
+          }
+          return;
+        }
 
         var HOME_BG_INTERVAL_MS = 5000;
         var currentIndex = 0;
@@ -2025,25 +2880,28 @@
       })();
     </script>
 
-    <script defer src="js/shopAlbums.js"></script>
+    <script defer src="js/shopAlbums.js?v=20260624"></script>
+    <script defer src="js/cartDrawer.js"></script>
+    <script defer src="js/page2Units.js"></script>
     <script defer src="js/constants.js"></script>
     <script defer src="js/embeddedPaletteCsv.js?v=20260608-palette12"></script>
     <script defer src="js/sheetPalettes.js?v=20260608-palette12"></script>
     <script defer src="js/labelBarSvgAssets.js?v=20260606-outside-iran"></script>
     <script defer src="js/exportFontData.js?v=20260607-export-outlines"></script>
     <script defer src="js/opentype.min.js"></script>
-    <script defer src="js/topkapiGeometry.js"></script>
-    <script defer src="js/nestedStarOctagonsGeometry.js"></script>
+    <script defer src="js/topkapiGeometry.js?v=20260623-star-perf"></script>
+    <script defer src="js/nestedStarOctagonsGeometry.js?v=20260623-star-perf"></script>
     <script defer src="js/circlesGridGeometry.js"></script>
     <script defer src="js/diamondsGridGeometry.js"></script>
     <script defer src="js/gridUnitIcons.js"></script>
     <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
     <script defer src="js/sectionProgression.js?v=20260611-canvas-grid"></script>
-    <script defer src="js/questionnaire.js?v=20260620-design-start"></script>
+    <script defer src="js/questionnaire.js?v=20260624-headscarf-static"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
-    <script defer src="js/app.js?v=20260618-fan-drag"></script>
+    <script defer src="js/productComboSpec.js?v=20260624-spec"></script>
+    <script defer src="js/app.js?v=20260623-star-perf4"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
     <script defer src="js/handkerchiefArchive.js"></script>
   </body>

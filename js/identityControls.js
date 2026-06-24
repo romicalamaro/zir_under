@@ -489,6 +489,44 @@
   }
 
   /**
+   * Clear profile fields so a new questionnaire session can start fresh.
+   * @param {{ silent?: boolean }} [options]
+   */
+  function resetProfileState(options) {
+    var silent = options && options.silent === true;
+    livingInIranChoice = null;
+    livingDurationChoice = null;
+    leavingYearValue = "";
+    fromValue = "";
+    nowInValue = "";
+    nameValue = "";
+    nameDisplayMode = null;
+    ageValue = "";
+    homeAtChoice = null;
+    var key;
+    for (key in userTouched) {
+      if (Object.prototype.hasOwnProperty.call(userTouched, key)) {
+        userTouched[key] = false;
+      }
+    }
+    syncLivingInIranUiOnly(null);
+    syncLivingDurationUiOnly(null);
+    syncNameDisplayModeUiOnly(null);
+    syncHomeAtUiOnly(null);
+    [
+      "identity-leaving-year-input",
+      "identity-from-input",
+      "identity-now-in-input",
+      "identity-name-input",
+      "identity-age-input",
+    ].forEach(function (inputId) {
+      var input = document.getElementById(inputId);
+      if (input) input.value = "";
+    });
+    if (!silent) notifyProgress();
+  }
+
+  /**
    * Apply profile fields from a combination row (no grid / palette).
    * @param {Record<string, string>} row
    * @param {{ silent?: boolean }} [options]
@@ -705,6 +743,7 @@
      * @param {{ silent?: boolean }} [options]
      */
     applyProfileState: applyProfileState,
+    resetProfileState: resetProfileState,
   };
 
   if (document.readyState === "loading") {

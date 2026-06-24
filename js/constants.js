@@ -931,7 +931,7 @@ var COLOR_PALETTE = [
 var COLOR_PALETTE_PICK_COUNT = 5;
 
 /** Sheet palette on first load and pre-selected in the questionnaire (1–12). */
-var DEFAULT_SHEET_PALETTE_NUM = 3;
+var DEFAULT_SHEET_PALETTE_NUM = 11;
 
 /** Default 5-color session shown on first load (Active palette row). */
 var DEFAULT_ACTIVE_PALETTE = [

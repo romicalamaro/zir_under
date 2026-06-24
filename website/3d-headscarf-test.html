@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Headscarf — Test</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      .headscarf-3d-test {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .headscarf-3d-test__hint {
+        position: fixed;
+        left: 50%;
+        bottom: 1.25rem;
+        transform: translateX(-50%);
+        z-index: 2;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        color: #5a3f2e;
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(90, 63, 46, 0.15);
+        border-radius: 999px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="headscarf-3d-root" class="headscarf-3d-test" aria-label="3D headscarf preview"></div>
+    <p class="headscarf-3d-test__hint">Move your mouse to steer the wind</p>
+    <script type="module">
+      import { initHeadscarf3d } from "../js/headscarf3d.js";
+
+      initHeadscarf3d(document.getElementById("headscarf-3d-root"), {
+        textureUrl: "design/headscarf-3d-texture.png",
+      });
+    </script>
+  </body>
+</html>

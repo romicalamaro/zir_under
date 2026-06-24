@@ -433,20 +433,19 @@ function roundCoord(v) {
           return { leftX: xs[0], rightX: xs[1] };
         }
 
-        function addStarHorizontalLines(map, ox, oy, outerOctagram, innerOctagram) {
+        function addStarHorizontalLinesLocal(cell, outerOctagram, innerOctagram) {
           var horiz = innerStarHorizontalEdges(innerOctagram);
           var i;
           for (i = 0; i < horiz.length; i++) {
             var edge = horiz[i];
             var outerXs = outerStarInnerConcaveXsAtY(outerOctagram, edge.y);
             if (!outerXs) continue;
-            addSegment(
-              map,
-              ox + outerXs.leftX,
-              oy + edge.y,
-              ox + outerXs.rightX,
-              oy + edge.y
-            );
+            cell.segments.push({
+              x1: outerXs.leftX,
+              y1: edge.y,
+              x2: outerXs.rightX,
+              y2: edge.y,
+            });
           }
         }
 
@@ -720,10 +719,8 @@ function roundCoord(v) {
           return entries;
         }
 
-        function addMiddleStar(
-          map,
-          ox,
-          oy,
+        function addMiddleStarLocal(
+          cell,
           outerOctagram,
           innerOctagram,
           cx,
@@ -738,7 +735,7 @@ function roundCoord(v) {
             pinwheelFactor
           );
           if (!outline) return;
-          addClosedPolygon(map, worldPoints(ox, oy, outline));
+          cell.polygons.push(outline);
         }
 
         /**
@@ -813,12 +810,14 @@ function roundCoord(v) {
          * @param {{x:number,y:number}[]} [middleOuterOctagram] parent outer octagram for innermost anchor
          * @param {{x:number,y:number}[]} [middleInnerOctagram] parent inner octagram for innermost anchor
          */
-        function addDualStar(
-          map,
-          starFills,
-          starRhombusFills,
-          ox,
-          oy,
+        /**
+         * Build one dual-square star (and its nested inner stars) in LOCAL cell
+         * coordinates, collecting primitives into `cell`. The world (ox, oy)
+         * offset is applied later in stampCell, so the heavy trig/intersection
+         * math runs once per (T, pinwheel) instead of once per grid cell.
+         */
+        function addDualStarLocal(
+          cell,
           cx,
           cy,
           T,
@@ -889,22 +888,19 @@ function roundCoord(v) {
             );
             if (pinned) innermostOutline = pinned;
           }
-          var worldOctagram = worldPoints(ox, oy, innermostOutline);
 
           if (!recurse) {
-            starFills.push({ outline: worldOctagram });
-            addClosedPolygon(map, worldOctagram);
+            cell.starFills.push(innermostOutline);
+            cell.polygons.push(innermostOutline);
             return;
           }
 
-          addClosedPolygon(map, worldOctagram);
+          cell.polygons.push(innermostOutline);
 
           var rhombusOutlines = buildOuterStarRhombusOutlines(octagram, cx, cy, T);
           var ri;
           for (ri = 0; ri < rhombusOutlines.length; ri++) {
-            starRhombusFills.push({
-              outline: worldPoints(ox, oy, rhombusOutlines[ri].outline),
-            });
+            cell.starRhombusFills.push(rhombusOutlines[ri].outline);
           }
 
           var innerApothem = Infinity;
@@ -922,11 +918,9 @@ function roundCoord(v) {
 
           var innerOctagram = buildLocalDualStarOctagram(cx, cy, TInner);
           if (innerOctagram) {
-            addStarHorizontalLines(map, ox, oy, octagram, innerOctagram);
-            addMiddleStar(
-              map,
-              ox,
-              oy,
+            addStarHorizontalLinesLocal(cell, octagram, innerOctagram);
+            addMiddleStarLocal(
+              cell,
               octagram,
               innerOctagram,
               cx,
@@ -935,12 +929,8 @@ function roundCoord(v) {
             );
           }
 
-          addDualStar(
-            map,
-            starFills,
-            starRhombusFills,
-            ox,
-            oy,
+          addDualStarLocal(
+            cell,
             cx,
             cy,
             TInner,
@@ -951,44 +941,78 @@ function roundCoord(v) {
           );
         }
 
-        function addUnitCell(
-          map,
-          starFills,
-          starRhombusFills,
-          ox,
-          oy,
-          T,
-          pinwheelFactor
-        ) {
+        /**
+         * One unit cell's geometry in LOCAL coordinates (origin at 0,0).
+         * @returns {{ segments: {x1,y1,x2,y2}[], polygons: {x,y}[][], starFills: {x,y}[][], starRhombusFills: {x,y}[][] }}
+         */
+        function buildLocalCell(T, pinwheelFactor) {
+          if (typeof pinwheelFactor !== "number") {
+            pinwheelFactor = 0;
+          }
+          var cell = {
+            segments: [],
+            polygons: [],
+            starFills: [],
+            starRhombusFills: [],
+          };
           var cut = T * CUT_RATIO;
           var cx = T / 2;
           var cy = T / 2;
           var edges = getOctagonEdges(T, cut);
           var e;
-
           for (e = 0; e < edges.length; e++) {
             var edge = edges[e];
-            addSegment(
-              map,
-              ox + edge.x1,
-              oy + edge.y1,
-              ox + edge.x2,
-              oy + edge.y2
-            );
+            cell.segments.push({
+              x1: edge.x1,
+              y1: edge.y1,
+              x2: edge.x2,
+              y2: edge.y2,
+            });
           }
+          addDualStarLocal(cell, cx, cy, T, true, pinwheelFactor);
+          return cell;
+        }
 
-          addDualStar(
-            map,
-            starFills,
-            starRhombusFills,
-            ox,
-            oy,
-            cx,
-            cy,
-            T,
-            true,
-            pinwheelFactor
-          );
+        var localCellCache = { key: null, cell: null };
+
+        function getLocalCell(T, pinwheelFactor) {
+          if (typeof pinwheelFactor !== "number") {
+            pinwheelFactor = 0;
+          }
+          var key = roundCoord(T) + "|" + pinwheelFactor;
+          if (localCellCache.key === key && localCellCache.cell) {
+            return localCellCache.cell;
+          }
+          var cell = buildLocalCell(T, pinwheelFactor);
+          localCellCache.key = key;
+          localCellCache.cell = cell;
+          return cell;
+        }
+
+        /**
+         * Apply a local cell's primitives to the shared output at world offset
+         * (ox, oy). Octagon edges keep their raw local coords so the world keys
+         * match the original per-cell computation exactly (shared cell borders
+         * still de-duplicate identically); polygons/fills are offset+rounded once
+         * via worldPoints, mirroring the original arithmetic.
+         */
+        function stampCell(map, starFills, starRhombusFills, cell, ox, oy) {
+          var i;
+          for (i = 0; i < cell.segments.length; i++) {
+            var s = cell.segments[i];
+            addSegment(map, ox + s.x1, oy + s.y1, ox + s.x2, oy + s.y2);
+          }
+          for (i = 0; i < cell.polygons.length; i++) {
+            addClosedPolygon(map, worldPoints(ox, oy, cell.polygons[i]));
+          }
+          for (i = 0; i < cell.starFills.length; i++) {
+            starFills.push({ outline: worldPoints(ox, oy, cell.starFills[i]) });
+          }
+          for (i = 0; i < cell.starRhombusFills.length; i++) {
+            starRhombusFills.push({
+              outline: worldPoints(ox, oy, cell.starRhombusFills[i]),
+            });
+          }
         }
 
         /** Rotated 45° connector square at octagon junction (no upright square). */
@@ -1031,7 +1055,8 @@ function roundCoord(v) {
           var map = new Map();
           var starFills = [];
           var starRhombusFills = [];
-          addUnitCell(map, starFills, starRhombusFills, 0, 0, T, pinwheelFactor);
+          var cell = buildLocalCell(T, pinwheelFactor);
+          stampCell(map, starFills, starRhombusFills, cell, 0, 0);
           return {
             segments: Array.from(map.values()),
             starFills: starFills,
@@ -1049,17 +1074,17 @@ function roundCoord(v) {
           var starRhombusFills = [];
           var row;
           var col;
+          var cell = getLocalCell(T, pinwheelFactor);
 
           for (row = 0; row < layout.rows; row++) {
             for (col = 0; col < layout.cols; col++) {
-              addUnitCell(
+              stampCell(
                 map,
                 starFills,
                 starRhombusFills,
+                cell,
                 col * T,
-                layout.offsetY + row * T,
-                T,
-                pinwheelFactor
+                layout.offsetY + row * T
               );
             }
           }
@@ -1075,6 +1100,43 @@ function roundCoord(v) {
             starFills: starFills,
             starRhombusFills: starRhombusFills,
           };
+        }
+
+        /**
+         * Decorative bleed extension (lines only) for canvas margin fill before frame.
+         * @param {{ tileSize: number, cols: number, rows: number, offsetY: number }} layout
+         * @param {number} pinwheelFactor
+         * @param {{ colStart: number, colEnd: number, rowStart: number, rowEnd: number, bleedOffsetY?: number }} stampBounds
+         * @returns {{ x1: number, y1: number, x2: number, y2: number }[]}
+         */
+        function buildBleedPattern(layout, pinwheelFactor, stampBounds) {
+          if (typeof pinwheelFactor !== "number") {
+            pinwheelFactor = 0;
+          }
+          var T = layout.tileSize;
+          var map = new Map();
+          var noFills = [];
+          var row;
+          var col;
+          var cell = getLocalCell(T, pinwheelFactor);
+          var bleedOffsetY =
+            stampBounds && typeof stampBounds.bleedOffsetY === "number"
+              ? stampBounds.bleedOffsetY
+              : 0;
+
+          for (row = stampBounds.rowStart; row < stampBounds.rowEnd; row++) {
+            for (col = stampBounds.colStart; col < stampBounds.colEnd; col++) {
+              stampCell(map, noFills, noFills, cell, col * T, bleedOffsetY + row * T);
+            }
+          }
+
+          for (row = stampBounds.rowStart; row <= stampBounds.rowEnd; row++) {
+            for (col = stampBounds.colStart; col <= stampBounds.colEnd; col++) {
+              addJunctionDiamond(map, col * T, bleedOffsetY + row * T, T);
+            }
+          }
+
+          return Array.from(map.values());
         }
 
         /**
@@ -1333,6 +1395,7 @@ function roundCoord(v) {
     snapLayoutToN: snapLayoutToN,
     buildUnitCellPattern: buildUnitCellPattern,
     buildPattern: buildPattern,
+    buildBleedPattern: buildBleedPattern,
     closedPolygonPathD: closedPolygonPathD,
     roundCoord: roundCoord,
     collectJunctionDiamondCenterXCoords: collectJunctionDiamondCenterXCoords,
