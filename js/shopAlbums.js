@@ -523,15 +523,17 @@
     productSection.hidden = true;
   }
 
-  function revealProductPanel() {
+  function revealProductPanel(options) {
+    options = options || {};
     if (!page2 || !productSection) return;
+
     var shouldAnimateIn =
       productSection.hidden ||
       !page2.classList.contains("page2--product-open");
 
     clearProductCloseTimer();
     productSection.hidden = false;
-    if (page2) page2.classList.remove("page2--product-closing");
+    page2.classList.remove("page2--product-closing");
 
     if (!shouldAnimateIn) {
       page2.classList.add("page2--product-open");
@@ -544,8 +546,23 @@
       return;
     }
 
-    window.requestAnimationFrame(function () {
+    if (options.deferAnimate) return;
+
+    startProductPanelAnimation();
+  }
+
+  function startProductPanelAnimation() {
+    if (!page2 || !productSection || productSection.hidden) return;
+    if (prefersReducedMotion()) {
       page2.classList.add("page2--product-open");
+      return;
+    }
+
+    // Two frames so the browser commits the off-screen transform before easing in.
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        page2.classList.add("page2--product-open");
+      });
     });
   }
 
@@ -556,8 +573,8 @@
     var card = album.closest(".shop-card");
     var nameEl = card && card.querySelector(".shop-card__name");
 
-    // Reveal first so the gallery column has real dimensions for layout.
-    revealProductPanel();
+    // Mount off-screen first so the gallery has real dimensions, then animate in.
+    revealProductPanel({ deferAnimate: true });
     productSection.scrollTop = 0;
 
     if (productTitle) {
@@ -576,6 +593,7 @@
     }
     void productGallery.offsetHeight;
     setProductSelection(album, album._index || 0, { instant: true });
+    startProductPanelAnimation();
   }
 
   // Close the internal page; the shop is still where the user left it underneath.

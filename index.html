@@ -299,7 +299,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 1</p>
+                    <p class="shop-card__name">Mozhgan</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -324,7 +324,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 2</p>
+                    <p class="shop-card__name">Kiyana</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -349,7 +349,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 3</p>
+                    <p class="shop-card__name">Firozeh</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -399,7 +399,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 5</p>
+                    <p class="shop-card__name">Atoosa</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -974,7 +974,13 @@
         --page2-bg: #fff;
         --page2-soft-drop-shadow: drop-shadow(0 0 8px rgba(0, 0, 0, 0.18))
           drop-shadow(0 0 20px rgba(0, 0, 0, 0.1));
-        --page2-panel-ease-in: cubic-bezier(0.16, 1, 0.3, 1);
+        --page2-panel-layer-shadow-left: -0.25rem 0 1rem rgba(0, 0, 0, 0.1),
+          -0.0625rem 0 0.25rem rgba(0, 0, 0, 0.06); /* subtle edge toward content */
+        --page2-panel-layer-shadow-right: 0.25rem 0 1rem rgba(0, 0, 0, 0.1),
+          0.0625rem 0 0.25rem rgba(0, 0, 0, 0.06);
+        --page2-product-panel-shadow: 0.625rem 0 3rem rgba(0, 0, 0, 0.24),
+          0.125rem 0 1.25rem rgba(0, 0, 0, 0.16); /* product popup — wider + darker */
+        --page2-panel-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
         --page2-panel-ease-out: cubic-bezier(0.55, 0, 1, 0.45);
         --page2-panel-duration-in: 0.52s;
         --page2-panel-duration-out: 0.4s;
@@ -1169,6 +1175,10 @@
         cursor: default;
       }
 
+      #page2.page2--product-open #section-shop {
+        filter: blur(3px);
+      }
+
       #page2.page2--section-shop,
       #page2.page2--section-design {
         --page2-header-band-height: calc(
@@ -1341,7 +1351,7 @@
         width: var(--page2-product-panel-width);
         height: 100vh;
         background-color: var(--page2-bg);
-        border-right: 2px solid var(--page2-header-cell-fill);
+        box-shadow: var(--page2-product-panel-shadow);
         overflow-x: hidden;
         overflow-y: auto;
         box-sizing: border-box;
@@ -1370,6 +1380,10 @@
         #page2 .page2-product-page {
           transition: none;
           transform: translate3d(0, 0, 0);
+        }
+
+        #page2.page2--product-open #section-shop {
+          filter: none;
         }
       }
 
@@ -2092,7 +2106,7 @@
         height: 100vh;
         box-sizing: border-box;
         background: var(--page2-bg);
-        border-left: 2px solid var(--page2-header-cell-fill);
+        box-shadow: var(--page2-panel-layer-shadow-left);
         transform: translateX(100%);
         transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
         overflow-y: auto;
