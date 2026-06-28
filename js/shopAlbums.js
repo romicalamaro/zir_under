@@ -1,5 +1,6 @@
 (function () {
   var SWIPE_THRESHOLD_PX = 40;
+  var SHOP_HOVER_AUTOPLAY_MS = 2000;
   var SHOP_IMAGE_FALLBACK_COLOR = "#d8d2cc";
   var SHOP_FOLDER_IMAGES = {
     "name 01": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp"],
@@ -13,10 +14,11 @@
       "6.webp",
       "7.webp",
       "8.webp",
+      "9.webp",
     ],
-    "name 04": ["1.webp", "2.webp", "3.webp", "4.webp"],
-    "name 05": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp", "6.webp"],
-    "name 06": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp"],
+    "name 04": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp"],
+    "name 05": ["1.webp", "2.webp", "3.webp", "4.webp"],
+    "name 06": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp", "6.webp"],
     "name 07": [
       "1.webp",
       "2.webp",
@@ -25,10 +27,11 @@
       "5.webp",
       "6.webp",
       "7.webp",
+      "8.webp",
     ],
     "name 08": ["1.webp", "2.webp", "3.webp"],
     "name 09": ["2.webp", "3.webp", "4.webp"],
-    "name 10": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp"],
+    "name 10": ["1.webp", "2.webp", "3.webp", "4.webp", "5.webp", "6.webp"],
     "name 11": ["1.webp", "2.webp"],
     "name 12": [
       "1.webp",
@@ -43,14 +46,14 @@
   var SHOP_FOLDER_VERSION = {
     "name 01": "20260624-webp",
     "name 02": "20260624-webp",
-    "name 03": "20260624-webp",
-    "name 04": "20260624-webp",
-    "name 05": "20260624-webp-v2",
-    "name 06": "20260624-webp",
-    "name 07": "20260624-webp",
-    "name 08": "20260624-webp",
+    "name 03": "20260628-webp",
+    "name 04": "20260628-webp",
+    "name 05": "20260628-webp-v4",
+    "name 06": "20260628-webp",
+    "name 07": "20260628-webp",
+    "name 08": "20260628-webp",
     "name 09": "20260624-webp-v3",
-    "name 10": "20260624-swap-11",
+    "name 10": "20260628-webp",
     "name 11": "20260624-swap-10",
     "name 12": "20260624-webp-v2",
   };
@@ -120,6 +123,12 @@
 
   function prefersReducedMotion() {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function getShopCardLineText(nameEl) {
+    if (!nameEl) return "";
+    if (nameEl.dataset.shopLineText) return nameEl.dataset.shopLineText.trim();
+    return nameEl.textContent.trim();
   }
 
   function setTrackTransform(track, physicalIndex, instant) {
@@ -261,6 +270,24 @@
     var nextBtn = album.querySelector(".shop-album__nav--next");
     if (prevBtn) prevBtn.disabled = false;
     if (nextBtn) nextBtn.disabled = false;
+  }
+
+  function stopHoverAutoplay(album) {
+    if (album._hoverAutoplayTimer) {
+      window.clearInterval(album._hoverAutoplayTimer);
+      album._hoverAutoplayTimer = null;
+    }
+  }
+
+  function startHoverAutoplay(album) {
+    stopHoverAutoplay(album);
+    var slides = getSlides(album);
+    if (slides.length <= 1) return;
+    if (prefersReducedMotion()) return;
+
+    album._hoverAutoplayTimer = window.setInterval(function () {
+      goTo(album, album._index + 1);
+    }, SHOP_HOVER_AUTOPLAY_MS);
   }
 
   function applySlideToElement(slide, el) {
@@ -520,6 +547,7 @@
     if (window.ProductComboSpec && typeof window.ProductComboSpec.clear === "function") {
       window.ProductComboSpec.clear();
     }
+    resetOrderButton();
     productSection.hidden = true;
   }
 
@@ -569,6 +597,7 @@
   // Show the currently visible image of an album large on the product page.
   function openProduct(album) {
     if (!productSection || !productHero || !productGallery) return;
+    stopHoverAutoplay(album);
     var needsBuild = productGallery._album !== album;
     var card = album.closest(".shop-card");
     var nameEl = card && card.querySelector(".shop-card__name");
@@ -578,7 +607,7 @@
     productSection.scrollTop = 0;
 
     if (productTitle) {
-      productTitle.textContent = nameEl ? nameEl.textContent.trim() : "";
+      productTitle.textContent = getShopCardLineText(nameEl);
     }
 
     if (window.ProductComboSpec && typeof window.ProductComboSpec.render === "function") {
@@ -636,32 +665,48 @@
     var nextBtn = album.querySelector(".shop-album__nav--next");
     var viewport = album.querySelector(".shop-album__viewport");
 
-    if (prevBtn) {
-      prevBtn.addEventListener("click", function (event) {
+    // Hovering a nav strip (or near an arrow) pauses autoplay so the manual
+    // arrows can be used without the image swapping under the pointer.
+    function bindNavStrip(btn, direction) {
+      if (!btn) return;
+      btn.addEventListener("click", function (event) {
         event.stopPropagation();
-        goTo(album, album._index - 1);
+        goTo(album, album._index + direction);
+      });
+      btn.addEventListener("mouseenter", function () {
+        album._navHover = true;
+        stopHoverAutoplay(album);
+      });
+      btn.addEventListener("mouseleave", function () {
+        album._navHover = false;
+        startHoverAutoplay(album);
       });
     }
 
-    if (nextBtn) {
-      nextBtn.addEventListener("click", function (event) {
-        event.stopPropagation();
-        goTo(album, album._index + 1);
-      });
-    }
+    bindNavStrip(prevBtn, -1);
+    bindNavStrip(nextBtn, 1);
 
-    // Clicking the image area (and the card name) opens the product page.
+    album.addEventListener("mouseenter", function () {
+      if (album._navHover) return;
+      startHoverAutoplay(album);
+    });
+    album.addEventListener("mouseleave", function () {
+      stopHoverAutoplay(album);
+    });
+
+    // Clicking the image area (and the card meta text) opens the product page.
     var card = album.closest(".shop-card");
-    var name = card && card.querySelector(".shop-card__name");
+    var meta = card && card.querySelector(".shop-card__meta");
     if (viewport) {
       viewport.addEventListener("click", function (event) {
         event.stopPropagation();
         openProduct(album);
       });
     }
-    if (name) {
-      name.style.cursor = "pointer";
-      name.addEventListener("click", function (event) {
+    if (meta) {
+      meta.style.cursor = "pointer";
+      meta.addEventListener("click", function (event) {
+        if (!event.target.closest(".shop-card__name, .shop-card__price")) return;
         event.stopPropagation();
         openProduct(album);
       });
@@ -701,6 +746,31 @@
       },
       { passive: true }
     );
+  }
+
+  function getCurrentProductSnapshot() {
+    var album = productGallery && productGallery._album;
+    if (!album) return null;
+
+    var card = album.closest(".shop-card");
+    if (!card) return null;
+
+    var folder = card.getAttribute("data-shop-folder") || "";
+    var nameEl = card.querySelector(".shop-card__name");
+    var name = getShopCardLineText(nameEl);
+    var index = typeof album._index === "number" ? album._index : 0;
+    var slides = getSlides(album);
+    var slide = slides[index];
+    if (!slide) return null;
+
+    return {
+      id: folder + ":" + String(index),
+      folder: folder,
+      name: name,
+      imageIndex: index,
+      imageUrl: slide.dataset.image || "",
+      color: slide.dataset.color || slide.style.backgroundColor || "",
+    };
   }
 
   albums.forEach(initAlbum);
@@ -763,6 +833,37 @@
   if (shopSection) {
     shopSection.addEventListener("click", function (event) {
       event.stopPropagation();
+    });
+  }
+
+  var orderBtn = document.getElementById("product-order-btn");
+  var orderBtnResetTimer = null;
+
+  function resetOrderButton() {
+    if (!orderBtn) return;
+    orderBtn.classList.remove("product-order-btn--added");
+    orderBtn.textContent = "Add to cart";
+  }
+
+  if (orderBtn) {
+    orderBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      var snapshot = getCurrentProductSnapshot();
+      if (!snapshot) return;
+      if (!window.Page2Cart || typeof window.Page2Cart.add !== "function") return;
+
+      window.Page2Cart.add(snapshot);
+
+      orderBtn.classList.add("product-order-btn--added");
+      orderBtn.textContent = "Added";
+
+      if (orderBtnResetTimer) {
+        window.clearTimeout(orderBtnResetTimer);
+      }
+      orderBtnResetTimer = window.setTimeout(function () {
+        orderBtnResetTimer = null;
+        resetOrderButton();
+      }, 1400);
     });
   }
 })();

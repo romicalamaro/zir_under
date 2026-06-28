@@ -6,10 +6,39 @@
 }
 
 @font-face {
-  font-family: "DecoType Nastaleeq";
-  src: url("../fonts/DecoTypeNastaleeqUrdu.ttc") format("truetype");
+  font-family: "Suisse Intl Light";
+  src: url("../fonts/WOFF2/SuisseIntlTrial-Light.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suisse Intl Thin";
+  src: url("../fonts/WOFF2/SuisseIntlTrial-Thin.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suisse Intl Bold";
+  src: url("../fonts/WOFF2/SuisseIntlTrial-Bold.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("../fonts/Vazirmatn-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+[lang="fa"] {
+  font-family: "Vazirmatn", sans-serif;
 }
 
 @font-face {
@@ -27,17 +56,19 @@
 }
 
 @font-face {
-  font-family: "PP Radio Grotesk";
-  src: url("../fonts/PPRadioGrotesk-Regular.otf") format("opentype");
+  font-family: "Suisse Intl";
+  src: url("../fonts/WOFF2/SuisseIntlTrial-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
-  font-family: "PP Radio Grotesk";
-  src: url("../fonts/PPRadioGrotesk-Ultralight.otf") format("opentype");
+  font-family: "Suisse Intl";
+  src: url("../fonts/WOFF2/SuisseIntlTrial-Light.woff2") format("woff2");
   font-weight: 200;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -49,8 +80,9 @@
 
 :root {
   --sidebar-width: 28rem;
-  --sidebar-section-border: 2px solid #000;
-  --color-brown: #685450;
+  --sidebar-section-border: 2px solid var(--color-brown);
+  --color-brown: #442c28;
+  --color-text: var(--color-brown);
   --slider-brown: var(--color-brown);
   --slider-scale: 1.5;
   --slider-track-height: calc(1.25rem * var(--slider-scale));
@@ -83,7 +115,7 @@ body {
   height: 100%;
   font-family: system-ui, -apple-system, sans-serif;
   background: #fff;
-  color: #222;
+  color: var(--color-brown);
 }
 
 body {
@@ -189,7 +221,7 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #999;
+  color: var(--color-brown);
   text-align: right;
   line-height: 1.2;
 }
@@ -210,7 +242,7 @@ body {
   margin: 0;
   font-size: 0.75rem;
   line-height: 1.35;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .sidebar__section--identity {
@@ -236,7 +268,7 @@ body {
 .sidebar__identity-heading {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #222;
+  color: var(--color-brown);
   white-space: nowrap;
 }
 
@@ -249,7 +281,7 @@ body {
   content: counter(profile-question, upper-alpha) ". ";
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #999;
+  color: var(--color-brown);
 }
 
 .sidebar__identity-slot {
@@ -389,7 +421,7 @@ body {
   font-size: 0.625rem;
   line-height: 1.25;
   text-align: center;
-  color: #888;
+  color: var(--color-brown);
   background: none;
   border: none;
   padding: 0.1rem 0.05rem;
@@ -398,11 +430,11 @@ body {
 }
 
 .sidebar__identity-regime-label:hover {
-  color: #444;
+  color: var(--color-brown);
 }
 
 .sidebar__identity-regime-label.is-active {
-  color: #222;
+  color: var(--color-brown);
   font-weight: 600;
 }
 
@@ -466,7 +498,7 @@ body {
 
 .sidebar__fan-tuning-label {
   font-size: 0.8125rem;
-  color: #666;
+  color: var(--color-brown);
   line-height: 1.2;
 }
 
@@ -561,7 +593,7 @@ body {
   display: block;
   margin-top: 0.35rem;
   font-size: 0.78rem;
-  color: #5a6b52;
+  color: var(--color-brown);
 }
 
 .sidebar__sheet-palette-row {
@@ -599,8 +631,8 @@ body {
 }
 
 .sidebar__palette-btn--active {
-  border-color: #000;
-  background: #000;
+  border-color: var(--color-brown);
+  background: var(--color-brown);
   color: #fff;
 }
 
@@ -623,7 +655,7 @@ body {
 
 .sidebar__palette-active-label {
   font-size: 0.85rem;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--color-brown);
   white-space: nowrap;
 }
 
@@ -726,7 +758,7 @@ body {
 .sidebar__feelings-heading {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #222;
+  color: var(--color-brown);
 }
 
 .sidebar__feelings-slot {
@@ -757,7 +789,7 @@ body {
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #fff;
-  color: #222;
+  color: var(--color-brown);
   text-decoration: none;
   text-align: center;
   cursor: pointer;
@@ -835,7 +867,7 @@ button.sidebar__grid-btn {
   flex: 0 1 auto;
   font-size: 0.75rem;
   line-height: 1.3;
-  color: #666;
+  color: var(--color-brown);
   white-space: nowrap;
 }
 
@@ -887,7 +919,7 @@ button.sidebar__grid-btn {
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #999;
+  color: var(--color-brown);
   text-align: right;
   line-height: 1.2;
 }
@@ -916,7 +948,7 @@ button.sidebar__grid-btn {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-size: 0.8125rem;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .sidebar__item-control input[type="text"] {
@@ -949,11 +981,11 @@ button.sidebar__grid-btn {
 .sidebar__hint {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .sidebar__hint--mode {
-  color: #444;
+  color: var(--color-brown);
   font-style: italic;
 }
 
@@ -967,7 +999,7 @@ button.sidebar__grid-btn {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .sidebar__btn {
@@ -1011,7 +1043,7 @@ button.sidebar__grid-btn {
 .sidebar__field output {
   font-variant-numeric: tabular-nums;
   font-size: 0.8125rem;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .sidebar__toggle {
@@ -1148,20 +1180,10 @@ button.sidebar__grid-btn {
   transform: none;
   max-width: none;
   pointer-events: auto;
-  transition:
-    width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-    left 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #page2 #section-design .stage-wrap.is-questionnaire-focus-zoom {
   overflow: hidden;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #page2 #section-design .stage-wrap #design-svg {
-    transition: none;
-  }
 }
 
 /* ── Design section start gate (before questionnaire) ── */
@@ -1173,6 +1195,9 @@ button.sidebar__grid-btn {
       calc(4 * var(--page2-space-20, 1.25rem))
     )
   );
+  --design-intro-scroll-peek: calc(
+    var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)) * 1.5
+  ); /* 75px @ ref — next intro panel peeks above fold */
   position: absolute;
   top: var(
     --page2-header-band-height,
@@ -1208,38 +1233,44 @@ button.sidebar__grid-btn {
 
 .design-intro__panel:nth-child(1) {
   z-index: 1;
+  height: calc(
+    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
+  );
+  min-height: calc(
+    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
+  );
 }
 
 .design-intro__panel:nth-child(2) {
   z-index: 2;
 }
 
-.design-intro__panel:nth-child(3) {
-  z-index: 3;
-}
-
-.design-intro__panel--light {
+.design-intro__panel--light:not(.design-intro__panel--headscarf) {
   background: var(--page2-bg, #fff);
   color: var(--color-brown);
 }
 
-.design-intro__panel:nth-child(1).design-intro__panel--light {
+.design-intro__panel:nth-child(1).design-intro__panel--light:not(
+    .design-intro__panel--headscarf
+  ) {
   background-color: var(--page2-bg, #fff);
 }
 
-.design-intro__panel--headscarf {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
-  column-gap: var(--page2-gutter, 1.25rem);
-  row-gap: clamp(0.5rem, 1.5cqh, 1rem);
-  padding-block: var(--page2-gutter, 1.25rem);
-  padding-inline: 0;
+.design-intro__panel--headscarf.design-intro__panel--light {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
+  color: var(--page2-bg, #fff);
+  background: var(--page2-bg, #fff) url("../website/design/1.webp") center / cover
+    no-repeat;
 }
 
+/* 3D headscarf slot — hidden for now; re-enable via DESIGN_INTRO_HEADSCARF_3D_ENABLED */
 .design-intro__panel--headscarf .design-intro__headscarf-3d {
+  display: none;
   grid-column: 1 / -1;
   grid-row: 1;
   position: relative;
@@ -1252,22 +1283,28 @@ button.sidebar__grid-btn {
 }
 
 .design-intro__panel--headscarf .design-intro__panel-inner {
-  grid-column: 1 / -1;
-  grid-row: 2;
   position: relative;
   z-index: 3;
-  justify-content: center;
-  height: auto;
-  min-height: 0;
-  padding: 0 var(--page2-margin-inline, 1.25rem);
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--page2-space-30); /* 30px @ ref — EN/FA intro spacing */
+  height: 100%;
+  min-height: 100%;
+  padding-top: calc(var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)) * 2); /* 100px @ ref */
+  padding-inline: var(--page2-margin-inline, 1.25rem);
+  text-align: center;
+  color: inherit;
 }
 
 .design-intro__panel--headscarf .design-intro__text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  max-width: none;
+  max-width: 42rem;
+  color: inherit;
+}
+
+.design-intro__panel--headscarf .design-intro__text--fa {
+  font-family: "Vazirmatn", sans-serif;
+  font-weight: 400;
 }
 
 /* Keep design canvas from painting over the intro gate */
@@ -1306,6 +1343,21 @@ button.sidebar__grid-btn {
   color: inherit;
 }
 
+.design-intro__panel--light:not(.design-intro__panel--headscarf)
+  .design-intro__panel-inner {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--page2-gutter, 1.25rem);
+  row-gap: 1.25rem;
+  align-content: center;
+}
+
+.design-intro__panel--light:not(.design-intro__panel--headscarf)
+  .design-intro__text:not(.design-intro__text--secondary) {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
 .design-intro__panel--brown .design-intro__panel-inner {
   color: inherit;
 }
@@ -1313,13 +1365,21 @@ button.sidebar__grid-btn {
 .design-intro__text {
   margin: 0;
   max-width: 42rem;
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
-  font-size: calc(
+  --design-intro-text-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5
   );
+  font-size: var(--design-intro-text-size);
   line-height: 1.15;
   color: inherit;
+}
+
+.design-intro__panel--light:not(.design-intro__panel--headscarf)
+  .design-intro__text--secondary {
+  font-size: calc(var(--design-intro-text-size) * 0.5);
+  max-width: none;
+  grid-column: 6 / span 2;
 }
 
 .design-intro__shop-link {
@@ -1360,6 +1420,52 @@ button.sidebar__grid-btn {
   margin-top: 0.5rem;
 }
 
+.design-intro__panel--light:not(.design-intro__panel--headscarf) .design-start__btn {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+.design-start__lang-btns {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.5rem, 1.2vw, 0.875rem);
+  margin-top: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+.design-start__lang-btns .design-start__btn {
+  margin-top: 0;
+}
+
+#questionnaire-scroll[lang="fa"] {
+  font-family: "Vazirmatn", sans-serif;
+}
+
+#questionnaire-scroll[lang="fa"] .questionnaire-madlibs-blank--english {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Spatial controls: keep left-to-right order/behavior like English even in FA UI */
+#questionnaire-scroll[lang="fa"] :is(
+  .questionnaire-slider-wrap,
+  .questionnaire-feelings-spider,
+  .questionnaire-palette-picker,
+  .questionnaire-options--grid-type,
+  .questionnaire-feelings-hope-options
+) {
+  direction: ltr;
+}
+
+/* Handkerchief canvas — always LTR / English layout regardless of questionnaire locale */
+.questionnaire-panel__canvas,
+#questionnaire-canvas-host,
+.questionnaire-panel__canvas .stage-wrap {
+  direction: ltr;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .design-intro__panel-inner {
     transform: none !important;
@@ -1367,33 +1473,89 @@ button.sidebar__grid-btn {
   }
 }
 
+#design-start-btn-fa {
+  font-family: "Vazirmatn", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: clamp(0.805rem, 0.932vw, 1.006rem); /* 1.15× — match EN btn visual size */
+}
+
 .design-start__btn {
   flex-shrink: 0;
-  padding: 0.45rem 1.1rem;
-  font-family: "PP Monument Condensed", sans-serif;
-  font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85);
-  font-weight: 700;
+  padding: clamp(0.35rem, 0.486vw, 0.525rem)
+    clamp(0.875rem, 1.215vw, 1.3125rem); /* match product-order-btn */
+  font-family: "Suisse Intl Light", sans-serif;
+  font-size: clamp(0.7rem, 0.81vw, 0.875rem);
+  font-weight: normal;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-brown);
-  background: transparent;
+  color: #fff;
+  background: var(--color-brown);
   border: 1px solid var(--color-brown);
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
-  transition:
-    color 0.15s ease,
-    border-color 0.15s ease,
-    background 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .design-start__btn:hover:not(:disabled) {
-  color: #fff;
-  background: var(--color-brown);
+  background: #fff;
+  color: var(--color-brown);
+}
+
+.design-start__btn:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 .design-start__btn:focus-visible {
   outline: 2px solid var(--color-brown);
   outline-offset: 2px;
+}
+
+#section-design.section-design--intro-slide {
+  overflow: hidden;
+}
+
+#section-design.section-design--intro-slide .questionnaire-panel {
+  z-index: 4;
+  background: var(--page2-bg, #fff);
+  pointer-events: auto;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#section-design.section-design--intro-slide
+  .design-intro__panel:nth-child(2)
+  .design-intro__panel-inner {
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#section-design.section-design--intro-slide-prep .questionnaire-panel {
+  transform: translateY(100%);
+}
+
+#section-design.section-design--intro-slide-active
+  .design-intro__panel:nth-child(2)
+  .design-intro__panel-inner {
+  transform: scale(0.94);
+  opacity: 0.75;
+}
+
+#section-design.section-design--intro-slide-active .questionnaire-panel {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #section-design.section-design--intro-slide .questionnaire-panel {
+    transition: none;
+  }
+
+  #section-design.section-design--intro-slide
+    .design-intro__panel:nth-child(2)
+    .design-intro__panel-inner {
+    transition: none;
+  }
 }
 
 #section-design.section-design--questionnaire-started > .design-start {
@@ -1404,8 +1566,15 @@ button.sidebar__grid-btn {
   display: block;
 }
 
-#section-design:not(.section-design--questionnaire-started) > .questionnaire-panel {
+#section-design:not(.section-design--questionnaire-started):not(
+    .section-design--intro-slide
+  )
+  > .questionnaire-panel {
   display: none !important;
+}
+
+#section-design.section-design--intro-slide > .questionnaire-panel {
+  display: block !important;
 }
 
 #section-design.section-design--questionnaire-started > .app-shell {
@@ -1427,11 +1596,32 @@ button.sidebar__grid-btn {
   z-index: 2;
   pointer-events: none;
   --questionnaire-text-scale: 1.5;
+  /* Set by syncQuestionnaireCardHeights() from longest header/body content */
+  --questionnaire-card-header-height: auto;
+  --questionnaire-card-expanded-height: auto;
+}
+
+.questionnaire-panel--measuring .questionnaire-card,
+.questionnaire-panel--measuring .questionnaire-card.is-expanded {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+.questionnaire-panel--measuring .questionnaire-card__header {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.questionnaire-panel--measuring .questionnaire-card__body {
+  flex: none !important;
+  overflow: visible !important;
 }
 
 .questionnaire-panel__grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   column-gap: var(--page2-gutter, 1.25rem);
   box-sizing: border-box;
   position: relative;
@@ -1441,70 +1631,41 @@ button.sidebar__grid-btn {
   align-items: stretch;
 }
 
-.questionnaire-panel__progress {
-  position: absolute;
-  top: calc(
-    50vh - var(--page2-header-band-height, calc(4 * var(--page2-space-20, 1.25rem)))
-  );
-  left: var(--page2-margin-inline, 1.25rem);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: var(--page2-progress-gap, calc(var(--page2-space-20, 1.25rem) * 0.5));
+.questionnaire-panel__remaining {
   margin: 0;
-  padding: 0;
-  transform: translateY(-50%);
+  font-family: "Suisse Intl", sans-serif;
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
+      var(--questionnaire-text-scale, 1)
+  );
+  font-weight: 200;
+  line-height: 1.2;
+  color: var(--color-brown);
+}
+
+.questionnaire-panel__scroll {
+  grid-column: 1 / span 6;
+  grid-row: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   pointer-events: auto;
+  padding-top: var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)); /* 50px @ ref — below Design your own */
 }
 
-.questionnaire-panel__progress-dot {
-  position: relative;
-  width: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
-  height: var(--page2-progress-dot, clamp(0.6875rem, 0.752vw, 0.9375rem));
-  border-radius: 50%;
-  box-sizing: border-box;
-  border: 1px solid var(--color-brown);
-  background: transparent;
-  flex-shrink: 0;
-  padding: 0;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.questionnaire-panel__progress-dot.is-filled {
-  background: var(--color-brown);
-}
-
-.questionnaire-panel__progress-dot.is-current {
-  background: var(--color-brown);
-}
-
-.questionnaire-panel__progress-dot.is-current::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: var(--page2-progress-dot-ring, clamp(1.125rem, 1.215vw, 1.5rem));
-  height: var(--page2-progress-dot-ring, clamp(1.125rem, 1.215vw, 1.5rem));
-  border: 2px solid var(--color-brown);
-  border-radius: 50%;
-  box-sizing: border-box;
-  transform: translate(-50%, -50%);
+.questionnaire-panel__canvas {
+  grid-column: 7 / -1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  align-self: stretch;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--page2-bg, #fff);
+  z-index: 3;
   pointer-events: none;
-}
-
-.questionnaire-panel__progress-dot.is-clickable {
-  cursor: pointer;
-}
-
-.questionnaire-panel__progress-dot.is-clickable:hover,
-.questionnaire-panel__progress-dot.is-clickable:focus-visible {
-  outline: 2px solid var(--color-brown);
-  outline-offset: 3px;
-}
-
-.questionnaire-panel__progress-dot:disabled {
-  cursor: default;
 }
 
 /* Family section answers — circles match questionnaire section progress dots (13px) */
@@ -1577,7 +1738,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-family-dot-options .family-dot-option__label {
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
@@ -1585,157 +1746,7 @@ button.sidebar__grid-btn {
   );
 }
 
-.questionnaire-panel__grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  column-gap: var(--page2-gutter, 1.25rem);
-  box-sizing: border-box;
-  position: relative;
-  height: 100%;
-  min-height: 100%;
-  padding-inline: var(--page2-margin-inline, 1.25rem);
-  align-items: stretch;
-}
-
-.questionnaire-panel__section-header {
-  grid-column: 1 / span 6;
-  grid-row: 1;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-shrink: 0;
-  padding-block: 0 1.25rem;
-  padding-inline-start: calc((100% / 6) + var(--page2-gutter, 1.25rem));
-  padding-inline-end: 0;
-  position: relative;
-  z-index: 10;
-  pointer-events: auto;
-  font-family: "PP Radio Grotesk", sans-serif;
-  font-weight: 200;
-}
-
-.questionnaire-panel__scroll {
-  --questionnaire-step-height: 100cqh;
-  grid-column: 1 / -1;
-  grid-row: 2;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  container-type: size;
-  container-name: questionnaire-stack;
-  pointer-events: auto;
-}
-
-.questionnaire-stack {
-  display: contents;
-}
-
-.questionnaire-stack__panel {
-  position: sticky;
-  top: 0;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  column-gap: var(--page2-gutter, 1.25rem);
-  height: var(--questionnaire-step-height);
-  min-height: var(--questionnaire-step-height);
-  height: 100cqh;
-  min-height: 100cqh;
-}
-
-.questionnaire-stack__panel:nth-child(1) { z-index: 1; }
-.questionnaire-stack__panel:nth-child(2) { z-index: 2; }
-.questionnaire-stack__panel:nth-child(3) { z-index: 3; }
-.questionnaire-stack__panel:nth-child(4) { z-index: 4; }
-.questionnaire-stack__panel:nth-child(5) { z-index: 5; }
-.questionnaire-stack__panel:nth-child(6) { z-index: 6; }
-.questionnaire-stack__panel:nth-child(7) { z-index: 7; }
-
-.questionnaire-stack__panel-bg {
-  grid-column: 1 / span 6;
-  grid-row: 1;
-  align-self: stretch;
-  pointer-events: none;
-}
-
-.canvas-stack__panel-bg {
-  grid-column: 7 / span 6;
-  grid-row: 1;
-  align-self: stretch;
-  pointer-events: none;
-}
-
-.questionnaire-stack__panel--light .questionnaire-stack__panel-bg,
-.questionnaire-stack__panel--light .canvas-stack__panel-bg {
-  background: var(--page2-bg, #fff);
-}
-
-.questionnaire-stack__panel--brown .questionnaire-stack__panel-bg,
-.questionnaire-stack__panel--brown .canvas-stack__panel-bg {
-  background: var(--color-brown);
-}
-
-.questionnaire-stack__panel--light {
-  color: var(--color-brown);
-}
-
-.questionnaire-stack__panel--brown {
-  color: var(--page2-bg, #fff);
-}
-
-.questionnaire-stack__panel-inner {
-  grid-column: 2 / span 4;
-  grid-row: 1;
-  align-self: center;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 100%;
-  transform-origin: center top;
-  position: relative;
-  z-index: 1;
-}
-
-.canvas-stack__panel-inner {
-  grid-column: 7 / span 6;
-  grid-row: 1;
-  position: relative;
-  align-self: stretch;
-  min-height: 0;
-  overflow: hidden;
-  transform-origin: center top;
-  z-index: 1;
-}
-
-.canvas-stack__snapshot {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.canvas-stack__snapshot-wrap {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.canvas-stack__snapshot svg {
-  pointer-events: none;
-}
-
-.canvas-stack__live-slot {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.canvas-stack__live-slot .stage-wrap {
+.questionnaire-panel__canvas .stage-wrap {
   position: relative;
   width: 100%;
   height: 100%;
@@ -1744,105 +1755,135 @@ button.sidebar__grid-btn {
   pointer-events: none;
 }
 
-.canvas-stack__live-slot .stage-wrap #design-svg {
+.questionnaire-panel__canvas .stage-wrap #design-svg {
   pointer-events: auto;
 }
 
-#section-design.section-design--questionnaire-started > .app-shell > .main:empty {
-  min-height: 0;
+.questionnaire-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-block-end: var(--page2-space-20, 1.25rem);
 }
 
-.questionnaire-stack__panel--feelings .questionnaire-stack__panel-inner {
-  align-self: stretch;
-  overflow-y: auto;
-  padding-block: 1rem;
+.questionnaire-card {
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 1px solid var(--color-brown);
+  overflow: hidden;
 }
 
-.questionnaire-panel__section-label {
-  margin: 0;
+.questionnaire-card:first-child {
+  border-top: 1px solid var(--color-brown);
+}
+
+.questionnaire-card:not(.is-expanded) {
+  height: var(--questionnaire-card-header-height);
+  min-height: var(--questionnaire-card-header-height);
+}
+
+.questionnaire-card.is-expanded {
+  display: flex;
+  flex-direction: column;
+  height: var(--questionnaire-card-expanded-height);
+  min-height: var(--questionnaire-card-expanded-height);
+  max-height: var(--questionnaire-card-expanded-height);
+}
+
+.questionnaire-card--light {
+  background: var(--page2-bg, #fff);
+  color: var(--color-brown);
+}
+
+.questionnaire-card--brown {
+  background: var(--color-brown);
+  color: var(--page2-bg, #fff);
+}
+
+.questionnaire-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--page2-gutter, 1.25rem);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: var(--questionnaire-card-header-height);
+  height: var(--questionnaire-card-header-height);
+  padding-block: var(--page2-space-4, 0.25rem);
+  padding-inline: calc((100% / 6) + var(--page2-gutter, 1.25rem))
+    var(--page2-gutter, 1.25rem);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.questionnaire-card.is-expanded .questionnaire-card__header {
+  cursor: default;
+}
+
+.questionnaire-card.is-locked .questionnaire-card__header {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.questionnaire-card__header:disabled {
+  cursor: default;
+}
+
+.questionnaire-card__header:not(:disabled):hover,
+.questionnaire-card__header:not(:disabled):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.questionnaire-card__num {
+  flex-shrink: 0;
+  font-family: "Suisse Intl", sans-serif;
+  font-size: clamp(0.625rem, 0.81vw, 0.8125rem);
+  font-weight: 200;
+  line-height: 1.2;
+  opacity: 0.75;
+}
+
+.questionnaire-card__title {
+  flex: 1;
+  min-width: 0;
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #666;
-  transition:
-    transform 0.45s cubic-bezier(0.7, 0, 0.3, 1),
-    opacity 0.45s cubic-bezier(0.7, 0, 0.3, 1);
-  will-change: transform, opacity;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
-.questionnaire-panel__section-label.is-entering-forward {
-  transition: none;
+.questionnaire-card__body {
+  padding-inline: calc((100% / 6) + var(--page2-gutter, 1.25rem));
+  padding-block: 0 var(--page2-space-20, 1.25rem);
+  min-height: 0;
 }
 
-.questionnaire-panel__section-label.is-awaiting-enter {
-  visibility: hidden;
+.questionnaire-card.is-expanded .questionnaire-card__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-block: 0.5rem var(--page2-space-20, 1.25rem);
 }
 
-.questionnaire-panel__section-label.is-entering-back:not(.is-active) {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--enter-upper, 100vh)));
-  transition-delay: 0ms;
-}
-
-.questionnaire-panel__section-label.is-entering-back.is-active {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.questionnaire-panel__section-label.is-exiting-forward {
-  opacity: 0;
-  transform: translateY(calc(-1 * var(--exit-upper, 100vh)));
-  transition-delay: 0ms;
-}
-
-.questionnaire-panel__section-label.is-exiting-back {
-  opacity: 0;
-  transform: translateY(var(--exit-upper, 100vh));
-  transition-delay: 80ms;
-}
-
-.questionnaire-panel__section-label.is-active:not(.is-entering-forward):not(.is-entering-back) {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.questionnaire-skip {
-  flex-shrink: 0;
-  padding: 0.25rem 0.65rem;
-  font-family: "PP Monument Condensed", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
-      var(--questionnaire-text-scale, 1)
-  );
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #666;
-  background: transparent;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  transition:
-    color 0.15s ease,
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.questionnaire-skip:hover:not(:disabled) {
-  color: var(--color-brown);
-  border-color: #999;
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.questionnaire-skip:focus-visible {
-  outline: 2px solid var(--color-brown);
-  outline-offset: 2px;
+#section-design.section-design--questionnaire-started > .app-shell > .main:empty {
+  min-height: 0;
 }
 
 .questionnaire-step {
@@ -1860,16 +1901,14 @@ button.sidebar__grid-btn {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .questionnaire-stack__panel-inner,
-  .canvas-stack__panel-inner {
-    transform: none !important;
-    opacity: 1 !important;
+  .questionnaire-card__body {
+    scroll-behavior: auto;
   }
 }
 
 .questionnaire-step__heading {
   margin: 0;
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 *
       var(--questionnaire-text-scale, 1)
@@ -1881,7 +1920,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-step__heading::before {
   content: attr(data-letter) ". ";
-  color: #999;
+  color: var(--color-brown);
 }
 
 .questionnaire-step__heading:not([data-letter])::before,
@@ -2021,7 +2060,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-input::placeholder {
-  color: #aaa;
+  color: var(--color-brown);
   font-weight: 700;
   text-transform: none;
 }
@@ -2040,7 +2079,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-typewriter-chunk.is-active::after {
   content: "|";
-  animation: questionnaire-typewriter-caret 0.85s step-end infinite;
+  animation: questionnaire-typewriter-caret 0.5s step-end infinite;
 }
 
 .questionnaire-profile-madlibs.is-typewriting
@@ -2101,13 +2140,13 @@ button.sidebar__grid-btn {
   height: auto;
   background: none;
   transform: none;
-  animation: questionnaire-typewriter-caret 0.85s step-end infinite;
+  animation: questionnaire-typewriter-caret 0.5s step-end infinite;
 }
 
 .questionnaire-profile-madlibs.is-typewriting
   .is-typewriter-drawing-underline.is-active.questionnaire-madlibs-blank::before {
   content: "|";
-  animation: questionnaire-typewriter-caret 0.85s step-end infinite;
+  animation: questionnaire-typewriter-caret 0.5s step-end infinite;
 }
 
 .questionnaire-profile-madlibs.is-typewriting
@@ -2143,9 +2182,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-panel__grid:has(.questionnaire-step--profile-madlibs)
-  .questionnaire-panel__section-label,
-.questionnaire-panel__grid:has(.questionnaire-step--profile-madlibs)
-  .questionnaire-skip {
+  .questionnaire-panel__remaining {
   text-transform: none;
 }
 
@@ -2158,13 +2195,13 @@ button.sidebar__grid-btn {
   margin: 0;
   --madlibs-underline-gap: 3px;
   --madlibs-underline-thickness: 3px;
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.35 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.2;
   letter-spacing: 0.01em;
   text-transform: none;
   color: var(--color-brown);
@@ -2173,8 +2210,8 @@ button.sidebar__grid-btn {
 .questionnaire-profile-madlibs input.questionnaire-madlibs-blank,
 .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__label:not(.is-placeholder),
 .questionnaire-profile-madlibs .questionnaire-madlibs-name-mode__input {
-  font-family: "DIN Condensed", sans-serif;
-  font-weight: 700;
+  font-family: "Suisse Intl Light", sans-serif;
+  font-weight: normal;
   text-transform: uppercase;
 }
 
@@ -2633,7 +2670,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-step--complete .questionnaire-step__heading {
-  color: #444;
+  color: var(--color-brown);
 }
 
 .questionnaire-step--complete .questionnaire-step__heading::before {
@@ -2649,7 +2686,7 @@ button.sidebar__grid-btn {
   );
   font-weight: 700;
   line-height: 1.3;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .questionnaire-step--complete .questionnaire-archive-btn {
@@ -2664,7 +2701,7 @@ button.sidebar__grid-btn {
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
-  color: #444;
+  color: var(--color-brown);
 }
 
 .archive-section {
@@ -2675,7 +2712,7 @@ button.sidebar__grid-btn {
   padding: 2rem 1.5rem 3rem;
 }
 
-.signals-section {
+.signs-section {
   box-sizing: border-box;
   width: 100%;
   max-width: 72rem;
@@ -2683,38 +2720,38 @@ button.sidebar__grid-btn {
   padding: 2rem 1.5rem 3rem;
 }
 
-.signals-section__title {
+.signs-section__title {
   margin: 0 0 1.25rem;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.4);
-  font-weight: 700;
-  color: #222;
+  font-weight: normal;
+  color: var(--color-brown);
   text-transform: none;
 }
 
-.signals-section__intro {
+.signs-section__intro {
   margin: 0;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.9);
-  font-weight: 700;
-  color: #888;
+  font-weight: normal;
+  color: var(--color-brown);
 }
 
 .archive-section__title {
   margin: 0 0 1.25rem;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.4);
-  font-weight: 700;
+  font-weight: normal;
   color: var(--color-brown);
   text-transform: none;
 }
 
 .archive-section__empty {
   margin: 0;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.9);
-  font-weight: 700;
-  color: #888;
+  font-weight: normal;
+  color: var(--color-brown);
 }
 
 .archive-grid {
@@ -2775,9 +2812,9 @@ button.sidebar__grid-btn {
   border-radius: 50%;
   background: rgba(34, 34, 34, 0.88);
   color: #fff;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.15);
-  font-weight: 700;
+  font-weight: normal;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -2805,19 +2842,19 @@ button.sidebar__grid-btn {
 
 .archive-card__title {
   margin: 0;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85);
-  font-weight: 700;
-  color: #222;
+  font-weight: normal;
+  color: var(--color-brown);
   line-height: 1.2;
 }
 
 .archive-card__date {
   margin: 0;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65);
-  font-weight: 700;
-  color: #888;
+  font-weight: normal;
+  color: var(--color-brown);
 }
 
 .archive-card__actions {
@@ -2829,14 +2866,14 @@ button.sidebar__grid-btn {
 .archive-card__btn {
   flex: 1;
   padding: 0.35rem 0.5rem;
-  font-family: "DIN Condensed", sans-serif;
+  font-family: "Suisse Intl Light", sans-serif;
   font-size: calc((var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65);
-  font-weight: 700;
+  font-weight: normal;
   border-radius: 3px;
   border: 1px solid #ccc;
   cursor: pointer;
   background: #fff;
-  color: #333;
+  color: var(--color-brown);
 }
 
 .archive-card__btn--delete {
@@ -2876,7 +2913,7 @@ button.sidebar__grid-btn {
   );
   font-weight: 700;
   line-height: 1.3;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .questionnaire-slider-range-label--end {
@@ -3108,31 +3145,16 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
-.questionnaire-step--feelings-all {
-  max-height: none;
-}
-
-.questionnaire-stack__panel--feelings .questionnaire-step--feelings-all {
-  max-height: 100%;
-}
-
-.questionnaire-step--feelings-all .questionnaire-step__anim-lower {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .questionnaire-step--feelings-all .questionnaire-step__answers {
-  overflow-y: auto;
-  gap: 1rem;
+  gap: 0.5rem;
   padding-right: 0.25rem;
 }
 
 .questionnaire-feelings-list {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0;
   width: 100%;
 }
 
@@ -3144,7 +3166,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-feelings-emotion-heading {
   margin: 0;
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
@@ -3169,132 +3191,230 @@ button.sidebar__grid-btn {
   );
   font-weight: 700;
   line-height: 1.3;
-  color: #666;
+  color: var(--color-brown);
 }
 
 .questionnaire-feelings-hope-options {
   width: 100%;
 }
 
-.questionnaire-feelings-grid {
-  display: grid;
-  grid-template-columns: minmax(5.5rem, 1.15fr) repeat(5, minmax(2.75rem, 1fr));
-  gap: 0.35rem 0.25rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.questionnaire-feelings-grid__row {
-  display: contents;
-}
-
-.questionnaire-feelings-grid__row--header {
-  display: contents;
-}
-
-.questionnaire-feelings-grid__label-cell {
-  font-family: "PP Radio Grotesk", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.8 *
-      var(--questionnaire-text-scale, 1)
-  );
-  font-weight: 400;
-  line-height: 1.25;
-  color: var(--color-brown);
-  padding: 0.35rem 0.25rem 0.35rem 0;
-  align-self: center;
-}
-
-.questionnaire-feelings-grid__label-cell--header {
-  padding-bottom: 0.15rem;
-}
-
-.questionnaire-feelings-grid__scale-header {
+.questionnaire-feelings-spider {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0 0.1rem 0.35rem;
-  text-align: center;
-  min-width: 0;
+  justify-content: center;
+  width: 100%;
+  max-width: clamp(20.8rem, 54.6vw, 33.8rem); /* +30% larger spider chart */
+  margin-inline: auto;
+  touch-action: none;
 }
 
-.questionnaire-feelings-grid__scale-number {
-  font-family: "PP Radio Grotesk", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.75 *
-      var(--questionnaire-text-scale, 1)
-  );
-  font-weight: 400;
-  line-height: 1.1;
-  color: var(--color-brown);
+.questionnaire-feelings-spider__svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
 }
 
-.questionnaire-feelings-grid__scale-label {
-  font-family: "PP Radio Grotesk", sans-serif;
+.questionnaire-feelings-spider__ring {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* Concentric step-lines in warm brown, lightest at the outer edge (step 1) to
+   darkest at the center (step 4 = full --color-brown). Shades are mixed toward
+   a warm caramel (#ddc4a8) instead of white, so every line stays brown rather
+   than turning gray. Step 5 sits at radius 0 (a center point with no length),
+   so it is invisible; the innermost visible line is step 4.
+   The dash length stays constant (3); only the gap changes, growing toward the
+   edge: the outer (minimum) line has large gaps, the inner (maximum) line has a
+   tiny gap so it reads almost solid. */
+.questionnaire-feelings-spider__ring[data-ring-step="1"] {
+  stroke: #ddc4a8;
+  stroke-dasharray: 3 10;
+}
+.questionnaire-feelings-spider__ring[data-ring-step="2"] {
+  stroke: color-mix(in srgb, var(--color-brown) 33%, #ddc4a8);
+  stroke-dasharray: 3 6;
+}
+.questionnaire-feelings-spider__ring[data-ring-step="3"] {
+  stroke: color-mix(in srgb, var(--color-brown) 67%, #ddc4a8);
+  stroke-dasharray: 3 3;
+}
+.questionnaire-feelings-spider__ring[data-ring-step="4"] {
+  stroke: var(--color-brown);
+  stroke-dasharray: 3 1;
+}
+.questionnaire-feelings-spider__ring[data-ring-step="5"] {
+  stroke: var(--color-brown);
+}
+
+.questionnaire-feelings-spider__axis {
+  stroke: rgba(92, 64, 51, 0.14);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.questionnaire-feelings-spider__axis-hit {
+  stroke: transparent;
+  stroke-linecap: round;
+  cursor: grab;
+  pointer-events: stroke;
+}
+
+.questionnaire-feelings-spider__polygon {
+  fill: none;
+  stroke: var(--color-brown);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.questionnaire-feelings-spider__label {
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
-  line-height: 1.15;
-  color: #666;
-  hyphens: auto;
+  fill: var(--color-brown);
+  pointer-events: none;
 }
 
-.questionnaire-feelings-grid__cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.2rem 0;
+.questionnaire-feelings-spider__handle {
+  fill: var(--color-brown);
+  stroke: #fff;
+  stroke-width: 1.5;
+  cursor: grab;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
 }
 
-.questionnaire-feelings-grid__radio {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0;
-  border: 1.5px solid #c8c8c8;
-  border-radius: 50%;
-  background: #fff;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.questionnaire-feelings-grid__radio:checked {
-  border-color: var(--color-brown);
-  background: var(--color-brown);
-  box-shadow: inset 0 0 0 2px #fff;
-}
-
-.questionnaire-feelings-grid__radio:focus-visible {
+.questionnaire-feelings-spider__handle:focus-visible {
   outline: 2px solid var(--color-brown);
   outline-offset: 2px;
 }
 
-.questionnaire-feelings-hope-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+.questionnaire-feelings-spider__handle-hit {
+  fill: transparent;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.questionnaire-feelings-spider__handle:active,
+.questionnaire-feelings-spider__handle-hit:active,
+.questionnaire-feelings-spider__axis-hit:active {
+  cursor: grabbing;
 }
 
 @media (max-width: 640px) {
-  .questionnaire-feelings-grid {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.25rem;
-    min-width: min(100%, 22rem);
+  .questionnaire-feelings-spider {
+    max-width: min(100%, 26rem); /* +30% larger spider chart */
+  }
+
+  .questionnaire-feelings-spider__label {
+    font-size: calc(
+      (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.48 *
+        var(--questionnaire-text-scale, 1)
+    );
   }
 }
 
+.questionnaire-feelings-hope-block {
+  width: 100%;
+  /* Pull up into the empty bottom of the square chart (below the lowest
+     labels) to close the gap between the graph and Hope. */
+  margin-top: -1.5rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Hope: shrink heading to the emotion-label size and tighten its buttons so the
+   whole feelings card fits without scrolling. */
+.questionnaire-feelings-hope-block .questionnaire-section-question-heading {
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
+      var(--questionnaire-text-scale, 1)
+  );
+}
+
+/* Hope View/Merge styled like the Shuffle layout button: square corners,
+   uppercase, black/white. Selected = black fill (Shuffle's default look);
+   unselected = its outlined counterpart. */
+.questionnaire-feelings-hope-options .questionnaire-option {
+  padding: 0.3rem 0.5rem;
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.6 *
+      var(--questionnaire-text-scale, 1)
+  );
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-brown);
+  background: #fff;
+  border: 1px solid var(--color-brown);
+  border-radius: 0;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.questionnaire-feelings-hope-options .questionnaire-option:hover {
+  background: #f5f5f5;
+  border-color: var(--color-brown);
+}
+
+.questionnaire-feelings-hope-options .questionnaire-option.is-selected {
+  background: var(--color-brown);
+  border-color: var(--color-brown);
+  color: #fff;
+}
+
+.questionnaire-feelings-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+/* Match the product "Add to cart" button: black fill, white uppercase text,
+   square corners, inverts to white/brown on hover. */
+.questionnaire-feelings-shuffle-btn {
+  padding: clamp(0.35rem, 0.486vw, 0.525rem)
+    clamp(0.875rem, 1.215vw, 1.3125rem);
+  border: 1px solid var(--color-brown);
+  background: var(--color-brown);
+  color: #fff;
+  font-family: "Suisse Intl Light", sans-serif;
+  font-size: clamp(0.7rem, 0.81vw, 0.875rem);
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.questionnaire-feelings-shuffle-btn:hover:not(:disabled) {
+  background: #fff;
+  color: var(--color-brown);
+}
+
+.questionnaire-feelings-shuffle-btn:focus-visible {
+  outline: 2px solid var(--color-brown);
+  outline-offset: 2px;
+}
+
 .questionnaire-feelings-intro {
-  margin: 0 0 0.75rem;
-  font-family: "PP Radio Grotesk", sans-serif;
+  margin: 0;
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
@@ -3304,24 +3424,8 @@ button.sidebar__grid-btn {
   color: var(--color-brown);
 }
 
-.questionnaire-step--grid-all,
-.questionnaire-step--family-all {
-  max-height: calc(
-    100vh - var(--page2-header-band-height, 5rem) - 8rem
-  );
-}
-
-.questionnaire-step--grid-all .questionnaire-step__anim-lower,
-.questionnaire-step--family-all .questionnaire-step__anim-lower {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .questionnaire-step--grid-all .questionnaire-step__answers,
 .questionnaire-step--family-all .questionnaire-step__answers {
-  overflow-y: auto;
   gap: 1rem;
   padding-right: 0.25rem;
 }
@@ -3342,7 +3446,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-section-question-heading {
   margin: 0;
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
       var(--questionnaire-text-scale, 1)
@@ -3353,8 +3457,7 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-panel__grid :is(
-  .questionnaire-panel__section-label,
-  .questionnaire-skip,
+  .questionnaire-panel__remaining,
   .questionnaire-step__heading,
   .questionnaire-option,
   .questionnaire-input,
@@ -3369,16 +3472,14 @@ button.sidebar__grid-btn {
   .questionnaire-feelings-emotion-heading,
   .questionnaire-feelings-sublabel,
   .questionnaire-feelings-intro,
-  .questionnaire-feelings-grid__label-cell,
-  .questionnaire-feelings-grid__scale-number,
-  .questionnaire-feelings-grid__scale-label,
+  .questionnaire-feelings-spider__label,
   .questionnaire-section-question-heading
 ) {
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
 }
 
-/* Questionnaire answers only — DIN Condensed */
+/* Questionnaire answers only — Suisse Intl Light */
 .questionnaire-panel__grid :is(
   .questionnaire-input,
   .questionnaire-option,
@@ -3389,8 +3490,8 @@ button.sidebar__grid-btn {
   .questionnaire-madlibs-dropdown__option,
   .questionnaire-family-dot-options .family-dot-option__label
 ) {
-  font-family: "DIN Condensed", sans-serif;
-  font-weight: 700;
+  font-family: "Suisse Intl Light", sans-serif;
+  font-weight: normal;
 }
 
 .questionnaire-panel__grid
@@ -3407,35 +3508,35 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-panel__grid .questionnaire-input::placeholder {
-  font-family: "PP Radio Grotesk", sans-serif;
+  font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
 }
 
 /* Brown stack panels — invert text/controls for contrast */
-.questionnaire-stack__panel--brown .questionnaire-profile-madlibs,
-.questionnaire-stack__panel--brown .questionnaire-step__heading,
-.questionnaire-stack__panel--brown .questionnaire-feelings-intro,
-.questionnaire-stack__panel--brown .questionnaire-feelings-emotion-heading,
-.questionnaire-stack__panel--brown .questionnaire-section-question-heading,
-.questionnaire-stack__panel--brown .questionnaire-slider-range-label,
-.questionnaire-stack__panel--brown .questionnaire-slider-output,
-.questionnaire-stack__panel--brown .family-dot-option__label {
+.questionnaire-card--brown .questionnaire-profile-madlibs,
+.questionnaire-card--brown .questionnaire-step__heading,
+.questionnaire-card--brown .questionnaire-feelings-intro,
+.questionnaire-card--brown .questionnaire-feelings-emotion-heading,
+.questionnaire-card--brown .questionnaire-section-question-heading,
+.questionnaire-card--brown .questionnaire-slider-range-label,
+.questionnaire-card--brown .questionnaire-slider-output,
+.questionnaire-card--brown .family-dot-option__label {
   color: var(--page2-bg, #fff);
 }
 
-.questionnaire-stack__panel--brown .family-dot-option__circle {
+.questionnaire-card--brown .family-dot-option__circle {
   border-color: var(--page2-bg, #fff);
 }
 
-.questionnaire-stack__panel--brown .family-dot-option.is-selected .family-dot-option__circle {
+.questionnaire-card--brown .family-dot-option.is-selected .family-dot-option__circle {
   background: var(--page2-bg, #fff);
 }
 
-.questionnaire-stack__panel--brown .questionnaire-option {
+.questionnaire-card--brown .questionnaire-option {
   color: var(--page2-bg, #fff);
   border-color: var(--page2-bg, #fff);
 }
 
-.questionnaire-stack__panel--brown .questionnaire-profile-madlibs {
+.questionnaire-card--brown .questionnaire-profile-madlibs {
   --madlibs-underline-color: var(--page2-bg, #fff);
 }

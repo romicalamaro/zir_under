@@ -6,18 +6,18 @@
    * Update when gallery ↔ combination assignments are finalized.
    */
   var SHOP_FOLDER_TO_COMBO = {
-    "name 01": 3,
+    "name 01": 6,
     "name 02": 2,
     "name 03": 4,
     "name 04": 3,
-    "name 05": 4,
-    "name 06": 5,
-    "name 07": 6,
-    "name 08": 7,
+    "name 05": 5,
+    "name 06": 1,
+    "name 07": 7,
+    "name 08": 8,
     "name 09": 0,
-    "name 10": 1,
-    "name 11": 2,
-    "name 12": 3,
+    "name 10": 5,
+    "name 11": 1,
+    "name 12": 6,
   };
 
   var DISPLAY_SECTIONS = [
@@ -92,6 +92,7 @@
   };
 
   var specEl = document.getElementById("product-spec");
+  var priceEl = document.getElementById("product-price");
 
   function isEmptyValue(raw) {
     if (raw === undefined || raw === null) return true;
@@ -173,6 +174,7 @@
       unavailable.className = "product-spec__unavailable";
       unavailable.textContent = "Profile unavailable.";
       specEl.appendChild(unavailable);
+      renderProductPrice();
       return;
     }
 
@@ -208,17 +210,202 @@
       sectionEl.appendChild(dl);
       specEl.appendChild(sectionEl);
     }
+
+    renderProductPrice();
+  }
+
+  function renderProductPrice() {
+    if (!priceEl) return;
+    priceEl.hidden = false;
+    renderShopCardPriceText(priceEl, PRODUCT_PAGE_PRICE);
+  }
+
+  function clearProductPrice() {
+    if (!priceEl) return;
+    priceEl.textContent = "";
+    priceEl.hidden = true;
   }
 
   function clearProductSpec() {
     if (!specEl) return;
     specEl.textContent = "";
     specEl.hidden = true;
+    clearProductPrice();
+  }
+
+  function formatShopDisplayText(text) {
+    var str = String(text || "").trim();
+    if (!str) return str;
+
+    // Initials like "E.M." or "M.R." — keep each letter capitalized.
+    if (/^[A-Za-z](\.[A-Za-z]\.)+$/.test(str)) {
+      return str
+        .split(".")
+        .filter(Boolean)
+        .map(function (part) {
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        })
+        .join(".") + ".";
+    }
+
+    // Acronyms that stay fully uppercase.
+    if (/^usa$/i.test(str)) return "USA";
+
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+
+  function getShopCardLineParts(name, row) {
+    var baseName = formatShopDisplayText(name);
+    if (!baseName) return [];
+
+    var parts = [baseName];
+    if (row) {
+      var age = formatValue("age", row.age);
+      var nowIn = formatShopDisplayText(formatValue("nowIn", row.nowIn));
+      if (age !== "—") parts.push(age);
+      if (nowIn !== "—") parts.push(nowIn);
+    }
+    return parts;
+  }
+
+  function setTextWithThinNumbers(el, text) {
+    el.textContent = "";
+    var digitPattern = /\d+/g;
+    var lastIndex = 0;
+    var match;
+
+    while ((match = digitPattern.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        el.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+      }
+
+      var numEl = document.createElement("span");
+      numEl.className = "shop-card__num";
+      numEl.textContent = match[0];
+      el.appendChild(numEl);
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      el.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+  }
+
+  function renderShopCardName(nameEl, parts) {
+    nameEl.textContent = "";
+    if (!parts.length) {
+      delete nameEl.dataset.shopLineText;
+      return;
+    }
+
+    parts.forEach(function (part, index) {
+      if (index > 0) {
+        var sep = document.createElement("span");
+        sep.className = "shop-card__name-sep";
+        sep.setAttribute("aria-hidden", "true");
+        nameEl.appendChild(sep);
+      }
+
+      var partEl = document.createElement("span");
+      partEl.className = "shop-card__name-part";
+      if (/^\d+$/.test(part)) {
+        partEl.classList.add("shop-card__num");
+        partEl.textContent = part;
+      } else {
+        partEl.textContent = part;
+      }
+      nameEl.appendChild(partEl);
+    });
+
+    nameEl.dataset.shopLineText = parts.join(", ");
+  }
+
+  function renderShopCardPriceText(el, text) {
+    el.textContent = "";
+    var priceMatch = text.match(/^(.*?)(\$)(\d+)(\.\d+)(.*)$/);
+    if (!priceMatch) {
+      setTextWithThinNumbers(el, text);
+      return;
+    }
+
+    if (priceMatch[1]) {
+      el.appendChild(document.createTextNode(priceMatch[1]));
+    }
+
+    el.appendChild(document.createTextNode(priceMatch[2]));
+
+    var dollarsEl = document.createElement("span");
+    dollarsEl.className = "shop-card__num";
+    dollarsEl.textContent = priceMatch[3];
+    el.appendChild(dollarsEl);
+
+    el.appendChild(document.createTextNode(priceMatch[4]));
+
+    if (priceMatch[5]) {
+      el.appendChild(document.createTextNode(priceMatch[5]));
+    }
+  }
+
+  var SHOP_CARD_PRICE = "From $59.00 USD";
+  var PRODUCT_PAGE_PRICE = "$59.00 USD";
+
+  function renderShopCardPrice(metaEl) {
+    if (!metaEl) return;
+
+    var priceEl = metaEl.querySelector(".shop-card__price");
+    if (!priceEl) {
+      priceEl = document.createElement("p");
+      priceEl.className = "shop-card__price";
+      metaEl.appendChild(priceEl);
+    }
+
+    renderShopCardPriceText(priceEl, SHOP_CARD_PRICE);
+  }
+
+  function populateShopGalleryCards() {
+    var cards = document.querySelectorAll("#section-shop .shop-card");
+    if (!cards.length) return;
+
+    cards.forEach(function (card) {
+      var folder = card.getAttribute("data-shop-folder");
+      var row = getComboRow(folder);
+      var metaEl = card.querySelector(".shop-card__meta");
+      var nameEl = card.querySelector(".shop-card__name");
+      if (!nameEl) return;
+
+      if (!nameEl.dataset.shopBaseName) {
+        nameEl.dataset.shopBaseName = nameEl.textContent.trim();
+      }
+
+      var detailsEl = card.querySelector(".shop-card__details");
+      if (detailsEl) detailsEl.remove();
+
+      renderShopCardName(nameEl, getShopCardLineParts(nameEl.dataset.shopBaseName, row));
+      renderShopCardPrice(metaEl);
+    });
+  }
+
+  function initShopGalleryCards() {
+    populateShopGalleryCards();
+
+    if (
+      window.HandkerchiefCombinations &&
+      typeof window.HandkerchiefCombinations.getCombinations === "function" &&
+      !window.HandkerchiefCombinations.getCombinations().length &&
+      typeof window.HandkerchiefCombinations.loadCombinationsFromCsv === "function"
+    ) {
+      window.HandkerchiefCombinations.loadCombinationsFromCsv().then(function () {
+        populateShopGalleryCards();
+      });
+    }
   }
 
   window.ProductComboSpec = {
     render: renderProductSpec,
     clear: clearProductSpec,
+    populateShopGalleryCards: populateShopGalleryCards,
     SHOP_FOLDER_TO_COMBO: SHOP_FOLDER_TO_COMBO,
   };
+
+  initShopGalleryCards();
 })();

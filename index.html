@@ -9,7 +9,7 @@
       }
     </script>
     <title>Octagons Grid — 68×180cm @ 300 DPI</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260624-headscarf-static" />
+    <link rel="stylesheet" href="css/styles.css?v=20260627-design-peek" />
     <!-- Header grid must exist before body paints — JS refines track widths later. -->
     <style id="page2-header-critical">
       #page2 {
@@ -117,10 +117,10 @@
             <div class="page2-header-cell"></div>
             <div class="page2-header-cell">
               <span class="page2-col-title">
-                <span class="page2-col-title__en">signals</span
+                <span class="page2-col-title__en">signs</span
                 ><span class="page2-col-title__sep">/ </span
                 ><span class="page2-col-title__fa" lang="fa" dir="rtl"
-                  >سیگنال‌ها</span
+                  >نشانه‌ها</span
                 >
               </span>
             </div>
@@ -178,6 +178,10 @@
                 aria-expanded="false"
                 aria-controls="page2-cart-drawer"
               >
+                <span
+                  class="page2-cart-trigger__icon-surface"
+                  aria-hidden="true"
+                ></span>
                 <svg
                   class="page2-cart-trigger__icon"
                   width="24"
@@ -193,6 +197,11 @@
                   <circle cx="9" cy="20" r="1.75" fill="currentColor" stroke="none" />
                   <circle cx="18" cy="20" r="1.75" fill="currentColor" stroke="none" />
                 </svg>
+                <span
+                  class="page2-cart-trigger__count"
+                  hidden
+                  aria-hidden="true"
+                ></span>
               </button>
             </div>
             <div class="page2-header-cell"></div>
@@ -200,7 +209,7 @@
         </header>
 
         <p class="page2-header-section-banner page2-header-shop-banner">
-          All designed by Iranian women who lived outside Iran
+          All textiles designed by Iranian women who live outside Iran
         </p>
 
         <p class="page2-header-section-banner page2-header-design-banner">
@@ -209,12 +218,78 @@
 
         <div class="page2-logo" aria-label="Site logo">
           <div class="page2-logo__slot">
+            <div class="page2-logo__image" role="img" aria-label="Under Cover">
+              <div
+                class="page2-logo__layer page2-logo__layer--white"
+                aria-hidden="true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 72.15 33.64"
+                  focusable="false"
+                >
+                  <path
+                    d="M9.32,24.5H1.76V5.29H0v17.33c0,.32.03.58.13.86.8,2.37,2.08,4.29,3.52,5.57.1.06.16.1.29.1h3.2c.13,0,.19-.03.29-.1,1.44-1.28,2.72-3.2,3.52-5.57.1-.29.13-.54.13-.86V5.29h-1.76v19.22Z"
+                  />
+                  <path
+                    d="M56.78,25.31h-6.47c-.13,0-.19-.03-.29-.1-.42-.35-.7-.74-.86-1.25-.06-.13-.06-.19-.06-.32v-3.23h9.67v-3.62c0-.32-.03-.58-.16-.86-.67-1.67-1.57-2.66-3.04-3.81-.26-.19-.48-.26-.8-.26h-3.14c-.32,0-.54.1-.8.29-1.76,1.47-2.69,3.07-3.3,5.06-.1.29-.13.54-.13.86v4.87c0,.32.03.58.16.86.77,2.24,1.76,3.84,3.3,5.09.26.19.48.26.8.26h3.52c.32,0,.54-.06.8-.29,1.86-1.51,2.75-3.01,3.36-5.09.03-.13.03-.19.03-.32v-.06h-1.51l-1.09,1.92ZM49.09,15.7h7.97v3.11h-7.97v-3.11Z"
+                  />
+                  <path
+                    d="M72.12,17.39c-.93-2.88-1.99-4.29-3.17-5.12-.29-.19-.51-.26-.83-.26h-.99c-.32,0-.54.06-.8.26-.8.64-1.57,1.7-2.08,2.43h-.77l-.32-2.53h-3.3v3.68h3.04v10.09h-3.04v3.2h8.74v-3.2h-4v-10.09h4.96l1.09,1.92h1.51v-.06c0-.13,0-.19-.03-.32Z"
+                  />
+                  <path
+                    d="M30.53,22.36c.6-.37,1.12-.81,1.55-1.32.9-1.03,1.71-3.37,2.43-7.02l-.88-.12c-.33.99-.67,1.67-1.02,2.02-.2.2-.54.45-1.02.76-.49.31-1.13.69-1.93,1.14-.8.43-1.46.89-1.99,1.37-.53.49-.93.98-1.2,1.49l-1.73,3.12c-.32.52-.64,1.01-.96,1.41-.01.02-.03.04-.05.05v-7.21c0-.32-.03-.58-.16-.86-.83-2.21-1.76-3.68-3.27-4.9-.26-.22-.48-.29-.8-.29h-1.38c-.32,0-.54.06-.83.22-.87.64-1.95,1.92-2.47,2.66h-.93l-.32-2.72h-1.28v16.97h1.7v-12.65h8.04v10.46c-.51.43-1.12.92-1.85,1.48-2.18,1.66-4.23,3.15-6.14,4.47l.23.73c1.7-.35,3.55-.82,5.56-1.4.97-.29,1.75-.54,2.34-.74.59-.2.95-.38,1.11-.51.29-.23.73-1.19,1.32-2.87.29-.84.56-1.56.8-2.18.24-.61.54-1.11.89-1.51.03-.03.08-.05.11-.09.44-.37,1.13-.72,2.11-1.06.74-.25,1.41-.57,2.02-.94Z"
+                  />
+                  <path
+                    d="M48.63,10.68c.4-1.3.72-2.47.95-3.52l-1.05-.15c-.29.78-.55,1.45-.78,2-.22.55-.44,1.05-.64,1.49-.2.44-.43.88-.69,1.33-.02.04-.05.09-.08.13v-7s-1.7,0-1.7,0v9.51h-.93c-.51-.74-1.6-1.83-2.47-2.4-.29-.16-.51-.22-.83-.22h-1.25c-.32,0-.54.1-.8.29-1.76,1.47-2.69,3.17-3.3,5.16-.1.29-.13.54-.13.86v4.38c-.41.27-.8.52-1.07.71l.23.73c.22-.06.6-.17,1-.28.83,2.24,1.76,3.91,3.27,5.16.26.22.48.29.8.29h1.34c.32,0,.54-.06.83-.22.86-.58,1.95-1.67,2.47-2.4h.93l.31,2.66h1.28v-12.63c.32-.64.62-1.32.92-2.03.52-1.27.97-2.55,1.37-3.85ZM43.47,15.76c-.51.51-1.05,1.02-1.66,1.56-.83.73-1.68,1.45-2.54,2.16-.69.57-1.81,1.31-2.63,1.88v-5.6h6.83ZM36.64,25.24v-2.02c.7-.25,1.58-.59,2.12-.77.76-.25,1.49-.51,2.21-.76.71-.25,1.33-.5,1.86-.73.53-.23.87-.42,1.02-.56.27-.26.53-.57.8-.93v5.77h-8.01Z"
+                  />
+                  <path
+                    d="M49.37,4.59l1.86-1.86c.24-.24.24-.63,0-.87l-1.86-1.86-1.86,1.86c-.24.24-.24.63,0,.87l1.86,1.86Z"
+                  />
+                  <rect x="27.1" y="25.97" width="6.43" height="3.18" />
+                </svg>
+              </div>
+              <div
+                class="page2-logo__layer page2-logo__layer--brown"
+                aria-hidden="true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 72.15 33.64"
+                  focusable="false"
+                >
+                  <path
+                    d="M9.32,24.5H1.76V5.29H0v17.33c0,.32.03.58.13.86.8,2.37,2.08,4.29,3.52,5.57.1.06.16.1.29.1h3.2c.13,0,.19-.03.29-.1,1.44-1.28,2.72-3.2,3.52-5.57.1-.29.13-.54.13-.86V5.29h-1.76v19.22Z"
+                  />
+                  <path
+                    d="M56.78,25.31h-6.47c-.13,0-.19-.03-.29-.1-.42-.35-.7-.74-.86-1.25-.06-.13-.06-.19-.06-.32v-3.23h9.67v-3.62c0-.32-.03-.58-.16-.86-.67-1.67-1.57-2.66-3.04-3.81-.26-.19-.48-.26-.8-.26h-3.14c-.32,0-.54.1-.8.29-1.76,1.47-2.69,3.07-3.3,5.06-.1.29-.13.54-.13.86v4.87c0,.32.03.58.16.86.77,2.24,1.76,3.84,3.3,5.09.26.19.48.26.8.26h3.52c.32,0,.54-.06.8-.29,1.86-1.51,2.75-3.01,3.36-5.09.03-.13.03-.19.03-.32v-.06h-1.51l-1.09,1.92ZM49.09,15.7h7.97v3.11h-7.97v-3.11Z"
+                  />
+                  <path
+                    d="M72.12,17.39c-.93-2.88-1.99-4.29-3.17-5.12-.29-.19-.51-.26-.83-.26h-.99c-.32,0-.54.06-.8.26-.8.64-1.57,1.7-2.08,2.43h-.77l-.32-2.53h-3.3v3.68h3.04v10.09h-3.04v3.2h8.74v-3.2h-4v-10.09h4.96l1.09,1.92h1.51v-.06c0-.13,0-.19-.03-.32Z"
+                  />
+                  <path
+                    d="M30.53,22.36c.6-.37,1.12-.81,1.55-1.32.9-1.03,1.71-3.37,2.43-7.02l-.88-.12c-.33.99-.67,1.67-1.02,2.02-.2.2-.54.45-1.02.76-.49.31-1.13.69-1.93,1.14-.8.43-1.46.89-1.99,1.37-.53.49-.93.98-1.2,1.49l-1.73,3.12c-.32.52-.64,1.01-.96,1.41-.01.02-.03.04-.05.05v-7.21c0-.32-.03-.58-.16-.86-.83-2.21-1.76-3.68-3.27-4.9-.26-.22-.48-.29-.8-.29h-1.38c-.32,0-.54.06-.83.22-.87.64-1.95,1.92-2.47,2.66h-.93l-.32-2.72h-1.28v16.97h1.7v-12.65h8.04v10.46c-.51.43-1.12.92-1.85,1.48-2.18,1.66-4.23,3.15-6.14,4.47l.23.73c1.7-.35,3.55-.82,5.56-1.4.97-.29,1.75-.54,2.34-.74.59-.2.95-.38,1.11-.51.29-.23.73-1.19,1.32-2.87.29-.84.56-1.56.8-2.18.24-.61.54-1.11.89-1.51.03-.03.08-.05.11-.09.44-.37,1.13-.72,2.11-1.06.74-.25,1.41-.57,2.02-.94Z"
+                  />
+                  <path
+                    d="M48.63,10.68c.4-1.3.72-2.47.95-3.52l-1.05-.15c-.29.78-.55,1.45-.78,2-.22.55-.44,1.05-.64,1.49-.2.44-.43.88-.69,1.33-.02.04-.05.09-.08.13v-7s-1.7,0-1.7,0v9.51h-.93c-.51-.74-1.6-1.83-2.47-2.4-.29-.16-.51-.22-.83-.22h-1.25c-.32,0-.54.1-.8.29-1.76,1.47-2.69,3.17-3.3,5.16-.1.29-.13.54-.13.86v4.38c-.41.27-.8.52-1.07.71l.23.73c.22-.06.6-.17,1-.28.83,2.24,1.76,3.91,3.27,5.16.26.22.48.29.8.29h1.34c.32,0,.54-.06.83-.22.86-.58,1.95-1.67,2.47-2.4h.93l.31,2.66h1.28v-12.63c.32-.64.62-1.32.92-2.03.52-1.27.97-2.55,1.37-3.85ZM43.47,15.76c-.51.51-1.05,1.02-1.66,1.56-.83.73-1.68,1.45-2.54,2.16-.69.57-1.81,1.31-2.63,1.88v-5.6h6.83ZM36.64,25.24v-2.02c.7-.25,1.58-.59,2.12-.77.76-.25,1.49-.51,2.21-.76.71-.25,1.33-.5,1.86-.73.53-.23.87-.42,1.02-.56.27-.26.53-.57.8-.93v5.77h-8.01Z"
+                  />
+                  <path
+                    d="M49.37,4.59l1.86-1.86c.24-.24.24-.63,0-.87l-1.86-1.86-1.86,1.86c-.24.24-.24.63,0,.87l1.86,1.86Z"
+                  />
+                  <rect x="27.1" y="25.97" width="6.43" height="3.18" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="page2-about-media" aria-hidden="true">
+          <div class="page2-about-media__frame">
             <img
-              class="page2-logo__image"
-              src="website/logo.svg"
-              alt="Under Cover"
-              width="207"
-              height="93"
+              src="website/about/1.jpg"
+              alt=""
+              width="200"
+              height="300"
               decoding="async"
             />
           </div>
@@ -251,30 +326,207 @@
                 </p>
               </div>
             </div>
-            <div class="page2-home-about">
-              <div class="page2-about-content">
-                <h2 class="page2-about-heading">about</h2>
-                <p class="page2-about-text">
-                  Under is a modular headscarf brand that expresses solidarity
-                  and support for Iranian women. Its designs are based on a
-                  visual sign language that translates emotional states into
-                  graphic patterns, giving voice to women for whom Iran is part
-                  of their identity.<br />
-                  All designs on this website were created by Iranian women
-                  living outside Iran.
-                </p>
+            <div class="page2-home-overlay" id="page2-home-overlay">
+              <div
+                class="page2-home-overlay__lead"
+                aria-hidden="true"
+              ></div>
+              <div class="page2-home-about">
+                <div class="page2-about-content">
+                  <p class="page2-about-text">
+                    Under is a modular headscarf brand that expresses solidarity
+                    and support for Iranian women. Its designs are based on a
+                    visual sign language that translates emotional states into
+                    graphic patterns, giving voice to women for whom Iran is part
+                    of their identity.<br />
+                    All designs on this website were created by Iranian women
+                    living outside Iran.
+                  </p>
+                  <p
+                    class="page2-about-text page2-about-text--fa"
+                    lang="fa"
+                    dir="rtl"
+                  >
+                    آندر برندی از روسری&zwnj;های مدولار است که همبستگی و
+                    حمایت خود را از زنان ایرانی ابراز می&zwnj;کند. طراحی&zwnj;های
+                    آن بر پایهٔ زبان نشانه&zwnj;ای بصری است که حالات عاطفی را
+                    به الگوهای گرافیکی ترجمه می&zwnj;کند و به زنانی که ایران
+                    بخشی از هویتشان است، صدا می&zwnj;دهد.<br />
+                    همهٔ طراحی&zwnj;های این وب&zwnj;سایت توسط زنان ایرانی
+                    ساکن خارج از ایران خلق شده&zwnj;اند.
+                  </p>
+                </div>
               </div>
+              <div class="page2-home-signs" id="page2-home-signs">
+                <div class="page2-home-signs__inner">
+                  <p class="page2-home-signs__label">
+                    <span class="page2-home-signs__label-en">signs</span>
+                    <span
+                      class="page2-home-signs__label-fa"
+                      lang="fa"
+                      dir="rtl"
+                      >نشانه‌ها</span
+                    >
+                  </p>
+                  <div
+                    class="page2-home-signs__list"
+                    id="page2-home-signs-list"
+                    role="list"
+                  ></div>
+                </div>
+              </div>
+              <section
+                class="page2-home-topkapi"
+                id="page2-home-topkapi"
+                aria-labelledby="page2-home-topkapi-title"
+              >
+                <div class="page2-home-topkapi__inner">
+                  <figure class="page2-home-topkapi__media">
+                    <img
+                      class="page2-home-topkapi__img"
+                      src="website/topkapi%20scrolls/1.png"
+                      alt="Topkapı Scroll, first detail of interlaced geometric girih patterns"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <img
+                      class="page2-home-topkapi__img"
+                      src="website/topkapi%20scrolls/2.png"
+                      alt="Topkapı Scroll, second detail of interlaced geometric girih patterns"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </figure>
+                  <div class="page2-home-topkapi__text">
+                    <h2
+                      class="page2-home-topkapi__title"
+                      id="page2-home-topkapi-title"
+                    >
+                      Topkapı Scroll
+                    </h2>
+                    <p class="page2-home-topkapi__body">
+                      The Topkapı Scroll is a late-fifteenth- or
+                      early-sixteenth-century Timurid pattern scroll held in the
+                      library of the Topkapı Palace Museum in Istanbul. It
+                      gathers 114 geometric designs &mdash; known as girih, or
+                      &ldquo;knot,&rdquo; patterns &mdash; that served as a
+                      working reference for the architects and craftsmen who
+                      covered walls, domes, and muqarnas vaults across the
+                      Persian and Islamic world. Rather than written
+                      instructions, the scroll records the patterns themselves,
+                      showing how a small set of modular tiles could be repeated
+                      and interlaced to build endlessly complex ornament. It
+                      remains one of the very few surviving sources that reveal
+                      how this visual language of geometry was conceived,
+                      recorded, and passed from one generation of makers to the
+                      next.
+                    </p>
+                  </div>
+                </div>
+              </section>
+              <footer class="page2-footer" aria-label="Footer">
+                <div class="page2-footer__top">
+                  <nav
+                    class="page2-footer__col page2-footer__nav"
+                    aria-label="Footer navigation"
+                  >
+                    <span class="page2-footer__heading">Pages</span>
+                    <button
+                      type="button"
+                      class="page2-footer__link"
+                      data-footer-col="1"
+                    >
+                      <span class="page2-footer__link-en">home</span>
+                      <span class="page2-footer__link-sep">/</span>
+                      <span class="page2-footer__link-fa" lang="fa" dir="rtl"
+                        >خانه</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="page2-footer__link"
+                      data-footer-col="2"
+                    >
+                      <span class="page2-footer__link-en">signs</span>
+                      <span class="page2-footer__link-sep">/</span>
+                      <span class="page2-footer__link-fa" lang="fa" dir="rtl"
+                        >نشانه‌ها</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="page2-footer__link"
+                      data-footer-col="3"
+                    >
+                      <span class="page2-footer__link-en">shop</span>
+                      <span class="page2-footer__link-sep">/</span>
+                      <span class="page2-footer__link-fa" lang="fa" dir="rtl"
+                        >فروشگاه</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="page2-footer__link"
+                      data-footer-col="4"
+                    >
+                      <span class="page2-footer__link-en">design</span>
+                      <span class="page2-footer__link-sep">/</span>
+                      <span class="page2-footer__link-fa" lang="fa" dir="rtl"
+                        >طراحی</span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      class="page2-footer__link"
+                      data-footer-col="5"
+                    >
+                      <span class="page2-footer__link-en">archive</span>
+                      <span class="page2-footer__link-sep">/</span>
+                      <span class="page2-footer__link-fa" lang="fa" dir="rtl"
+                        >بایگانی</span
+                      >
+                    </button>
+                  </nav>
+                  <div class="page2-footer__col">
+                    <span class="page2-footer__heading">Contact</span>
+                    <a
+                      class="page2-footer__link"
+                      href="mailto:hello@undercover.example"
+                      >hello@undercover.example</a
+                    >
+                    <a
+                      class="page2-footer__link"
+                      href="https://instagram.com"
+                      target="_blank"
+                      rel="noopener"
+                      >Instagram</a
+                    >
+                  </div>
+                  <div class="page2-footer__col">
+                    <span class="page2-footer__heading">Credits</span>
+                    <span class="page2-footer__note"
+                      >Under &mdash; Bezalel graduation project</span
+                    >
+                  </div>
+                </div>
+                <div
+                  class="page2-footer__logo"
+                  role="img"
+                  aria-label="Under Cover"
+                ></div>
+              </footer>
             </div>
           </section>
           <section
             class="page2-section"
-            id="section-signals"
+            id="section-signs"
             data-section-col="2"
-            aria-label="signals"
+            aria-label="signs"
           >
-            <div class="signals-section">
-              <p class="signals-section__intro"></p>
-            </div>
+            <div
+              class="signs-section signs-section--empty"
+              aria-hidden="true"
+            ></div>
           </section>
           <section
             class="page2-section"
@@ -374,7 +626,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 4</p>
+                    <p class="shop-card__name">Sana</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -424,7 +676,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 6</p>
+                    <p class="shop-card__name">Anonymous</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -449,7 +701,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 7</p>
+                    <p class="shop-card__name">E.M.</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -474,7 +726,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 8</p>
+                    <p class="shop-card__name">R.C.</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -499,7 +751,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 9</p>
+                    <p class="shop-card__name">M.R.</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -524,7 +776,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 10</p>
+                    <p class="shop-card__name">Atoosa</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -549,7 +801,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 11</p>
+                    <p class="shop-card__name">Anonymous</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -574,7 +826,7 @@
                     </button>
                   </article>
                   <div class="shop-card__meta">
-                    <p class="shop-card__name">name 12</p>
+                    <p class="shop-card__name">Mozhgan</p>
                     <div class="shop-card__swatches" aria-label="Color options">
                       <span class="shop-card__swatch" style="--swatch-color: #8B7355"></span>
                       <span class="shop-card__swatch" style="--swatch-color: #E85D04"></span>
@@ -600,6 +852,7 @@
                   lang="en"
                   aria-label="Design protest invitation"
                 >
+                  <!-- 3D headscarf mount — hidden via CSS; re-enable in questionnaire.js -->
                   <div
                     class="design-intro__headscarf-3d"
                     id="design-intro-headscarf-3d"
@@ -610,18 +863,13 @@
                       Design your own headscarf and join the protest for
                       women&rsquo;s right to their own bodies.
                     </p>
-                  </div>
-                </section>
-                <section
-                  class="design-intro__panel design-intro__panel--brown"
-                  lang="en"
-                  aria-label="Design welcome"
-                >
-                  <div class="design-intro__panel-inner">
-                    <p class="design-intro__text">
-                      Welcome to Under&rsquo;s personal design space, created
-                      especially for Iranian women. Here, you are invited to
-                      create a headscarf that tells your story, step by step.
+                    <p
+                      class="design-intro__text design-intro__text--fa"
+                      lang="fa"
+                      dir="rtl"
+                    >
+                      روسری خود را طراحی کنید و به اعتراض برای حق زنان بر بدن خود
+                      بپیوندید.
                     </p>
                   </div>
                 </section>
@@ -634,8 +882,11 @@
                     <p class="design-intro__text">
                       This custom design journey is intended only for Iranian
                       women, for whom Iran is part of their personal or cultural
-                      identity. If you are here to express solidarity and support,
-                      you are warmly invited to visit the
+                      identity.
+                    </p>
+                    <p class="design-intro__text design-intro__text--secondary">
+                      If you are here to express solidarity and support, you are
+                      warmly invited to visit the
                       <button
                         type="button"
                         class="design-intro__shop-link"
@@ -645,13 +896,24 @@
                       </button>
                       and explore the existing collections.
                     </p>
-                    <button
-                      type="button"
-                      class="design-start__btn"
-                      id="design-start-btn"
-                    >
-                      Start
-                    </button>
+                    <div class="design-start__lang-btns">
+                      <button
+                        type="button"
+                        class="design-start__btn"
+                        id="design-start-btn-en"
+                      >
+                        Start in English
+                      </button>
+                      <button
+                        type="button"
+                        class="design-start__btn"
+                        id="design-start-btn-fa"
+                        lang="fa"
+                        dir="rtl"
+                      >
+                        شروع به فارسی
+                      </button>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -663,27 +925,6 @@
               hidden
             >
               <div class="questionnaire-panel__grid">
-                <nav
-                  class="questionnaire-panel__progress"
-                  id="questionnaire-progress"
-                  aria-label="Section progress"
-                ></nav>
-                <div class="questionnaire-panel__section-header">
-                  <p
-                    class="questionnaire-panel__section-label"
-                    id="questionnaire-section-label"
-                  >
-                    1/ profile
-                  </p>
-                  <button
-                    type="button"
-                    class="questionnaire-skip"
-                    id="questionnaire-skip-btn"
-                    hidden
-                  >
-                    Skip
-                  </button>
-                </div>
                 <div
                   class="questionnaire-panel__scroll"
                   id="questionnaire-scroll"
@@ -694,6 +935,11 @@
                     aria-live="polite"
                   ></div>
                 </div>
+                <div
+                  class="questionnaire-panel__canvas"
+                  id="questionnaire-canvas-host"
+                  aria-hidden="true"
+                ></div>
               </div>
             </div>
 <div class="app-shell">
@@ -864,6 +1110,14 @@
                 aria-label="Handkerchief profile"
                 hidden
               ></div>
+              <p class="product-price" id="product-price" hidden></p>
+              <button
+                type="button"
+                class="product-order-btn"
+                id="product-order-btn"
+              >
+                Add to cart
+              </button>
             </div>
           </div>
         </div>
@@ -886,6 +1140,7 @@
         </button>
         <div class="page2-cart-drawer__body">
           <p class="page2-cart-drawer__empty">Your cart is empty.</p>
+          <ul class="page2-cart-drawer__list" hidden></ul>
         </div>
       </aside>
     </div>
@@ -898,6 +1153,22 @@
           vw   = px ÷ 1728 × 100
           clamp(min-rem, vw, design-rem)
       */
+      @font-face {
+        font-family: "Suisse Intl Shop";
+        src: url("fonts/WOFF2/SuisseIntlTrial-Light.woff2") format("woff2");
+        font-weight: 300;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Suisse Intl Shop";
+        src: url("fonts/WOFF2/SuisseIntlTrial-Hairline.woff2") format("woff2");
+        font-weight: 100;
+        font-style: normal;
+        font-display: swap;
+      }
+
       #page2 {
         --page2-ref-width: 1728;
         --page2-ref-height: 1117;
@@ -909,6 +1180,10 @@
         --page2-space-4: clamp(0.125rem, 0.231vw, 0.3125rem); /* 4px @ ref */
         --page2-space-50: clamp(2rem, 2.894vw, 4.5rem); /* 50px @ ref */
         --page2-space-30: calc(var(--page2-space-20) * 1.5); /* 30px @ ref */
+        --page2-sign-card-radius: clamp(0.375rem, 0.463vw, 0.625rem); /* 8px @ ref */
+        --page2-sign-label-min-height: clamp(2.75rem, 3.472vw, 3.75rem); /* 60px @ ref */
+        --page2-sign-folder-dim-opacity: 0.35;
+        --page2-sign-folder-active-outline: clamp(0.125rem, 0.174vw, 0.1875rem); /* 3px @ ref */
         --page2-marker-size: clamp(0.75rem, 0.868vw, 1.125rem); /* 15px @ ref */
         --page2-header-hover-expand: clamp(1rem, 1.157vw, 1.5rem); /* 20px @ ref */
         --page2-product-viewport-h: calc(100vh - var(--page2-header-band-height));
@@ -917,16 +1192,51 @@
         --page2-product-spec-body-size: clamp(0.875rem, 0.926vw, 1.125rem); /* 16px @ ref */
         --page2-product-spec-section-gap: clamp(1.25rem, 1.736vw, 2.5rem); /* 30px @ ref */
         --page2-product-spec-row-gap: clamp(0.375rem, 0.463vw, 0.625rem); /* 8px @ ref */
+        --page2-product-spec-icon-size: calc(
+          var(--page2-product-spec-body-size) * 1.15
+        ); /* ~18px @ ref — matches questionnaire madlibs icon */
+        --page2-product-spec-icon-gap: clamp(0.25rem, 0.289vw, 0.375rem); /* 5px @ ref */
         --page2-progress-dot: clamp(0.6875rem, 0.752vw, 0.9375rem); /* 13px @ ref */
         --page2-progress-dot-ring: clamp(1.125rem, 1.215vw, 1.5rem); /* 21px @ ref */
         --page2-progress-gap: calc(var(--page2-space-20) * 0.5); /* 10px @ ref */
-        --page2-about-heading-size: clamp(8.125rem, 7.52vw, 11.25rem); /* 130px @ ref */
-        --page2-about-text-size: clamp(2.1875rem, 2.03vw, 3rem); /* 35px @ ref */
-        --page2-about-letter-spacing: clamp(-0.5625rem, -0.52vw, -0.3125rem); /* -9px @ ref */
-        --page2-about-top-offset: clamp(12.5rem, 11.57vw, 17.5rem); /* 200px @ ref */
+        --page2-about-text-size: clamp(1.125rem, 1.273vw, 1.375rem); /* 22px @ ref — 3 grid cols */
+        --page2-logo-about-scale: 1.5;
+        --page2-logo-brown-inset-top: 100%;
+        --page2-about-top-offset: clamp(9.375rem, 8.681vw, 14.375rem); /* 150px @ ref (−50px) */
         --page2-about-row-gap: clamp(3.125rem, 2.894vw, 4.5rem); /* 50px @ ref */
+        --page2-about-media-height: clamp(15rem, 17.361vw, 18.75rem); /* 300px @ ref */
+        --page2-about-media-width: calc(var(--page2-about-media-height) * 2 / 3);
+        --page2-about-media-gap: var(--page2-space-20);
+        --page2-about-media-edge-inset: var(--page2-space-30);
+        --page2-about-media-top-offset: calc(var(--page2-space-30) * 2); /* 60px @ ref */
+        --page2-about-media-white-threshold: 0.5;
+        --page2-about-media-open-range: 0.28;
+        --page2-signs-bg: #442c28;
+        --page2-signs-fg: #fff;
+        --page2-signs-desc-size: clamp(0.8125rem, 0.868vw, 1rem); /* 15px @ ref */
+        --page2-signs-bilingual-gap: var(--page2-space-20); /* 20px @ ref */
+        --page2-signs-title-inline-gap: var(--page2-space-30); /* 30px @ ref */
+        --page2-signs-row-padding-block: clamp(1.5rem, 2.314vw, 2.5rem); /* ~40px @ ref — was ~70px */
+        --page2-signs-section-min-height: clamp(28rem, 50vh, 40rem);
+        --page2-signs-scroll-gap: 0; /* extra gap below header; label spacing comes from padding-top */
+        /* Topkapı Scroll info block — light, after the dark signs accordion */
+        --page2-topkapi-bg: var(--page2-bg); /* #fff — transition back to light */
+        --page2-topkapi-fg: var(--color-brown);
+        --page2-topkapi-padding-block: clamp(3.75rem, 5.787vw, 6.25rem); /* 100px @ 1728 */
+        --page2-topkapi-col-gap: var(--page2-gutter);
+        --page2-topkapi-title-size: clamp(1.75rem, 2.546vw, 3rem); /* 44px @ 1728 */
+        --page2-topkapi-title-gap: var(--page2-space-30); /* 30px @ 1728 */
+        --page2-topkapi-body-size: var(--page2-about-text-size); /* matches about copy */
+        --page2-topkapi-img-size: clamp(7.5rem, 8.681vw, 9.375rem); /* 150px @ 1728 */
+        --page2-topkapi-stack-gap: var(--page2-space-30); /* 30px @ 1728 */
+        --page2-about-media-open: 0;
+        --page2-about-text-clip-top: 100%;
+        --page2-about-media-exit-scale: 1;
         --page2-header-row-height: calc(var(--page2-space-20) * 1.3);
         --page2-header-row-height-bottom: var(--page2-header-top-offset);
+        --page2-header-col-title-font-size: calc(
+          (var(--page2-header-row-height) - var(--page2-space-4)) * 0.8
+        ); /* −20% vs prior row-based title */
         --page2-header-nav-height: calc(
           2 * var(--page2-header-row-height) +
             var(--page2-header-row-height-bottom)
@@ -939,12 +1249,13 @@
         --page2-header-shop-banner-surface: #ec2f1e;
         --page2-header-shop-banner-color: #fff;
         --page2-header-shop-banner-font-size: calc(
-          (var(--page2-space-20) - var(--page2-space-4)) * 0.85 * 1.15
-        ); /* +15% vs base */
+          (var(--page2-space-20) - var(--page2-space-4)) * 0.85 * 1.15 * 0.8
+        ); /* −20% vs prior banner size */
         --page2-header-band-height: calc(
           var(--page2-header-top-offset) + var(--page2-header-nav-height)
         );
-        --page2-header-cell-fill: #685450;
+        --page2-header-cell-fill: #442c28;
+        --page2-cart-icon-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.625'%3E%3Cpath d='M6 6h15l-1.5 9h-12L6 6z'/%3E%3Cpath d='M6 6L5 3H2'/%3E%3Ccircle cx='9' cy='20' r='1.75' fill='%23000' stroke='none'/%3E%3Ccircle cx='18' cy='20' r='1.75' fill='%23000' stroke='none'/%3E%3C/svg%3E");
         --page2-cart-drawer-width: calc(
           3 * var(--page2-grid-col) + 2 * var(--page2-gutter) +
             var(--page2-margin-inline)
@@ -1064,7 +1375,8 @@
 
       #page2 #section-home {
         position: relative;
-        height: auto;
+        height: 100vh;
+        overflow: hidden;
         background-color: #fff;
         cursor: default;
       }
@@ -1074,21 +1386,65 @@
         pointer-events: none;
       }
 
-      /* Hero panel: first full screen of home (background carousel + intro). */
+      #page2:not(.page2--section-home) .page2-about-media {
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      /* Hero panel: base layer under the about overlay. */
       #page2 #section-home .page2-home-hero {
-        position: relative;
-        height: 100vh;
+        position: absolute;
+        inset: 0;
+        z-index: 1;
         overflow: hidden;
       }
 
-      /* About panel: second screen of home, reached by scrolling down. */
+      /* About overlay: scroll container; about panel slides up over the hero. */
+      #page2 #section-home .page2-home-overlay {
+        --page2-home-step-height: 100vh;
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        pointer-events: auto;
+      }
+
+      #page2 #section-home .page2-home-overlay__lead {
+        height: var(--page2-home-step-height);
+        min-height: var(--page2-home-step-height);
+        pointer-events: none;
+      }
+
+      /* Extra scroll room after the white about panel — drives media open on white only. */
+      #page2 #section-home .page2-home-overlay__tail {
+        height: calc(
+          var(--page2-home-step-height) * var(--page2-about-media-open-range)
+        );
+        min-height: calc(
+          var(--page2-home-step-height) * var(--page2-about-media-open-range)
+        );
+        pointer-events: none;
+      }
+
+      /* Rising white curtain — text lives in a fixed layer revealed as this scrolls up. */
       #page2 #section-home .page2-home-about {
-        position: relative;
-        min-height: 100vh;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        box-sizing: border-box;
+        min-height: var(--page2-home-step-height);
         background-color: var(--page2-bg);
+        pointer-events: none;
       }
 
       #page2 #section-home .page2-about-content {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 3;
         display: grid;
         grid-template-columns: repeat(12, 1fr);
         column-gap: var(--page2-gutter);
@@ -1102,41 +1458,240 @@
         align-content: start;
         align-items: start;
         justify-items: start;
+        pointer-events: none;
+        clip-path: inset(var(--page2-about-text-clip-top, 100%) 0 0 0);
       }
 
-      #page2 .page2-about-heading,
+      #page2 #section-home .page2-about-content * {
+        pointer-events: none;
+      }
+
+      #page2:not(.page2--section-home) #section-home .page2-about-content {
+        visibility: hidden;
+      }
+
+      #page2.page2--home-signs-visible #section-home .page2-about-content {
+        visibility: hidden;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2.page2--home-signs-visible #section-home .page2-about-content {
+          visibility: hidden;
+          clip-path: inset(100% 0 0 0);
+        }
+
+        #page2.page2--home-signs-visible .page2-about-media,
+        #page2.page2--home-signs-visible .page2-logo {
+          visibility: hidden;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2 #section-home .page2-about-content {
+          clip-path: none;
+        }
+      }
+
       #page2 .page2-about-text {
-        grid-column: 2 / span 6;
+        grid-column: 2 / span 3;
+        grid-row: 1;
         justify-self: start;
         text-align: left;
         margin: 0;
         padding: 0;
         max-width: 100%;
-      }
-
-      #page2 .page2-about-heading {
-        font-family: "OT2049", sans-serif;
-        font-weight: 400;
-        font-size: var(--page2-about-heading-size);
-        line-height: 0.72;
-        letter-spacing: var(--page2-about-letter-spacing);
-        color: var(--color-brown);
-        text-box-trim: trim-both;
-        text-box-edge: cap alphabetic;
-      }
-
-      @supports not (text-box-trim: trim-both) {
-        #page2 .page2-about-heading {
-          margin-bottom: calc(var(--page2-about-heading-size) * -0.28);
-        }
-      }
-
-      #page2 .page2-about-text {
-        font-family: "PP Radio Grotesk", sans-serif;
+        font-family: "Suisse Intl", sans-serif;
         font-weight: 200;
         font-size: var(--page2-about-text-size);
         line-height: 1.1;
         color: var(--color-brown);
+      }
+
+      #page2 .page2-about-text--fa {
+        grid-column: 9 / span 3;
+        grid-row: 1;
+        justify-self: end;
+        font-family: "Vazirmatn", sans-serif;
+        font-weight: 400;
+        text-align: right;
+      }
+
+      #page2 .page2-about-media {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 3;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        box-sizing: border-box;
+        width: 0;
+        height: var(--page2-about-media-height);
+        overflow: hidden;
+        pointer-events: none;
+        will-change: width, left, top;
+      }
+
+      #page2.page2--signs-covering .page2-about-media {
+        overflow: visible;
+      }
+
+      /* Clip logo/media from the bottom in sync with the rising signs curtain.
+         Use the live signs rect in JS — not anchor math — to avoid white gaps. */
+      #page2.page2--signs-covering .page2-about-media,
+      #page2.page2--signs-passed .page2-about-media {
+        clip-path: inset(
+          0 0 var(--page2-about-media-signs-clip-bottom, 0px) 0
+        );
+      }
+
+      #page2.page2--signs-covering .page2-logo__slot,
+      #page2.page2--signs-passed .page2-logo__slot {
+        clip-path: inset(0 0 var(--page2-logo-signs-clip-bottom, 0px) 0);
+      }
+
+      /* After the transition, keep fixed about layers out of the signs stack entirely. */
+      #page2.page2--signs-passed .page2-logo,
+      #page2.page2--signs-passed .page2-about-media {
+        visibility: hidden;
+      }
+
+      /* Only the fixed signs curtain sits above the logo — not the whole sections stack. */
+
+      #page2.page2--home-signs-visible #section-home .page2-home-signs {
+        position: relative;
+        z-index: 4;
+        pointer-events: auto;
+      }
+
+      /* Home footer — fills the white space below the signs section. */
+      #page2 #section-home .page2-footer {
+        position: relative;
+        z-index: 2;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: var(--page2-gutter);
+        min-height: calc(100vh - var(--page2-signs-section-min-height));
+        padding-top: var(--page2-signs-row-padding-block);
+        padding-bottom: 0;
+        padding-inline: var(--page2-margin-inline);
+        background-color: var(--page2-bg);
+        color: #442c28;
+        pointer-events: auto;
+      }
+
+      #page2 #section-home .page2-footer__top {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--page2-space-30) var(--page2-space-50);
+        box-sizing: border-box;
+      }
+
+      #page2 #section-home .page2-footer__col {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--page2-space-4);
+        min-width: 0;
+      }
+
+      #page2 #section-home .page2-footer__heading {
+        margin-bottom: var(--page2-space-4);
+        font-family: "Suisse Intl", sans-serif;
+        font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
+        font-weight: 500;
+        line-height: 1.2;
+        color: #442c28;
+      }
+
+      #page2 #section-home .page2-footer__link {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        font-family: "Suisse Intl", sans-serif;
+        font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
+        font-weight: 300;
+        line-height: 1.5;
+        color: #442c28;
+        text-align: start;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+      }
+
+      #page2 #section-home .page2-footer__link:hover {
+        opacity: 0.6;
+      }
+
+      #page2 #section-home .page2-footer__link:focus-visible {
+        outline: 2px solid #442c28;
+        outline-offset: 2px;
+      }
+
+      #page2 #section-home .page2-footer__link-sep {
+        margin: 0 0.25em;
+      }
+
+      #page2 #section-home .page2-footer__link-fa {
+        font-family: "Vazirmatn", sans-serif;
+      }
+
+      #page2 #section-home .page2-footer__note {
+        font-family: "Suisse Intl", sans-serif;
+        font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
+        font-weight: 300;
+        line-height: 1.5;
+        color: #442c28;
+      }
+
+      #page2 #section-home .page2-footer__logo {
+        order: -1;
+        flex-shrink: 0;
+        align-self: flex-end;
+        width: 40%;
+        line-height: 0;
+      }
+
+      #page2 #section-home .page2-footer__logo svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        fill: #442c28;
+      }
+
+      #page2 #section-home .page2-footer__logo svg path,
+      #page2 #section-home .page2-footer__logo svg rect {
+        fill: #442c28;
+      }
+
+      #page2 .page2-about-media__frame {
+        width: var(--page2-about-media-width);
+        height: var(--page2-about-media-height);
+        flex-shrink: 0;
+        aspect-ratio: 2 / 3;
+        box-sizing: border-box;
+        overflow: hidden;
+        background-color: var(--page2-bg);
+      }
+
+      #page2 .page2-about-media__frame img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2.page2--about-media-visible .page2-about-media {
+          width: var(--page2-about-media-width);
+        }
       }
 
       #page2 #section-archive {
@@ -1157,7 +1712,14 @@
         padding-bottom: var(--page2-margin-block-end);
       }
 
-      #page2 #section-signals .signals-section {
+      #page2 #section-signs {
+        height: auto;
+        background-color: var(--page2-bg);
+        box-sizing: border-box;
+        cursor: default;
+      }
+
+      #page2 #section-signs .signs-section {
         box-sizing: border-box;
         max-width: none;
         margin: 0;
@@ -1166,6 +1728,644 @@
         );
         padding-inline: var(--page2-margin-inline);
         padding-bottom: var(--page2-margin-block-end);
+        min-height: calc(
+          100vh - var(--page2-header-band-height) - var(--page2-space-50)
+        );
+      }
+
+      #page2 #section-signs .signs-section--empty {
+        min-height: inherit;
+      }
+
+      /* Home-scroll signs accordion (after about) */
+      #page2 #section-home .page2-home-signs {
+        position: relative;
+        z-index: 2;
+        box-sizing: border-box;
+        min-height: var(--page2-signs-section-min-height);
+        padding-top: var(--page2-signs-row-padding-block);
+        padding-bottom: calc(var(--page2-signs-row-padding-block) * 1.5);
+        padding-inline: var(--page2-margin-inline);
+        background-color: var(--page2-signs-bg);
+        color: var(--page2-signs-fg);
+        pointer-events: auto;
+      }
+
+      #page2 #section-home .page2-home-signs-placeholder {
+        height: 0;
+        pointer-events: none;
+      }
+
+      /* Topkapı Scroll info block — light, continues the home scroll after signs */
+      #page2 #section-home .page2-home-topkapi {
+        position: relative;
+        z-index: 2;
+        box-sizing: border-box;
+        padding-block: var(--page2-topkapi-padding-block);
+        padding-inline: var(--page2-margin-inline);
+        background-color: var(--page2-topkapi-bg);
+        color: var(--page2-topkapi-fg);
+        pointer-events: auto;
+      }
+
+      #page2 #section-home .page2-home-topkapi__inner {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        column-gap: var(--page2-topkapi-col-gap);
+        align-items: center;
+        box-sizing: border-box;
+        width: 100%;
+      }
+
+      #page2 #section-home .page2-home-topkapi__media {
+        grid-column: 2 / 7;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--page2-topkapi-stack-gap);
+      }
+
+      #page2 #section-home .page2-home-topkapi__img {
+        display: block;
+        width: var(--page2-topkapi-img-size);
+        height: var(--page2-topkapi-img-size);
+        object-fit: cover;
+      }
+
+      #page2 #section-home .page2-home-topkapi__text {
+        grid-column: 7 / 12;
+      }
+
+      #page2 #section-home .page2-home-topkapi__title {
+        margin: 0 0 var(--page2-topkapi-title-gap);
+        font-family: "Suisse Intl", sans-serif;
+        font-weight: 200;
+        font-size: var(--page2-topkapi-title-size);
+        line-height: 1.05;
+        color: var(--page2-topkapi-fg);
+      }
+
+      #page2 #section-home .page2-home-topkapi__body {
+        margin: 0;
+        font-family: "Suisse Intl", sans-serif;
+        font-weight: 200;
+        font-size: var(--page2-topkapi-body-size);
+        line-height: 1.3;
+        color: var(--page2-topkapi-fg);
+      }
+
+      /* Signs curtain: fixed above about layers during the rise transition only. */
+      #page2.page2--signs-covering #section-home .page2-home-signs {
+        position: fixed;
+        z-index: 4;
+        box-sizing: border-box;
+        pointer-events: none;
+      }
+
+      /* Accordion must stay clickable while the curtain is visible on screen. */
+      #page2.page2--home-signs-visible.page2--signs-covering
+        #section-home
+        .page2-home-signs {
+        pointer-events: auto;
+      }
+
+      #page2.page2--signs-covering .page2-header {
+        z-index: 5;
+      }
+
+      #page2 #section-home .page2-home-signs__inner {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        column-gap: var(--page2-gutter);
+        box-sizing: border-box;
+        width: 100%;
+      }
+
+      #page2 #section-home .page2-home-signs__label {
+        grid-column: 2 / 9;
+        grid-row: 1;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: baseline;
+        gap: var(--page2-signs-title-inline-gap);
+        margin: 0 0 var(--page2-gutter);
+        padding: 0;
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-about-text-size);
+        font-weight: 200;
+        line-height: 1.1;
+        color: var(--page2-signs-fg);
+      }
+
+      #page2 #section-home .page2-home-signs__label-fa {
+        font-family: "Vazirmatn", sans-serif;
+        font-weight: 400;
+      }
+
+      #page2 #section-home .page2-home-signs__list {
+        display: grid;
+        grid-template-columns: subgrid;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        box-sizing: border-box;
+        position: relative;
+      }
+
+      #page2 #section-home .page2-home-signs__list::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: calc((100% - 11 * var(--page2-gutter)) / 12);
+        width: calc(
+          10 * (100% - 11 * var(--page2-gutter)) / 12 +
+            11 * var(--page2-gutter)
+        );
+        height: 1px;
+        background-color: var(--page2-signs-fg);
+      }
+
+      #page2 #section-home .page2-home-signs__item {
+        display: grid;
+        grid-template-columns: subgrid;
+        grid-column: 1 / -1;
+        position: relative;
+        box-sizing: border-box;
+      }
+
+      #page2 #section-home .page2-home-signs__item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: calc((100% - 11 * var(--page2-gutter)) / 12);
+        width: calc(
+          10 * (100% - 11 * var(--page2-gutter)) / 12 +
+            11 * var(--page2-gutter)
+        );
+        height: 1px;
+        background-color: var(--page2-signs-fg);
+      }
+
+      #page2 #section-home .page2-home-signs__trigger {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        column-gap: var(--page2-gutter);
+        align-items: start;
+        width: 100%;
+        margin: 0;
+        padding-block: var(--page2-signs-row-padding-block);
+        padding-inline: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #page2 #section-home .page2-home-signs__trigger:focus-visible {
+        outline: 2px solid var(--page2-signs-fg);
+        outline-offset: 2px;
+      }
+
+      #page2 #section-home .page2-home-signs__num,
+      #page2 #section-home .page2-home-signs__title {
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-about-text-size);
+        font-weight: 200;
+        line-height: 1.1;
+        color: var(--page2-signs-fg);
+      }
+
+      #page2 #section-home .page2-home-signs__num {
+        grid-column: 2;
+      }
+
+      #page2 #section-home .page2-home-signs__title {
+        grid-column: 3 / 9;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: var(--page2-signs-title-inline-gap);
+      }
+
+      #page2 #section-home .page2-home-signs__desc {
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-signs-desc-size);
+        font-weight: 200;
+        line-height: 1.35;
+        color: var(--page2-signs-fg);
+        min-height: 1.35em;
+        grid-column: 9 / 12;
+        text-align: left;
+        justify-self: start;
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-signs-bilingual-gap);
+      }
+
+      #page2 #section-home .page2-home-signs__title-fa,
+      #page2 #section-home .page2-home-signs__desc-fa,
+      #page2 #section-home .page2-home-signs__sign-label-fa,
+      #page2 #section-home .page2-home-signs__control-heading-fa,
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider-range-label-fa {
+        font-family: "Vazirmatn", sans-serif;
+        font-weight: 400;
+      }
+
+      #page2 #section-home .page2-home-signs__desc-fa,
+      #page2 #section-home .page2-home-signs__control-heading-fa {
+        text-align: right;
+      }
+
+      #page2 #section-home .page2-home-signs__desc--empty {
+        visibility: hidden;
+      }
+
+      #page2 #section-home .page2-home-signs__panel {
+        box-sizing: border-box;
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        column-gap: var(--page2-gutter);
+        padding-top: var(--page2-space-50); /* 50px @ ref */
+        padding-bottom: var(--page2-signs-row-padding-block);
+      }
+
+      #page2 #section-home .page2-home-signs__panel-list {
+        grid-column: 2 / 12;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0;
+        padding-top: 0;
+        box-sizing: border-box;
+      }
+
+      #page2 #section-home .page2-home-signs__panel-list--fan {
+        justify-content: center;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-row {
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--page2-sign-card-radius);
+        box-sizing: border-box;
+        min-width: 0;
+        text-align: center;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon {
+        flex: 0 0 auto;
+        width: min(clamp(3rem, 4.63vw, 5rem), 100%); /* 80px @ ref, shrinks when crowded */
+        height: auto;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid var(--page2-signs-fg);
+        border-radius: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon svg {
+        width: 55%;
+        height: auto;
+        max-height: 70%;
+        display: block;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-row--fan {
+        flex: 0 0 auto;
+        width: auto;
+        max-width: 100%;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon--fan {
+        width: clamp(8.775rem, 13.543vw, 14.625rem); /* ~234px @ ref — +30% */
+        max-width: 100%;
+        aspect-ratio: auto;
+        border: none;
+        overflow: visible;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon--fan svg {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        display: block;
+        overflow: visible;
+      }
+
+      /* Stars grid on the Signs page: roughly fan-sized, no framing square */
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon[data-grid-type="star"] {
+        width: clamp(5.5rem, 8.5vw, 9rem); /* ~147px @ ref — visible star ≈ fan */
+        height: auto;
+        aspect-ratio: 1;
+        border: none;
+        overflow: visible;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon[data-grid-type="star"] svg {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        display: block;
+        overflow: visible;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="grief"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker,
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="longing"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker {
+        fill: none !important;
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="pain"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker,
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="pain"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        polygon {
+        fill: #fff !important;
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="helplessness"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker,
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="helplessness"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        line {
+        fill: none !important;
+        stroke: #fff !important;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon .grid-unit-icon {
+        color: #fff;
+      }
+
+      /* Signs grid star: keep the center star unpainted so it blends into the
+         brown card background instead of showing as a solid white shape. */
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .grid-unit-icon__bg-fill {
+        fill: none;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        svg:not(.sign-card__canvas-icon) {
+        fill: currentColor;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon [fill="#685450"],
+      #page2 #section-home .page2-home-signs__sign-icon [fill="#8B7355"],
+      #page2 #section-home .page2-home-signs__sign-icon [fill="#8b7355"],
+      #page2 #section-home .page2-home-signs__sign-icon [fill="#5C4033"],
+      #page2 #section-home .page2-home-signs__sign-icon [fill="#5c4033"],
+      #page2 #section-home .page2-home-signs__sign-icon .st0 {
+        fill: #fff !important;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-icon [stroke="#685450"],
+      #page2 #section-home .page2-home-signs__sign-icon [stroke="#8B7355"],
+      #page2 #section-home .page2-home-signs__sign-icon [stroke="#8b7355"],
+      #page2 #section-home .page2-home-signs__sign-icon [stroke="#5C4033"],
+      #page2 #section-home .page2-home-signs__sign-icon [stroke="#5c4033"] {
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [fill="#685450"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [fill="#8B7355"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [fill="#8b7355"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [fill="#5C4033"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [fill="#5c4033"] {
+        fill: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [stroke="#685450"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [stroke="#8B7355"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [stroke="#8b7355"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [stroke="#5C4033"],
+      #page2
+        #section-home
+        .page2-home-signs__sign-icon
+        .sign-card__canvas-icon
+        [stroke="#5c4033"] {
+        stroke: #fff !important;
+      }
+
+      #page2 #section-home .page2-home-signs__sign-label {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-signs-bilingual-gap);
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-signs-desc-size);
+        font-weight: 200;
+        line-height: 1.35;
+        color: var(--page2-signs-fg);
+        text-align: center;
+        word-break: break-word;
+      }
+
+      #page2 #section-home .page2-home-signs__panel-controls {
+        grid-column: 2 / 12;
+        padding-top: var(--page2-space-50); /* 50px @ ref */
+        box-sizing: border-box;
+      }
+
+      #page2 #section-home .page2-home-signs__panel-controls--compact {
+        grid-column: 6 / 8;
+        padding-top: var(--page2-space-20);
+        --slider-scale: 1;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls--compact
+        .questionnaire-slider-wrap {
+        gap: 0;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls--compact
+        .questionnaire-slider-control {
+        gap: 0;
+      }
+
+      #page2 #section-home .page2-home-signs__control-heading {
+        margin: 0 0 var(--page2-space-20);
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-signs-bilingual-gap);
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-signs-desc-size);
+        font-weight: 400;
+        line-height: 1.35;
+        color: var(--page2-signs-fg);
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider-range-label {
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-signs-bilingual-gap);
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider-range-label,
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider-output {
+        color: var(--page2-signs-fg);
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider:focus-visible {
+        outline-color: var(--page2-signs-fg);
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider::-webkit-slider-runnable-track {
+        border-color: var(--page2-signs-fg);
+        background: linear-gradient(
+          to right,
+          var(--page2-signs-fg) var(--bar-fill),
+          transparent var(--bar-fill)
+        );
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider::-moz-range-track {
+        border-color: var(--page2-signs-fg);
+        background: transparent;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider::-moz-range-progress {
+        background: var(--page2-signs-fg);
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__panel-controls
+        .questionnaire-slider-handle__arrow--right {
+        border-left-color: var(--page2-signs-fg);
+      }
+
+      #page2 #section-home .page2-home-signs__item:not(.is-expanded) .page2-home-signs__panel {
+        display: none;
+      }
+
+      @media (max-width: 767px) {
+        #page2 #section-home .page2-home-signs__trigger {
+          grid-template-columns: repeat(12, 1fr);
+          row-gap: clamp(0.75rem, 2vw, 1rem);
+        }
+
+        #page2 #section-home .page2-home-signs__title {
+          grid-column: 3 / -1;
+        }
+
+        #page2 #section-home .page2-home-signs__desc {
+          grid-column: 3 / -1;
+        }
+
+        #page2 #section-home .page2-home-topkapi__media,
+        #page2 #section-home .page2-home-topkapi__text {
+          grid-column: 1 / -1;
+        }
+
+        #page2 #section-home .page2-home-topkapi__media {
+          margin-bottom: var(--page2-gutter);
+        }
       }
 
       #page2 #section-shop {
@@ -1223,21 +2423,53 @@
 
       #page2 #section-shop .shop-card__meta {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15em;
         margin-top: 0.5rem;
       }
 
       #page2 #section-shop .shop-card__name {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        column-gap: 0.4em;
         margin: 0;
-        font-family: "DIN Condensed", sans-serif;
-        font-size: calc(
-          (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.85
-        );
-        font-weight: 700;
-        line-height: 1.1;
-        color: #000;
+        font-family: "Suisse Intl Shop", sans-serif;
+        font-size: var(--page2-product-spec-body-size);
+        font-weight: 300;
+        font-synthesis: none;
+        line-height: 1.25;
+        color: var(--color-brown);
         text-align: left;
+      }
+
+      #page2 #section-shop .shop-card__name-part {
+        flex: 0 0 auto;
+      }
+
+      #page2 #section-shop .shop-card__name-sep {
+        flex: 0 0 auto;
+        width: 0.21em;
+        height: 0.21em;
+        background: currentColor;
+      }
+
+      #page2 #section-shop .shop-card__price {
+        margin: 0;
+        font-family: "Suisse Intl Shop", sans-serif;
+        font-size: calc(var(--page2-product-spec-body-size) * 0.8);
+        font-weight: 300;
+        font-synthesis: none;
+        line-height: 1.25;
+        color: var(--color-brown);
+        text-align: left;
+      }
+
+      #page2 #section-shop .shop-card__num {
+        font-weight: 100;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
       }
 
       /* Hidden from view; still used by shopAlbums.js to build carousel slides */
@@ -1280,27 +2512,30 @@
 
       #page2 #section-shop .shop-album__nav {
         position: absolute;
-        top: 50%;
+        top: 0;
         z-index: 1;
         display: flex;
         align-items: center;
-        justify-content: center;
-        width: 1.5rem;
-        height: 1.5rem;
+        width: 25%;
+        height: 100%;
         margin: 0;
         padding: 0;
         border: none;
         background: transparent;
-        transform: translateY(-50%);
+        transform: none;
         cursor: pointer;
       }
 
       #page2 #section-shop .shop-album__nav--prev {
-        left: 0.25rem;
+        left: 0;
+        justify-content: flex-start;
+        padding-inline-start: 0.75rem;
       }
 
       #page2 #section-shop .shop-album__nav--next {
-        right: 0.25rem;
+        right: 0;
+        justify-content: flex-end;
+        padding-inline-end: 0.75rem;
       }
 
       #page2 #section-shop .shop-album__nav:disabled {
@@ -1309,7 +2544,7 @@
       }
 
       #page2 #section-shop .shop-album__nav:focus-visible {
-        outline: 2px solid var(--color-brown, #685450);
+        outline: 2px solid var(--color-brown, #442c28);
         outline-offset: 2px;
       }
 
@@ -1396,7 +2631,7 @@
         padding: 0;
         border: none;
         background: transparent;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
         line-height: 1;
         color: var(--page2-header-cell-fill);
@@ -1535,11 +2770,11 @@
         padding-inline-start: calc(
           (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
         );
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: calc(var(--page2-header-row-height) - var(--page2-space-4));
-        font-weight: 700;
+        font-weight: normal;
         line-height: 1.05;
-        color: #000;
+        color: var(--color-brown);
         text-align: left;
       }
 
@@ -1552,6 +2787,64 @@
         display: none;
       }
 
+      #page2 #section-product .product-price {
+        margin: 0;
+        padding-inline-start: calc(
+          (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
+        );
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: var(--page2-product-spec-body-size);
+        font-weight: normal;
+        line-height: 1.25;
+        color: var(--color-brown);
+        text-align: left;
+      }
+
+      #page2 #section-product .product-price[hidden] {
+        display: none;
+      }
+
+      #page2 #section-product .product-price .shop-card__num {
+        font-weight: 100;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #page2 #section-product .product-order-btn {
+        align-self: flex-start;
+        margin-inline-start: calc(
+          (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
+        );
+        margin-top: var(--page2-gutter);
+        padding: clamp(0.35rem, 0.486vw, 0.525rem)
+          clamp(0.875rem, 1.215vw, 1.3125rem); /* 5.6–8.4px × 14–21px @ ref (−30%) */
+        border: 1px solid var(--color-brown);
+        background: var(--color-brown);
+        color: #fff;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.7rem, 0.81vw, 0.875rem); /* 11.2px @ ref (−30%) */
+        font-weight: normal;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      #page2 #section-product .product-order-btn:hover {
+        background: #fff;
+        color: var(--color-brown);
+      }
+
+      #page2 #section-product .product-order-btn:focus-visible {
+        outline: 2px solid var(--color-brown);
+        outline-offset: 2px;
+      }
+
+      #page2 #section-product .product-order-btn--added {
+        background: #fff;
+        color: var(--color-brown);
+      }
+
       #page2 #section-product .product-spec__section + .product-spec__section {
         margin-top: var(--page2-product-spec-section-gap);
       }
@@ -1561,13 +2854,13 @@
         padding-inline-start: calc(
           (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
         );
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: var(--page2-product-spec-heading-size);
-        font-weight: 700;
+        font-weight: normal;
         line-height: 1.1;
         letter-spacing: 0.04em;
         text-transform: uppercase;
-        color: var(--page2-header-cell-fill, #685450);
+        color: var(--page2-header-cell-fill, #442c28);
       }
 
       #page2 #section-product .product-spec__list {
@@ -1582,7 +2875,7 @@
       #page2 #section-product .product-spec__label,
       #page2 #section-product .product-spec__value {
         margin: 0;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: var(--page2-product-spec-body-size);
         line-height: 1.25;
       }
@@ -1590,22 +2883,61 @@
       #page2 #section-product .product-spec__label {
         grid-column: 2 / 4;
         font-weight: 400;
-        color: rgba(0, 0, 0, 0.55);
+        color: var(--color-brown);
         text-align: left;
       }
 
       #page2 #section-product .product-spec__value {
         grid-column: 4;
-        font-weight: 700;
-        color: #000;
+        font-weight: normal;
+        color: var(--color-brown);
         text-align: right;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      #page2 #section-product .product-spec__value-row {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--page2-product-spec-icon-gap);
+        max-width: 100%;
+      }
+
+      #page2 #section-product .product-spec__value-text {
+        font-weight: normal;
+        text-align: right;
+      }
+
+      #page2 #section-product .product-spec__icon {
+        display: inline-block;
+        flex-shrink: 0;
+        height: var(--page2-product-spec-icon-size);
+        width: calc(
+          var(--page2-product-spec-icon-size) *
+            var(--product-spec-icon-ratio, 1)
+        );
+        vertical-align: middle;
+        color: var(--color-brown);
+      }
+
+      #page2 #section-product .product-spec__icon svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #page2 #section-product .product-spec__icon svg,
+      #page2 #section-product .product-spec__icon svg * {
+        fill: currentColor;
       }
 
       #page2 #section-product .product-spec__unavailable {
         margin: 0;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: var(--page2-product-spec-body-size);
-        color: rgba(0, 0, 0, 0.45);
+        color: var(--color-brown);
       }
 
       #page2 #section-design {
@@ -1644,6 +2976,14 @@
         padding-inline: var(--page2-margin-inline);
         align-items: center;
         pointer-events: none;
+        transform-origin: center center;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #page2 #section-home .page2-home-content {
+          transform: none !important;
+          opacity: 1 !important;
+        }
       }
 
       #page2 .page2-home-intro {
@@ -1651,7 +2991,7 @@
         font-size: calc(
           (var(--page2-space-20) - var(--page2-space-4)) * 1.2 * 1.15
         );
-        font-weight: 700;
+        font-weight: normal;
         line-height: 1.15;
         color: #fff;
         filter: var(--page2-soft-drop-shadow);
@@ -1659,14 +2999,15 @@
 
       #page2 .page2-home-intro--en {
         grid-column: 2 / span 2;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-weight: normal;
         text-align: left;
       }
 
       #page2 .page2-home-intro--fa {
         grid-column: 10 / span 2;
-        font-family: "DecoType Nastaleeq", "Noto Nastaliq Urdu", serif;
-        font-weight: normal;
+        font-family: "Vazirmatn", sans-serif;
+        font-weight: 400;
         text-align: right;
       }
 
@@ -1675,6 +3016,7 @@
         width: var(--page2-marker-size);
         height: var(--page2-marker-size);
         background: #fff;
+        filter: var(--page2-soft-drop-shadow);
         pointer-events: none;
       }
 
@@ -1682,6 +3024,7 @@
         position: absolute;
         inset: 0;
         z-index: 0;
+        overflow: hidden;
         /* Fade the image edge out — image stays sharp; only opacity tapers at bottom */
         -webkit-mask-image: linear-gradient(
           to bottom,
@@ -1711,17 +3054,31 @@
         background-size: cover;
         background-position: center center;
         background-repeat: no-repeat;
-        opacity: 0;
-        transition: opacity 1.2s ease-in-out;
+        transform: translate3d(100%, 0, 0);
+        transition: transform 1.2s ease-in-out;
+        will-change: transform;
+        z-index: 0;
       }
 
       #page2 #section-home .page2-home-bg__slide.is-active {
-        opacity: 1;
+        transform: translate3d(0, 0, 0);
+        z-index: 2;
+      }
+
+      #page2 #section-home .page2-home-bg__slide.is-leaving {
+        transform: translate3d(-100%, 0, 0);
+        z-index: 1;
       }
 
       @media (prefers-reduced-motion: reduce) {
         #page2 #section-home .page2-home-bg__slide {
           transition: none;
+          transform: none;
+          opacity: 0;
+        }
+
+        #page2 #section-home .page2-home-bg__slide.is-active {
+          opacity: 1;
         }
       }
 
@@ -1775,8 +3132,8 @@
         padding-bottom: calc(var(--page2-space-4) - 1px);
         box-sizing: border-box;
         background: var(--page2-header-shop-banner-surface);
-        font-family: "DIN Condensed", sans-serif;
-        font-weight: 700;
+        font-family: "Suisse Intl", sans-serif;
+        font-weight: 400;
         font-size: var(--page2-header-shop-banner-font-size);
         line-height: 1.1;
         color: var(--page2-header-shop-banner-color);
@@ -1804,6 +3161,40 @@
         bottom: 100%;
         height: var(--page2-header-top-offset);
         background: var(--page2-header-shop-surface);
+        pointer-events: none;
+      }
+
+      /* Archive: white header band behind the brown grid rectangles */
+      #page2.page2--section-archive .page2-header {
+        background: var(--page2-bg);
+      }
+
+      #page2.page2--section-archive .page2-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 100%;
+        height: var(--page2-header-top-offset);
+        background: var(--page2-bg);
+        pointer-events: none;
+      }
+
+      /* Signs: white header band behind the brown grid rectangles */
+      #page2.page2--section-signs .page2-header,
+      #page2.page2--header-over-signs .page2-header {
+        background: var(--page2-bg);
+      }
+
+      #page2.page2--section-signs .page2-header::before,
+      #page2.page2--header-over-signs .page2-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 100%;
+        height: var(--page2-header-top-offset);
+        background: var(--page2-bg);
         pointer-events: none;
       }
 
@@ -1916,9 +3307,9 @@
         display: inline-flex;
         direction: ltr;
         align-items: baseline;
-        font-family: "DIN Condensed", sans-serif;
-        font-size: calc(var(--page2-header-row-height) - var(--page2-space-4));
-        font-weight: 700;
+        font-family: "Suisse Intl", sans-serif;
+        font-size: var(--page2-header-col-title-font-size);
+        font-weight: 400;
         line-height: 1.05;
         color: var(--page2-bg);
         mix-blend-mode: normal;
@@ -1937,9 +3328,9 @@
       }
 
       #page2 .page2-col-title__fa {
-        font-family: "DecoType Nastaleeq", "Noto Nastaliq Urdu", serif;
-        font-size: 0.92em;
-        font-weight: normal;
+        font-family: "Vazirmatn", sans-serif;
+        font-size: 1.15em; /* restores −20% cut on Persian only (0.92 ÷ 0.8) */
+        font-weight: 400;
         line-height: inherit;
         color: inherit;
         mix-blend-mode: inherit;
@@ -1993,7 +3384,7 @@
       #page2.page2--header-invert .page2-col-title__fa {
         background-image: var(
           --page2-home-bg,
-          url("website/home/YuvalUrbach056%20Large.jpeg")
+          url("website/home/1.jpeg")
         );
         background-size: cover;
         background-position: center center;
@@ -2025,17 +3416,48 @@
         grid-column: 1 / span 2;
         width: 100%;
         min-width: 0;
-        will-change: transform, opacity;
+        transform-origin: left bottom;
+        will-change: transform;
         pointer-events: none;
       }
 
       #page2 .page2-logo__image {
+        position: relative;
         width: 100%;
         height: auto;
-        aspect-ratio: 207 / 93;
+        /* Match embedded SVG viewBox (72.15 × 33.64) — 207/93 was ~3.7% too short and clipped descenders. */
+        aspect-ratio: 72.15 / 33.64;
         display: block;
         pointer-events: none;
+      }
+
+      #page2 .page2-logo__layer {
+        position: absolute;
+        inset: 0;
+      }
+
+      #page2 .page2-logo__layer--white {
+        color: #fff;
         filter: var(--page2-soft-drop-shadow);
+        clip-path: inset(
+          0 0 calc(100% - var(--page2-logo-brown-inset-top, 100%)) 0
+        );
+      }
+
+      #page2 .page2-logo__layer--brown {
+        color: var(--color-brown, #442c28);
+        clip-path: inset(var(--page2-logo-brown-inset-top, 100%) 0 0 0);
+      }
+
+      #page2 .page2-logo__layer svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      #page2 .page2-logo__layer svg path,
+      #page2 .page2-logo__layer svg rect {
+        fill: currentColor;
       }
 
       /* Cart trigger — right-edge header middle cell */
@@ -2049,6 +3471,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
         width: 100%;
         height: 100%;
         margin: 0;
@@ -2066,10 +3489,62 @@
         color: var(--page2-header-cell-fill);
       }
 
+      #page2 .page2-cart-trigger__icon-surface {
+        display: none;
+        width: calc(var(--page2-header-row-height) - var(--page2-space-4));
+        height: calc(var(--page2-header-row-height) - var(--page2-space-4));
+      }
+
       #page2 .page2-cart-trigger__icon {
         width: calc(var(--page2-header-row-height) - var(--page2-space-4));
         height: calc(var(--page2-header-row-height) - var(--page2-space-4));
         display: block;
+      }
+
+      /* Home hero: photo shows through cart icon (matches .page2-col-title knockout) */
+      #page2.page2--header-invert .page2-cart-trigger__icon-surface {
+        display: block;
+        background-image: var(
+          --page2-home-bg,
+          url("website/home/1.jpeg")
+        );
+        background-size: cover;
+        background-position: center center;
+        background-attachment: fixed;
+        -webkit-mask-image: var(--page2-cart-icon-mask);
+        mask-image: var(--page2-cart-icon-mask);
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+      }
+
+      #page2.page2--header-invert .page2-cart-trigger__icon {
+        display: none;
+      }
+
+      #page2 .page2-cart-trigger__count {
+        position: absolute;
+        top: calc(var(--page2-space-4) * 0.5);
+        right: calc(var(--page2-space-4) * 0.5);
+        min-width: clamp(0.875rem, 1.042vw, 1.125rem); /* 14–18px @ ref */
+        height: clamp(0.875rem, 1.042vw, 1.125rem);
+        padding: 0 clamp(0.1875rem, 0.231vw, 0.3125rem);
+        border-radius: 999px;
+        background: var(--page2-header-shop-banner-surface, #e85d04);
+        color: #fff;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.625rem, 0.694vw, 0.75rem); /* 10–12px @ ref */
+        font-weight: normal;
+        line-height: clamp(0.875rem, 1.042vw, 1.125rem);
+        text-align: center;
+        pointer-events: none;
+      }
+
+      #page2 .page2-cart-trigger__count[hidden] {
+        display: none;
       }
 
       #page2 .page2-cart-trigger:focus-visible {
@@ -2128,7 +3603,7 @@
         padding: 0;
         border: none;
         background: transparent;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
         line-height: 1;
         color: var(--page2-header-cell-fill);
@@ -2147,9 +3622,85 @@
 
       #page2 .page2-cart-drawer__empty {
         margin: 0;
-        font-family: "DIN Condensed", sans-serif;
+        font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(1rem, 1.157vw, 1.25rem); /* 16px @ ref */
         color: var(--page2-header-cell-fill);
+      }
+
+      #page2 .page2-cart-drawer__empty[hidden] {
+        display: none;
+      }
+
+      #page2 .page2-cart-drawer__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--page2-gutter);
+      }
+
+      #page2 .page2-cart-drawer__list[hidden] {
+        display: none;
+      }
+
+      #page2 .page2-cart-drawer__item {
+        display: grid;
+        grid-template-columns: clamp(3.5rem, 4.63vw, 5rem) 1fr auto; /* 56–80px @ ref */
+        gap: clamp(0.625rem, 0.926vw, 1rem);
+        align-items: center;
+      }
+
+      #page2 .page2-cart-drawer__item-thumb {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        border: 1px solid rgba(80, 70, 60, 0.35);
+        background-color: #d8d2cc;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+
+      #page2 .page2-cart-drawer__item-info {
+        min-width: 0;
+      }
+
+      #page2 .page2-cart-drawer__item-name {
+        margin: 0;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(1rem, 1.157vw, 1.25rem);
+        font-weight: normal;
+        line-height: 1.1;
+        color: var(--page2-header-cell-fill);
+      }
+
+      #page2 .page2-cart-drawer__item-variant {
+        margin: clamp(0.125rem, 0.231vw, 0.25rem) 0 0;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.875rem, 0.926vw, 1rem);
+        line-height: 1.2;
+        color: var(--color-brown);
+      }
+
+      #page2 .page2-cart-drawer__item-remove {
+        margin: 0;
+        padding: clamp(0.25rem, 0.347vw, 0.375rem);
+        border: none;
+        background: transparent;
+        color: var(--color-brown);
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(1.125rem, 1.389vw, 1.5rem);
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      #page2 .page2-cart-drawer__item-remove:hover {
+        color: var(--color-brown);
+      }
+
+      #page2 .page2-cart-drawer__item-remove:focus-visible {
+        outline: 2px solid var(--page2-header-cell-fill);
+        outline-offset: 2px;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -2201,7 +3752,10 @@
         var page2 = document.getElementById("page2");
         var header = page2 && page2.querySelector(".page2-header");
         var logoEl = page2 && page2.querySelector(".page2-logo");
+        var aboutMediaEl = page2 && page2.querySelector(".page2-about-media");
         var homeSection = page2 && page2.querySelector("#section-home");
+        var homeOverlay =
+          page2 && page2.querySelector("#page2-home-overlay");
         var homeMarkerEn =
           page2 && page2.querySelector(".page2-home-marker--en");
         var homeMarkerFa =
@@ -2210,11 +3764,25 @@
           page2 && page2.querySelector(".page2-home-intro--en");
         var homeIntroFa =
           page2 && page2.querySelector(".page2-home-intro--fa");
+        var aboutContentEl =
+          page2 && page2.querySelector(".page2-about-content");
+        var homeSignsEl =
+          page2 && page2.querySelector("#page2-home-signs");
+        var homeSignsPlaceholder = null;
+        var homeSignsFlowHeightPx = 0;
+        var homeSignsCoverAnchor = null;
+        var homeSignsCoverDone = false;
+        var homeSignsCoverReleaseScroll = 0;
+        var homeSignsCoverStoredHeightPx = 0;
+        var aboutMediaOpenedOnce = false;
         if (!page2 || !header) return;
 
         var MIN_SPAN = 1;
         var MAX_SPAN = 6;
         var DEFAULT_OPEN_INDEX = 1; /* home — second column from the left */
+        var HOME_COL_INDEX = DEFAULT_OPEN_INDEX;
+        var SIGNS_COL_INDEX = 2;
+        var DESIGN_COL_INDEX = 4;
         var columnSpans = [];
         var headerCols = header.querySelectorAll(".page2-header-col");
         var sections = page2.querySelectorAll(".page2-section");
@@ -2232,7 +3800,7 @@
         var SECTION_PAGE_CLASSES = [
           "",
           "page2--section-home",
-          "page2--section-signals",
+          "page2--section-signs",
           "page2--section-shop",
           "page2--section-design",
           "page2--section-archive",
@@ -2245,9 +3813,348 @@
           var viewportHeight = page2.clientHeight;
           var needsScroll = contentHeight > viewportHeight + 1;
           page2.classList.toggle("page2--scrollable", needsScroll);
-          if (!needsScroll) {
-            page2.scrollTop = 0;
+          /* Home scroll lives in #page2-home-overlay — never reset it while home is active. */
+          if (!needsScroll && !isHomeScrollCol(scrollActiveIndex)) {
+            resetHomeScroll();
           }
+        }
+
+        function resetHomeScroll() {
+          if (homeOverlay) {
+            homeOverlay.scrollTop = 0;
+          }
+          page2.scrollTop = 0;
+          page2.classList.remove("page2--home-signs-visible");
+          resetHomeHeroPolish();
+          resetAboutTextReveal();
+          resetAboutExitAnimation();
+          resetAboutLayersSignsClip();
+          page2.classList.remove("page2--signs-passed");
+          homeSignsCoverDone = false;
+          homeSignsCoverReleaseScroll = 0;
+          homeSignsCoverStoredHeightPx = 0;
+          aboutMediaOpenedOnce = false;
+          page2.style.setProperty("--page2-about-media-open", "0");
+          page2.classList.remove("page2--about-media-visible");
+          if (aboutMediaEl) {
+            aboutMediaEl.style.width = "0";
+            aboutMediaEl.style.left = "0";
+            aboutMediaEl.style.top = "0";
+          }
+        }
+
+        function getHomeScrollTop() {
+          return homeOverlay ? homeOverlay.scrollTop : page2.scrollTop;
+        }
+
+        function resetHomeHeroPolish() {
+          if (!homeSection) return;
+          var heroContent = homeSection.querySelector(".page2-home-content");
+          if (!heroContent) return;
+          heroContent.style.transform = "";
+          heroContent.style.opacity = "";
+        }
+
+        function resetAboutTextReveal() {
+          page2.style.setProperty("--page2-about-text-clip-top", "100%");
+        }
+
+        function resetAboutLayersSignsClip() {
+          page2.style.setProperty(
+            "--page2-about-media-signs-clip-bottom",
+            "0px"
+          );
+          page2.style.setProperty("--page2-logo-signs-clip-bottom", "0px");
+        }
+
+        function getLogoSignsClipRect() {
+          if (!logoEl) return null;
+          var slot = logoEl.querySelector(".page2-logo__slot");
+          return slot || logoEl;
+        }
+
+        function getSignsClipTopY(fallbackTopY) {
+          if (!homeSignsEl) return fallbackTopY;
+          if (
+            page2.classList.contains("page2--signs-covering") ||
+            homeSignsEl.style.position === "fixed"
+          ) {
+            return homeSignsEl.getBoundingClientRect().top;
+          }
+          return fallbackTopY;
+        }
+
+        function syncAboutLayersSignsClip(fallbackTopY) {
+          updateAboutLayersSignsClip(getSignsClipTopY(fallbackTopY));
+        }
+
+        function updateAboutLayersSignsClip(signsTopY) {
+          if (!aboutMediaEl || !logoEl) return;
+          var mediaRect = aboutMediaEl.getBoundingClientRect();
+          var logoClipEl = getLogoSignsClipRect();
+          var logoRect = logoClipEl
+            ? logoClipEl.getBoundingClientRect()
+            : logoEl.getBoundingClientRect();
+          var mediaClip = 0;
+          if (signsTopY < mediaRect.bottom) {
+            mediaClip =
+              signsTopY <= mediaRect.top
+                ? Math.ceil(mediaRect.height)
+                : Math.ceil(mediaRect.bottom - signsTopY);
+          }
+          var logoClip = 0;
+          if (signsTopY < logoRect.bottom) {
+            logoClip =
+              signsTopY <= logoRect.top
+                ? Math.ceil(logoRect.height)
+                : Math.ceil(logoRect.bottom - signsTopY);
+          }
+          page2.style.setProperty(
+            "--page2-about-media-signs-clip-bottom",
+            mediaClip + "px"
+          );
+          page2.style.setProperty(
+            "--page2-logo-signs-clip-bottom",
+            logoClip + "px"
+          );
+        }
+
+        function getSignsCoverTopY() {
+          if (!homeOverlay || !homeSignsEl) return Infinity;
+          if (!homeSignsCoverAnchor) {
+            return homeSignsEl.getBoundingClientRect().top;
+          }
+          var scrollDelta =
+            homeOverlay.scrollTop - homeSignsCoverAnchor.scrollTop;
+          return homeSignsCoverAnchor.top - scrollDelta;
+        }
+
+        function ensureHomeSignsPlaceholder() {
+          if (!homeSignsEl || homeSignsPlaceholder) return;
+          homeSignsPlaceholder = document.createElement("div");
+          homeSignsPlaceholder.className = "page2-home-signs-placeholder";
+          homeSignsPlaceholder.setAttribute("aria-hidden", "true");
+          homeSignsEl.parentNode.insertBefore(
+            homeSignsPlaceholder,
+            homeSignsEl
+          );
+        }
+
+        function resetAboutExitAnimation() {
+          page2.classList.remove("page2--signs-covering");
+          page2.classList.remove("page2--about-behind-signs");
+          if (!page2.classList.contains("page2--signs-passed")) {
+            resetAboutLayersSignsClip();
+          }
+          homeSignsFlowHeightPx = 0;
+          homeSignsCoverAnchor = null;
+          if (homeSignsPlaceholder) {
+            homeSignsPlaceholder.style.height = "0";
+          }
+          if (homeSignsEl) {
+            homeSignsEl.style.position = "";
+            homeSignsEl.style.top = "";
+            homeSignsEl.style.left = "";
+            homeSignsEl.style.right = "";
+            homeSignsEl.style.width = "";
+            homeSignsEl.style.zIndex = "";
+            homeSignsEl.style.minHeight = "";
+          }
+        }
+
+        function updateAboutExitAnimation() {
+          if (!homeSignsEl || !isHomeScrollCol(scrollActiveIndex)) {
+            resetAboutExitAnimation();
+            return;
+          }
+
+          if (prefersReducedMotion) {
+            resetAboutExitAnimation();
+            return;
+          }
+
+          var pageRect = page2.getBoundingClientRect();
+          var viewportHeight = pageRect.height;
+          if (viewportHeight <= 0) {
+            resetAboutExitAnimation();
+            return;
+          }
+
+          var pageStyles = getComputedStyle(page2);
+          var mediaOpen =
+            parseFloat(
+              pageStyles.getPropertyValue("--page2-about-media-open")
+            ) || 0;
+          var trackTop = homeSignsCoverAnchor
+            ? getSignsCoverTopY()
+            : homeSignsEl.getBoundingClientRect().top;
+          var approachPx = Math.max(0, pageRect.bottom - trackTop);
+
+          if (homeSignsCoverDone) {
+            var reengageThreshold = Math.max(
+              viewportHeight * 0.35,
+              homeSignsCoverStoredHeightPx || 0
+            );
+            if (
+              homeOverlay.scrollTop <
+              homeSignsCoverReleaseScroll - reengageThreshold
+            ) {
+              homeSignsCoverDone = false;
+              homeSignsCoverReleaseScroll = 0;
+              homeSignsCoverStoredHeightPx = 0;
+              page2.classList.remove("page2--signs-passed");
+              resetAboutLayersSignsClip();
+            } else {
+              syncAboutLayersSignsClip(page2.getBoundingClientRect().top);
+              return;
+            }
+          }
+
+          var exitActive =
+            approachPx > 0.5 && (mediaOpen > 0.01 || aboutMediaOpenedOnce);
+          var signsVisibleInView = page2.classList.contains(
+            "page2--home-signs-visible"
+          );
+          var behindSigns = exitActive;
+
+          page2.classList.toggle("page2--about-behind-signs", behindSigns);
+
+          if (
+            homeSignsCoverAnchor &&
+            !homeSignsCoverDone &&
+            homeOverlay.scrollTop <
+              homeSignsCoverAnchor.scrollTop - viewportHeight * 0.12
+          ) {
+            resetAboutExitAnimation();
+            return;
+          }
+
+          if (
+            exitActive &&
+            trackTop > 0 &&
+            trackTop < pageRect.bottom - 0.5 &&
+            !homeSignsCoverAnchor
+          ) {
+            homeSignsCoverAnchor = {
+              scrollTop: homeOverlay.scrollTop,
+              top: trackTop,
+            };
+          }
+
+          var coverTopY = getSignsCoverTopY();
+          var coverPx = Math.max(0, pageRect.bottom - coverTopY);
+
+          /* Transition complete — release fixed curtain so signs list scrolls normally. */
+          if (homeSignsCoverAnchor && coverTopY <= 0) {
+            homeSignsCoverReleaseScroll = homeOverlay.scrollTop;
+            homeSignsCoverStoredHeightPx = homeSignsFlowHeightPx;
+            page2.classList.add("page2--signs-passed");
+            resetAboutExitAnimation();
+            homeSignsCoverDone = true;
+            syncAboutLayersSignsClip(page2.getBoundingClientRect().top);
+            return;
+          }
+
+          if (
+            !homeSignsCoverAnchor &&
+            (coverPx <= 0.5 || !exitActive)
+          ) {
+            page2.classList.remove("page2--signs-covering");
+            if (homeSignsEl) {
+              homeSignsEl.style.position = "";
+              homeSignsEl.style.top = "";
+              homeSignsEl.style.left = "";
+              homeSignsEl.style.right = "";
+              homeSignsEl.style.width = "";
+              homeSignsEl.style.zIndex = "";
+              homeSignsEl.style.minHeight = "";
+            }
+            if (homeSignsPlaceholder) {
+              homeSignsPlaceholder.style.height = "0";
+            }
+            if (!page2.classList.contains("page2--signs-passed")) {
+              resetAboutLayersSignsClip();
+            }
+            return;
+          }
+
+          ensureHomeSignsPlaceholder();
+          homeSignsFlowHeightPx = homeSignsEl.offsetHeight;
+          if (homeSignsPlaceholder && homeSignsFlowHeightPx > 0) {
+            homeSignsPlaceholder.style.height =
+              homeSignsFlowHeightPx + "px";
+          }
+
+          page2.classList.add("page2--signs-covering");
+          homeSignsEl.style.top = coverTopY + "px";
+          homeSignsEl.style.left = "0";
+          homeSignsEl.style.right = "0";
+          homeSignsEl.style.width = "100%";
+
+          syncAboutLayersSignsClip(coverTopY);
+        }
+
+        function updateAboutTextReveal() {
+          if (!homeSection || !aboutContentEl) return;
+          var aboutPanel = homeSection.querySelector(".page2-home-about");
+          if (!aboutPanel) return;
+
+          if (!isHomeScrollCol(scrollActiveIndex)) return;
+
+          if (prefersReducedMotion) {
+            var pageRect = page2.getBoundingClientRect();
+            var aboutRect = aboutPanel.getBoundingClientRect();
+            var pageStyles = getComputedStyle(page2);
+            var whiteThreshold =
+              parseFloat(
+                pageStyles.getPropertyValue(
+                  "--page2-about-media-white-threshold"
+                )
+              ) || 0.5;
+            var onWhite =
+              getAboutWhiteCoverageRatio(aboutRect, pageRect) >=
+              whiteThreshold - 0.01;
+            page2.style.setProperty(
+              "--page2-about-text-clip-top",
+              onWhite ? "0%" : "100%"
+            );
+            return;
+          }
+
+          var textRect = aboutContentEl.getBoundingClientRect();
+          var panelTop = aboutPanel.getBoundingClientRect().top;
+          if (textRect.height <= 0) return;
+
+          var clipTopPx = Math.min(
+            textRect.height,
+            Math.max(0, panelTop - textRect.top)
+          );
+          var clipPercent = (clipTopPx / textRect.height) * 100;
+          page2.style.setProperty(
+            "--page2-about-text-clip-top",
+            clipPercent + "%"
+          );
+        }
+
+        function updateHomeOverlayScrollPolish() {
+          updateAboutExitAnimation();
+          updateAboutTextReveal();
+          updateHomeSignsScrollState();
+          if (!homeOverlay || prefersReducedMotion) return;
+          var heroContent =
+            homeSection && homeSection.querySelector(".page2-home-content");
+          if (!heroContent) return;
+
+          var stepHeight = homeOverlay.clientHeight;
+          if (!stepHeight) return;
+
+          var progress = Math.min(
+            1,
+            Math.max(0, homeOverlay.scrollTop / stepHeight)
+          );
+          var scale = 1 - progress * 0.06;
+          heroContent.style.transform = "scale(" + scale + ")";
+          heroContent.style.opacity = String(1 - progress * 0.25);
         }
 
         function updateSectionPageClass(colIndex) {
@@ -2259,11 +4166,67 @@
           updatePage2Scrollability();
         }
 
+        function isHomeScrollCol(colIndex) {
+          return (
+            colIndex === HOME_COL_INDEX || colIndex === SIGNS_COL_INDEX
+          );
+        }
+
+        function scrollToHomeSigns(options) {
+          options = options || {};
+          if (!homeOverlay || !homeSignsEl || !header) return;
+
+          var target = getHomeSignsScrollTop();
+
+          function applyScrollState() {
+            updateLogoPosition();
+            updateHeaderInvertState();
+            updateHomeOverlayScrollPolish();
+            updateHomeSignsScrollState();
+          }
+
+          if (prefersReducedMotion || options.instant) {
+            homeOverlay.scrollTop = target;
+            applyScrollState();
+            return;
+          }
+
+          homeOverlay.scrollTo({ top: target, behavior: "smooth" });
+          window.setTimeout(applyScrollState, HEADER_TRANSITION_MS + 120);
+        }
+
+        function getHomeSignsScrollTop() {
+          if (!homeOverlay || !homeSignsEl || !header) return 0;
+
+          var gapPx = 0;
+          if (
+            window.Page2Units &&
+            typeof window.Page2Units.readPage2CssLengthPx === "function"
+          ) {
+            gapPx =
+              window.Page2Units.readPage2CssLengthPx(
+                "--page2-signs-scroll-gap"
+              ) || 0;
+          }
+
+          var headerBottom = header.getBoundingClientRect().bottom;
+          var overlayTop = homeOverlay.getBoundingClientRect().top;
+
+          return Math.max(
+            0,
+            homeSignsEl.offsetTop - (headerBottom - overlayTop) - gapPx
+          );
+        }
+
         function showSection(colIndex, options) {
           options = options || {};
           if (!isPage2Visible()) return;
           if (isLockedColumn(colIndex)) return;
-          var section = sectionForColumn(colIndex);
+
+          var scrollToSigns = colIndex === SIGNS_COL_INDEX;
+          var section = scrollToSigns
+            ? sectionForColumn(HOME_COL_INDEX)
+            : sectionForColumn(colIndex);
           if (!section) return;
 
           if (
@@ -2274,16 +4237,39 @@
           }
 
           var animate = options.animate !== false;
+          var prevActiveCol = scrollActiveIndex;
           applyExpandedColumn(colIndex, animate === false ? false : undefined);
 
           sections.forEach(function (s) {
             s.classList.toggle("is-active", s === section);
           });
-          updateSectionPageClass(colIndex);
+          updateSectionPageClass(
+            scrollToSigns ? HOME_COL_INDEX : colIndex
+          );
 
-          page2.scrollTop = 0;
-          if (colIndex === HOME_COL_INDEX) {
+          var switchingHomeScrollTarget =
+            isHomeScrollCol(prevActiveCol) && isHomeScrollCol(colIndex);
+
+          if (prevActiveCol !== colIndex) {
+            if (colIndex === HOME_COL_INDEX) {
+              resetHomeScroll();
+            } else if (!switchingHomeScrollTarget) {
+              resetHomeScroll();
+            }
+          }
+
+          if (isHomeScrollCol(colIndex)) {
             updateLogoPosition();
+            if (scrollToSigns) {
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                  scrollToHomeSigns({ instant: animate === false });
+                });
+              });
+            } else {
+              updateHomeOverlayScrollPolish();
+              updateHomeSignsScrollState();
+            }
           }
           /* Hero is display:none until is-active above — re-check after layout. */
           updateHeaderInvertState();
@@ -2303,24 +4289,56 @@
           });
         }
 
-        var HOME_COL_INDEX = DEFAULT_OPEN_INDEX;
-        var DESIGN_COL_INDEX = 4;
+        function updateHomeSignsScrollState() {
+          if (!homeSignsEl || !isHomeScrollCol(scrollActiveIndex)) {
+            page2.classList.remove("page2--home-signs-visible");
+            return;
+          }
+
+          var signsRect = homeSignsEl.getBoundingClientRect();
+          var pageRect = page2.getBoundingClientRect();
+          var signsVisible =
+            signsRect.top < pageRect.bottom * 0.85 &&
+            signsRect.bottom > pageRect.top;
+          page2.classList.toggle(
+            "page2--home-signs-visible",
+            signsVisible
+          );
+        }
+
+        function isSignsBehindHeader() {
+          if (!homeSignsEl || !isHomeScrollCol(scrollActiveIndex)) return false;
+
+          var headerRect = header.getBoundingClientRect();
+          var signsRect = homeSignsEl.getBoundingClientRect();
+          return (
+            signsRect.top <= headerRect.bottom &&
+            signsRect.bottom > headerRect.top
+          );
+        }
 
         function shouldInvertHeader() {
           /* Invert (white text over the photo) only while the home hero panel
              is the one sitting behind the header. Once the about panel scrolls
-             up to the header, fall back to the normal brown header. */
-          if (scrollActiveIndex !== HOME_COL_INDEX) return false;
-          var hero =
-            homeSection && homeSection.querySelector(".page2-home-hero");
-          if (!hero) return true;
-          var heroRect = hero.getBoundingClientRect();
+             up to the header, fall back to the normal brown header — except
+             over the dark signs accordion, which gets a white header band. */
+          if (!isHomeScrollCol(scrollActiveIndex)) return false;
+          if (isSignsBehindHeader()) return false;
+
           var headerRect = header.getBoundingClientRect();
-          return heroRect.bottom > headerRect.bottom;
+          var about =
+            homeSection && homeSection.querySelector(".page2-home-about");
+          if (!about) return true;
+          var aboutRect = about.getBoundingClientRect();
+          return aboutRect.top >= headerRect.bottom - 1;
         }
 
         function updateHeaderInvertState() {
           page2.classList.toggle("page2--header-invert", shouldInvertHeader());
+          page2.classList.toggle(
+            "page2--header-over-signs",
+            isSignsBehindHeader()
+          );
         }
 
         function updateDesignActiveState() {
@@ -2607,6 +4625,34 @@
           });
         });
 
+        /* Footer (home): wire small links to the header sections and clone the logo. */
+        (function setupHomeFooter() {
+          var footer = page2 && page2.querySelector(".page2-footer");
+          if (!footer) return;
+
+          footer
+            .querySelectorAll(".page2-footer__link[data-footer-col]")
+            .forEach(function (link) {
+              link.addEventListener("click", function () {
+                var colIndex = parseInt(
+                  link.getAttribute("data-footer-col"),
+                  10
+                );
+                if (isNaN(colIndex)) return;
+                showSection(colIndex);
+              });
+            });
+
+          var logoTarget = footer.querySelector(".page2-footer__logo");
+          var sourceLogoSvg = logoEl ? logoEl.querySelector("svg") : null;
+          if (logoTarget && sourceLogoSvg) {
+            var clonedLogo = sourceLogoSvg.cloneNode(true);
+            clonedLogo.removeAttribute("class");
+            clonedLogo.setAttribute("aria-hidden", "true");
+            logoTarget.appendChild(clonedLogo);
+          }
+        })();
+
         header.querySelectorAll(".page2-header-cell").forEach(function (cell) {
           cell.addEventListener("mouseenter", function () {
             if (!isPage2Visible()) return;
@@ -2631,6 +4677,8 @@
         page2.addEventListener("click", function (event) {
           if (!isPage2Visible()) return;
           if (header.contains(event.target)) return;
+          if (event.target.closest("#section-signs")) return;
+          if (event.target.closest("#page2-home-signs")) return;
           if (event.target.closest("#section-design")) return;
           if (event.target.closest("#section-shop")) return;
           if (event.target.closest("#section-archive")) return;
@@ -2655,10 +4703,14 @@
           if (!guides || !logoEl) return 0;
           var gridCols = guides.querySelectorAll(".page2-col");
           if (gridCols.length < 7) return 0;
-          var logoRect = logoEl.getBoundingClientRect();
           var leftColLeft = gridCols[0].getBoundingClientRect().left;
           var middleColLeft = gridCols[5].getBoundingClientRect().left;
           return middleColLeft - leftColLeft;
+        }
+
+        function getLogoScrollOffsetX(heroOffsetX, slotWidth, scale) {
+          /* Keep the visual center fixed as scale grows (origin is left bottom). */
+          return heroOffsetX - (slotWidth * (scale - 1) / 2);
         }
 
         function getHomeMarkerSizePx() {
@@ -2735,6 +4787,49 @@
           homeMarkerFa.style.top = faCenterY + "px";
         }
 
+        function getLogoAboutScale() {
+          var styles = window.getComputedStyle(page2);
+          var scale = parseFloat(
+            styles.getPropertyValue("--page2-logo-about-scale")
+          );
+          return scale > 0 ? scale : 1.5;
+        }
+
+        function updateLogoBrownClip(slot) {
+          if (!slot || !homeSection) return;
+          var aboutPanel = homeSection.querySelector(".page2-home-about");
+          if (!aboutPanel) return;
+          var logoImage = slot.querySelector(".page2-logo__image");
+          if (!logoImage) return;
+          var logoRect = logoImage.getBoundingClientRect();
+          if (logoRect.height <= 0) return;
+
+          var clipValue;
+          if (prefersReducedMotion) {
+            var aboutRect = aboutPanel.getBoundingClientRect();
+            var pageRect = page2.getBoundingClientRect();
+            var pageStyles = getComputedStyle(page2);
+            var whiteThreshold =
+              parseFloat(
+                pageStyles.getPropertyValue(
+                  "--page2-about-media-white-threshold"
+                )
+              ) || 0.5;
+            var whiteCoverage = getAboutWhiteCoverageRatio(aboutRect, pageRect);
+            clipValue =
+              whiteCoverage >= whiteThreshold - 0.01 ? "0%" : "100%";
+          } else {
+            var whiteTop = aboutPanel.getBoundingClientRect().top;
+            var insetPx = Math.min(
+              logoRect.height,
+              Math.max(0, whiteTop - logoRect.top)
+            );
+            clipValue = (insetPx / logoRect.height) * 100 + "%";
+          }
+
+          page2.style.setProperty("--page2-logo-brown-inset-top", clipValue);
+        }
+
         function updateLogoPosition() {
           if (!logoEl) return;
           var slot = logoEl.querySelector(".page2-logo__slot");
@@ -2743,30 +4838,244 @@
           var viewportHeight = page2.clientHeight;
           if (viewportHeight <= 0) return;
 
-          var centerTop = (viewportHeight - logoHeight) / 2;
-          var bottomTop =
-            viewportHeight - logoHeight - getLogoBottomPaddingPx();
           var scrollProgress = Math.min(
             1,
-            Math.max(0, page2.scrollTop / viewportHeight)
+            Math.max(0, getHomeScrollTop() / viewportHeight)
           );
 
-          /* Y down through scroll; fade completes at 3/4 of downward travel. */
+          /* Move down and scale up through scroll; settle at bottom of viewport. */
           var yProgress = Math.min(1, scrollProgress * 2);
-          var fadeProgress = Math.min(1, yProgress / 0.75);
-          var middleOffsetX = getLogoColumnOffsetX();
+          var aboutScale = getLogoAboutScale();
+          var scale = 1 + (aboutScale - 1) * yProgress;
+          var scaledHeight = logoHeight * scale;
+          var centerTop = (viewportHeight - logoHeight) / 2;
+          var bottomTop =
+            viewportHeight - scaledHeight - getLogoBottomPaddingPx();
+          var heroOffsetX = getLogoColumnOffsetX();
+          var offsetX = getLogoScrollOffsetX(
+            heroOffsetX,
+            slot.offsetWidth,
+            scale
+          );
 
           logoEl.style.top =
             centerTop + (bottomTop - centerTop) * yProgress + "px";
-          slot.style.transform = "translateX(" + middleOffsetX + "px)";
-          slot.style.opacity = String(1 - fadeProgress);
+          slot.style.transform =
+            "translateX(" + offsetX + "px) scale(" + scale + ")";
+          updateLogoBrownClip(slot);
           updateHomeMarkers();
+          updateAboutMediaOpen();
+          updateAboutTextReveal();
+          updateAboutExitAnimation();
+        }
+
+        function clampHomeProgress(value) {
+          return Math.min(1, Math.max(0, value));
+        }
+
+        function getAboutMediaLengthPx(token, fallback) {
+          if (
+            window.Page2Units &&
+            typeof window.Page2Units.readPage2CssLengthPx === "function"
+          ) {
+            var px = window.Page2Units.readPage2CssLengthPx(token);
+            if (px > 0) return px;
+          }
+          return fallback;
+        }
+
+        function getAboutWhiteCoverageRatio(aboutRect, pageRect) {
+          var viewHeight = pageRect.bottom - pageRect.top;
+          if (viewHeight <= 0) return 0;
+          var visibleTop = Math.max(aboutRect.top, pageRect.top);
+          var visibleBottom = Math.min(aboutRect.bottom, pageRect.bottom);
+          return Math.max(0, visibleBottom - visibleTop) / viewHeight;
+        }
+
+        function shouldHoldAboutMediaOpen() {
+          if (!aboutMediaOpenedOnce || !homeOverlay) return false;
+          if (
+            page2.classList.contains("page2--signs-covering") ||
+            page2.classList.contains("page2--signs-passed") ||
+            page2.classList.contains("page2--about-behind-signs") ||
+            homeSignsCoverDone
+          ) {
+            return true;
+          }
+          var stepHeight = homeOverlay.clientHeight;
+          if (!stepHeight) return false;
+          var pageStyles = getComputedStyle(page2);
+          var whiteThreshold =
+            parseFloat(
+              pageStyles.getPropertyValue("--page2-about-media-white-threshold")
+            ) || 0.5;
+          return homeOverlay.scrollTop >= stepHeight * whiteThreshold - 1;
+        }
+
+        function updateAboutMediaOpen() {
+          if (!homeOverlay || !aboutMediaEl || !logoEl || !homeSection) return;
+
+          var slot = logoEl.querySelector(".page2-logo__slot");
+          if (!slot) return;
+
+          var aboutPanel = homeSection.querySelector(".page2-home-about");
+          if (!aboutPanel) return;
+
+          var stepHeight = homeOverlay.clientHeight;
+          if (!stepHeight) return;
+
+          var scrollTop = homeOverlay.scrollTop;
+          var aboutRect = aboutPanel.getBoundingClientRect();
+          var pageRect = page2.getBoundingClientRect();
+          var pageStyles = getComputedStyle(page2);
+          var whiteThreshold =
+            parseFloat(
+              pageStyles.getPropertyValue("--page2-about-media-white-threshold")
+            ) || 0.5;
+          var whiteCoverage = getAboutWhiteCoverageRatio(aboutRect, pageRect);
+          var whiteStart = stepHeight * whiteThreshold;
+          var isOnWhitePage = whiteCoverage >= whiteThreshold - 0.01;
+          var openProgress = 0;
+
+          if (isOnWhitePage) {
+            var openRangeFactor =
+              parseFloat(
+                pageStyles.getPropertyValue("--page2-about-media-open-range")
+              ) || 0.35;
+            var openRange = Math.max(stepHeight * openRangeFactor, 1);
+            openProgress = clampHomeProgress(
+              (scrollTop - whiteStart) / openRange
+            );
+          }
+
+          if (prefersReducedMotion) {
+            openProgress = isOnWhitePage ? 1 : 0;
+          }
+
+          if (openProgress >= 1) {
+            aboutMediaOpenedOnce = true;
+          }
+
+          var holdForSignsExit = shouldHoldAboutMediaOpen();
+
+          if (!isOnWhitePage && !holdForSignsExit) {
+            aboutMediaEl.style.width = "0";
+            aboutMediaEl.style.left = "0";
+            aboutMediaEl.style.top = "0";
+            page2.style.setProperty("--page2-about-media-open", "0");
+            page2.classList.remove("page2--about-media-visible");
+            return;
+          }
+
+          if (holdForSignsExit && !isOnWhitePage) {
+            openProgress = 1;
+          }
+
+          var fullWidth = getAboutMediaLengthPx("--page2-about-media-width", 200);
+          var mediaHeight = getAboutMediaLengthPx(
+            "--page2-about-media-height",
+            300
+          );
+          var mediaGap = getAboutMediaLengthPx("--page2-about-media-gap", 20);
+          var edgeInset = getAboutMediaLengthPx(
+            "--page2-about-media-edge-inset",
+            30
+          );
+          var topOffset = getAboutMediaLengthPx(
+            "--page2-about-media-top-offset",
+            60
+          );
+          var boundsRect =
+            isOnWhitePage || !holdForSignsExit ? aboutRect : pageRect;
+          var visibleTop = Math.max(boundsRect.top, pageRect.top);
+          var visibleBottom = Math.min(boundsRect.bottom, pageRect.bottom);
+          var visibleLeft = Math.max(boundsRect.left, pageRect.left);
+          var visibleRight = Math.min(boundsRect.right, pageRect.right);
+          var contentLeft = visibleLeft + edgeInset;
+          var contentRight = visibleRight - edgeInset;
+          var contentTop = visibleTop + edgeInset;
+          var contentWidth = Math.max(0, contentRight - contentLeft);
+          var currentWidth = Math.min(fullWidth * openProgress, contentWidth);
+          var logoRect = slot.getBoundingClientRect();
+          var centerX = logoRect.left + logoRect.width / 2;
+          var halfOpen = currentWidth / 2;
+
+          centerX = Math.min(
+            Math.max(centerX, contentLeft + halfOpen),
+            contentRight - halfOpen
+          );
+
+          var left = centerX - halfOpen;
+          left = Math.min(Math.max(left, contentLeft), contentRight - currentWidth);
+
+          var top = logoRect.top - mediaHeight - mediaGap - topOffset;
+          top = Math.max(top, contentTop);
+
+          aboutMediaEl.style.width = currentWidth + "px";
+          aboutMediaEl.style.left = left + "px";
+          aboutMediaEl.style.top = top + "px";
+
+          page2.style.setProperty(
+            "--page2-about-media-open",
+            String(openProgress)
+          );
+          page2.classList.toggle(
+            "page2--about-media-visible",
+            openProgress >= 1
+          );
+        }
+
+        function isSignsCoverScrollLocked() {
+          if (!homeSignsEl || !homeOverlay) return false;
+          if (
+            homeSignsCoverDone ||
+            page2.classList.contains("page2--signs-passed")
+          ) {
+            return false;
+          }
+          if (!page2.classList.contains("page2--signs-covering")) return false;
+          return window.getComputedStyle(homeSignsEl).position === "fixed";
+        }
+
+        function forwardHomeSignsWheel(event) {
+          if (!isSignsCoverScrollLocked()) return false;
+          var maxScroll = homeOverlay.scrollHeight - homeOverlay.clientHeight;
+          var next = Math.min(
+            maxScroll,
+            Math.max(0, homeOverlay.scrollTop + event.deltaY)
+          );
+          if (next === homeOverlay.scrollTop) {
+            event.preventDefault();
+            return true;
+          }
+          homeOverlay.scrollTop = next;
+          event.preventDefault();
+          return true;
+        }
+
+        if (homeOverlay) {
+          homeOverlay.addEventListener(
+            "scroll",
+            function () {
+              if (!isHomeScrollCol(scrollActiveIndex)) return;
+              updateLogoPosition();
+              updateHeaderInvertState();
+              updateHomeOverlayScrollPolish();
+            },
+            { passive: true }
+          );
+        }
+
+        if (homeSignsEl) {
+          homeSignsEl.addEventListener("wheel", forwardHomeSignsWheel, {
+            passive: false,
+          });
         }
 
         page2.addEventListener(
           "scroll",
           function () {
-            if (scrollActiveIndex !== HOME_COL_INDEX) return;
+            if (!isHomeScrollCol(scrollActiveIndex)) return;
             updateLogoPosition();
             updateHeaderInvertState();
           },
@@ -2796,6 +5105,10 @@
             suppressHeaderRefreshOnce = false;
             return;
           }
+          if (isHomeScrollCol(scrollActiveIndex)) {
+            updateHomeOverlayScrollPolish();
+            updateAboutMediaOpen();
+          }
           scheduleRefresh();
         });
 
@@ -2805,6 +5118,7 @@
 
         window.Page2Navigation = {
           showSection: showSection,
+          scrollToHomeSigns: scrollToHomeSigns,
           getActiveCol: function () {
             return scrollActiveIndex;
           },
@@ -2820,12 +5134,17 @@
         if (!page2 || !bgContainer) return;
 
         var HOME_BG_IMAGES = [
-          "YuvalUrbach056 Large.jpeg",
-          "YuvalUrbach058 Large.jpeg",
-          "YuvalUrbach061 Large.jpeg",
-          "YuvalUrbach062 Large.jpeg",
-          "YuvalUrbach063 Large.jpeg",
-          "YuvalUrbach068 Large.jpeg",
+          "1.jpeg",
+          "2.webp",
+          "3.jpeg",
+          "4.jpeg",
+          "5.jpeg",
+          "6.webp",
+          "7.webp",
+          "8.webp",
+          "9.webp",
+          "10.webp",
+          "11.webp",
         ];
 
         HOME_BG_IMAGES.forEach(function (filename, index) {
@@ -2855,9 +5174,30 @@
           "(prefers-reduced-motion: reduce)"
         ).matches;
 
-        function setActiveSlide(index) {
+        function resetLeavingSlide(slide) {
+          slide.classList.remove("is-leaving");
+          slide.style.transition = "none";
+          void slide.offsetWidth;
+          slide.style.transition = "";
+        }
+
+        function setActiveSlide(index, previousIndex) {
           slides.forEach(function (slide, i) {
-            slide.classList.toggle("is-active", i === index);
+            if (i === index) {
+              slide.classList.add("is-active");
+              slide.classList.remove("is-leaving");
+              return;
+            }
+            if (
+              !prefersReducedMotion &&
+              previousIndex !== undefined &&
+              i === previousIndex
+            ) {
+              slide.classList.remove("is-active");
+              slide.classList.add("is-leaving");
+              return;
+            }
+            slide.classList.remove("is-active", "is-leaving");
           });
           var activeSlide = slides[index];
           if (!activeSlide) return;
@@ -2867,9 +5207,18 @@
           }
         }
 
+        slides.forEach(function (slide) {
+          slide.addEventListener("transitionend", function (event) {
+            if (event.propertyName !== "transform") return;
+            if (!slide.classList.contains("is-leaving")) return;
+            resetLeavingSlide(slide);
+          });
+        });
+
         function advanceSlide() {
+          var previousIndex = currentIndex;
           currentIndex = (currentIndex + 1) % slides.length;
-          setActiveSlide(currentIndex);
+          setActiveSlide(currentIndex, previousIndex);
         }
 
         function startCarousel() {
@@ -2894,7 +5243,7 @@
       })();
     </script>
 
-    <script defer src="js/shopAlbums.js?v=20260624"></script>
+    <script defer src="js/shopAlbums.js?v=20260627-shop-price"></script>
     <script defer src="js/cartDrawer.js"></script>
     <script defer src="js/page2Units.js"></script>
     <script defer src="js/constants.js"></script>
@@ -2908,15 +5257,19 @@
     <script defer src="js/circlesGridGeometry.js"></script>
     <script defer src="js/diamondsGridGeometry.js"></script>
     <script defer src="js/gridUnitIcons.js"></script>
+    <script defer src="js/signsCatalog.js"></script>
     <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
-    <script defer src="js/sectionProgression.js?v=20260611-canvas-grid"></script>
-    <script defer src="js/questionnaire.js?v=20260624-headscarf-static"></script>
+    <script defer src="js/sectionProgression.js?v=20260625-grid-unlock-fix"></script>
+    <script defer src="js/feelingsSpiderChart.js"></script>
+    <script defer src="js/questionnaireStrings.js"></script>
+    <script defer src="js/questionnaire.js?v=20260628-i18n-canvas"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
-    <script defer src="js/productComboSpec.js?v=20260624-spec"></script>
-    <script defer src="js/app.js?v=20260623-star-perf4"></script>
+    <script defer src="js/productComboSpec.js?v=20260627-shop-decimal"></script>
+    <script defer src="js/app.js?v=20260625-final"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
+    <script defer src="js/signsPage.js"></script>
     <script defer src="js/handkerchiefArchive.js"></script>
   </body>
 </html>

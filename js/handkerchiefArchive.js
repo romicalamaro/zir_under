@@ -1,65 +1,110 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "undercover.handkerchiefArchive";
+  var LEGACY_STORAGE_KEY = "undercover.handkerchiefArchive";
+  var DB_NAME = "undercover.handkerchiefArchive";
+  var DB_VERSION = 1;
+  var STORE_NAME = "entries";
 
-  /** Columns per row from archive grid CSS (span 2 => 6). */
-  function getArchiveColumnsPerRow() {
-    var grid = document.querySelector(".archive-grid");
-    if (!grid) {
-      return 6;
-    }
-    var card = grid.querySelector(".archive-card");
-    if (!card) {
-      return 6;
-    }
-    var gridColumn = window.getComputedStyle(card).gridColumn || "";
-    var spanMatch = gridColumn.match(/span\s+(\d+)/);
-    var spanCols = spanMatch ? parseInt(spanMatch[1], 10) : 2;
-    return Math.max(1, Math.floor(12 / spanCols));
+  /** Fixed thumbnail width — sharp on archive cards (~240px card × 2 DPR). */
+  var ARCHIVE_THUMB_STORAGE_WIDTH = 480;
+  var ARCHIVE_WEBP_QUALITY = 0.92;
+  var ARCHIVE_JPEG_QUALITY = 0.93;
+
+  var dbPromise = null;
+  var activeObjectUrls = [];
+
+  function openDb() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB is not available"));
+        return;
+      }
+      var request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = function (event) {
+        var db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+      };
+      request.onsuccess = function (event) {
+        resolve(event.target.result);
+      };
+      request.onerror = function () {
+        reject(request.error || new Error("Could not open archive storage"));
+      };
+    });
+    return dbPromise;
   }
 
-  /** Match archive card CSS width × device pixel ratio for sharp thumbnails. */
-  function getArchiveThumbWidth() {
-    var dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2.5);
-    var viewportW = window.innerWidth || 1728;
-    var archiveSection = document.querySelector(
-      "#section-archive .archive-section, .archive-section"
-    );
-    var marginInline = archiveSection
-      ? parseFloat(window.getComputedStyle(archiveSection).paddingLeft) * 2
-      : 40;
-    var grid = document.querySelector(".archive-grid");
-    var gridGap = grid
-      ? parseFloat(window.getComputedStyle(grid).gap) ||
-        parseFloat(window.getComputedStyle(grid).columnGap) ||
-        16
-      : 16;
-    var cols = getArchiveColumnsPerRow();
-    var contentW = Math.max(viewportW - marginInline, 320);
-    var cardCssW = (contentW - gridGap * (cols - 1)) / cols;
-    return Math.round(Math.max(cardCssW * dpr, 560));
-  }
-
-  function readEntries() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      var parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function writeEntries(entries) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  function rejectIfQuota(err, reject) {
+    if (err && err.name === "QuotaExceededError") {
+      reject(new Error("Archive storage is full"));
       return true;
-    } catch (e) {
-      console.warn("[HandkerchiefArchive] Could not save:", e);
-      return false;
     }
+    return false;
+  }
+
+  function getAllEntries() {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE_NAME, "readonly");
+        var store = tx.objectStore(STORE_NAME);
+        var request = store.getAll();
+        request.onsuccess = function () {
+          var entries = request.result || [];
+          entries.sort(function (a, b) {
+            return String(a.savedAt || "").localeCompare(String(b.savedAt || ""));
+          });
+          resolve(entries);
+        };
+        request.onerror = function () {
+          reject(request.error || new Error("Could not read archive"));
+        };
+      });
+    });
+  }
+
+  function putEntry(entry) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE_NAME, "readwrite");
+        var store = tx.objectStore(STORE_NAME);
+        store.put(entry);
+        tx.oncomplete = function () {
+          resolve(entry);
+        };
+        tx.onerror = function () {
+          var err = tx.error || new Error("Could not save to archive");
+          if (!rejectIfQuota(err, reject)) {
+            reject(err);
+          }
+        };
+        tx.onabort = function () {
+          var err = tx.error || new Error("Could not save to archive");
+          if (!rejectIfQuota(err, reject)) {
+            reject(err);
+          }
+        };
+      });
+    });
+  }
+
+  function deleteEntryFromDb(id) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE_NAME, "readwrite");
+        var store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        tx.oncomplete = function () {
+          resolve();
+        };
+        tx.onerror = function () {
+          reject(tx.error || new Error("Could not delete archive entry"));
+        };
+      });
+    });
   }
 
   function getEntryTitle() {
@@ -68,6 +113,129 @@
       if (label) return label;
     }
     return "Untitled";
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(
+        function (blob) {
+          if (!blob) {
+            reject(new Error("Could not encode archive thumbnail"));
+            return;
+          }
+          resolve(blob);
+        },
+        type,
+        quality
+      );
+    });
+  }
+
+  function encodeThumbBlob(canvas) {
+    return canvasToBlob(canvas, "image/webp", ARCHIVE_WEBP_QUALITY)
+      .then(function (blob) {
+        return { blob: blob, mimeType: blob.type || "image/webp" };
+      })
+      .catch(function () {
+        return canvasToBlob(canvas, "image/jpeg", ARCHIVE_JPEG_QUALITY).then(
+          function (blob) {
+            return { blob: blob, mimeType: blob.type || "image/jpeg" };
+          }
+        );
+      });
+  }
+
+  function compressImageForStorage(dataUrl) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var scale =
+          img.width > ARCHIVE_THUMB_STORAGE_WIDTH
+            ? ARCHIVE_THUMB_STORAGE_WIDTH / img.width
+            : 1;
+        var width = Math.max(1, Math.round(img.width * scale));
+        var height = Math.max(1, Math.round(img.height * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not compress archive image"));
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        if (typeof ctx.imageSmoothingQuality !== "undefined") {
+          ctx.imageSmoothingQuality = "high";
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        encodeThumbBlob(canvas).then(resolve).catch(reject);
+      };
+      img.onerror = function () {
+        reject(new Error("Could not load captured image for compression"));
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  function dataUrlToEncodedImage(dataUrl) {
+    return compressImageForStorage(dataUrl);
+  }
+
+  function readLegacyEntries() {
+    try {
+      var raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function clearLegacyStorage() {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function migrateLegacyLocalStorage() {
+    var legacyEntries = readLegacyEntries().filter(function (entry) {
+      return entry && entry.id && entry.imagePng;
+    });
+    if (!legacyEntries.length) {
+      clearLegacyStorage();
+      return Promise.resolve(0);
+    }
+
+    var migrated = 0;
+    var chain = Promise.resolve();
+    legacyEntries.forEach(function (legacyEntry) {
+      chain = chain.then(function () {
+        return dataUrlToEncodedImage(legacyEntry.imagePng).then(function (encoded) {
+          return putEntry({
+            id: legacyEntry.id,
+            savedAt: legacyEntry.savedAt || new Date().toISOString(),
+            title: legacyEntry.title || "Untitled",
+            mimeType: encoded.mimeType,
+            image: encoded.blob,
+          }).then(function () {
+            migrated += 1;
+          });
+        });
+      });
+    });
+
+    return chain
+      .then(function () {
+        clearLegacyStorage();
+        return migrated;
+      })
+      .catch(function (err) {
+        console.warn("[HandkerchiefArchive] Legacy migration incomplete:", err);
+        return migrated;
+      });
   }
 
   function ensureDesignReadyForCapture() {
@@ -123,7 +291,7 @@
       }
 
       return window
-        .captureArchiveDesignPng(getArchiveThumbWidth())
+        .captureArchiveDesignPng(ARCHIVE_THUMB_STORAGE_WIDTH)
         .then(function (dataUrl) {
           return measurePngDataUrl(dataUrl).then(function (stats) {
             if (stats.uniqueColors <= 2) {
@@ -145,23 +313,48 @@
     });
   }
 
-  function renderArchiveGrid(entriesOverride) {
+  function revokeActiveObjectUrls() {
+    var i;
+    for (i = 0; i < activeObjectUrls.length; i++) {
+      URL.revokeObjectURL(activeObjectUrls[i]);
+    }
+    activeObjectUrls = [];
+  }
+
+  function getEntryImageSrc(entry) {
+    if (entry.image instanceof Blob) {
+      var objectUrl = URL.createObjectURL(entry.image);
+      activeObjectUrls.push(objectUrl);
+      return objectUrl;
+    }
+    if (entry.imagePng) {
+      return entry.imagePng;
+    }
+    return "";
+  }
+
+  function renderArchiveGridWithEntries(entries) {
     var grid = document.getElementById("handkerchief-archive-grid");
     var emptyEl = document.getElementById("archive-empty");
     if (!grid) return;
 
-    var entries = (entriesOverride || readEntries()).filter(function (entry) {
-      return entry && entry.imagePng;
+    revokeActiveObjectUrls();
+
+    var visibleEntries = (entries || []).filter(function (entry) {
+      return entry && entry.id && (entry.image instanceof Blob || entry.imagePng);
     });
     grid.innerHTML = "";
 
     if (emptyEl) {
-      emptyEl.hidden = entries.length > 0;
+      emptyEl.hidden = visibleEntries.length > 0;
     }
 
     var i;
-    for (i = entries.length - 1; i >= 0; i--) {
+    for (i = visibleEntries.length - 1; i >= 0; i--) {
       (function (entry) {
+        var imageSrc = getEntryImageSrc(entry);
+        if (!imageSrc) return;
+
         var card = document.createElement("article");
         card.className = "archive-card";
         card.setAttribute("role", "listitem");
@@ -173,7 +366,7 @@
         figure.className = "archive-card__figure";
         var img = document.createElement("img");
         img.className = "archive-card__image";
-        img.src = entry.imagePng;
+        img.src = imageSrc;
         img.alt = entry.title || "Saved handkerchief";
         img.decoding = "async";
         figure.appendChild(img);
@@ -202,7 +395,7 @@
         card.appendChild(title);
         card.appendChild(date);
         grid.appendChild(card);
-      })(entries[i]);
+      })(visibleEntries[i]);
     }
 
     if (
@@ -215,28 +408,50 @@
     }
   }
 
+  function renderArchiveGrid(entriesOverride) {
+    if (entriesOverride) {
+      renderArchiveGridWithEntries(entriesOverride);
+      return Promise.resolve();
+    }
+    return getAllEntries()
+      .then(renderArchiveGridWithEntries)
+      .catch(function (err) {
+        console.warn("[HandkerchiefArchive] Could not render archive:", err);
+        renderArchiveGridWithEntries([]);
+      });
+  }
+
   function saveCurrentDesign() {
-    return captureDesignPng().then(function (imagePng) {
-      var entry = {
-        id: Date.now() + "-" + Math.random().toString(36).slice(2, 9),
-        savedAt: new Date().toISOString(),
-        title: getEntryTitle(),
-        imagePng: imagePng,
-      };
-      var entries = readEntries();
-      entries.push(entry);
-      var saved = writeEntries(entries);
-      renderArchiveGrid(saved ? null : entries);
-      return entry;
-    });
+    return captureDesignPng()
+      .then(compressImageForStorage)
+      .then(function (encoded) {
+        var entry = {
+          id: Date.now() + "-" + Math.random().toString(36).slice(2, 9),
+          savedAt: new Date().toISOString(),
+          title: getEntryTitle(),
+          mimeType: encoded.mimeType,
+          image: encoded.blob,
+        };
+        return putEntry(entry).then(function (savedEntry) {
+          return getAllEntries().then(function (entries) {
+            renderArchiveGridWithEntries(entries);
+            return savedEntry;
+          });
+        });
+      });
   }
 
   function deleteEntry(id) {
-    var entries = readEntries().filter(function (entry) {
-      return entry.id !== id;
-    });
-    writeEntries(entries);
-    renderArchiveGrid();
+    return deleteEntryFromDb(id)
+      .then(function () {
+        return getAllEntries();
+      })
+      .then(function (entries) {
+        renderArchiveGridWithEntries(entries);
+      })
+      .catch(function (err) {
+        console.warn("[HandkerchiefArchive] Could not delete entry:", err);
+      });
   }
 
   function revealDesignArchive() {
@@ -260,7 +475,15 @@
   }
 
   function init() {
-    renderArchiveGrid();
+    openDb()
+      .then(migrateLegacyLocalStorage)
+      .then(function () {
+        return renderArchiveGrid();
+      })
+      .catch(function (err) {
+        console.warn("[HandkerchiefArchive] Init failed:", err);
+        renderArchiveGridWithEntries([]);
+      });
   }
 
   if (document.readyState === "loading") {
@@ -274,6 +497,6 @@
     deleteEntry: deleteEntry,
     renderArchiveGrid: renderArchiveGrid,
     revealDesignArchive: revealDesignArchive,
-    getEntries: readEntries,
+    getEntries: getAllEntries,
   };
 })();

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var COMBO_COUNT = 8;
+  var COMBO_COUNT = 9;
   var CSV_PATH = "data/handkerchief-combinations.csv";
   var STORAGE_KEY = "undercover.activeHandkerchiefCombo";
 

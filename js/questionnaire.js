@@ -6,8 +6,8 @@
   // Start enter before exit fully finishes (~55% through exit duration).
   var ENTER_START_AFTER_EXIT_MS = Math.round(TRANSITION_MS * 0.55);
 
-  var TYPEWRITER_CHAR_MS = 42;
-  var TYPEWRITER_LINE_PAUSE_MS = 280;
+  var TYPEWRITER_TOTAL_MS = 2000;
+  var TYPEWRITER_LINE_PAUSE_RATIO = 0.15;
   var TYPEWRITER_BLANK_CHARS = { short: 2, medium: 3, long: 4 };
 
   var profileTypewriterPlayed = false;
@@ -22,23 +22,37 @@
   /** @type {HTMLElement | null} */
   var stackEl = null;
 
+  /** @type {HTMLElement | null} */
+  var panelEl = null;
+
+  /** @type {HTMLElement | null} */
+  var panelGridEl = null;
+
   /** @type {number} */
   var currentSectionIndex = 0;
 
-  /** @type {number} */
-  var scrollClampActive = false;
+  /** @type {boolean} */
+  var scrollSnapAnimating = false;
+
+  var SCROLL_SNAP_ANIM_MS = 420;
+  var INTRO_SLIDE_MS = 550;
 
   /** @type {number} */
-  var canvasHostSectionIndex = -1;
+  var sectionPageLockUntil = 0;
+
+  var SECTION_PAGE_LOCK_MS = SCROLL_SNAP_ANIM_MS;
+
+  /** @type {number | null} */
+  var canvasTransitionRafId = null;
+
+  /** @type {{ fromIndex: number, toIndex: number, progress: number }} */
+  var sectionCanvasTransition = { fromIndex: 0, toIndex: 0, progress: 0 };
 
   /** @type {HTMLElement | null} */
   var sectionLabelEl = null;
 
   /** @type {HTMLElement | null} */
-  var progressEl = null;
-
-  /** @type {HTMLElement | null} */
-  var skipSectionBtn = null;
+  var remainingEl = null;
 
   /** @type {HTMLElement | null} */
   var activeStepEl = null;
@@ -75,6 +89,155 @@
   }
 
   var answers = createDefaultAnswers();
+
+  /** @type {"en" | "fa"} */
+  var questionnaireLocale = "en";
+
+  function getStrings() {
+    if (
+      window.QuestionnaireStrings &&
+      window.QuestionnaireStrings[questionnaireLocale]
+    ) {
+      return window.QuestionnaireStrings[questionnaireLocale];
+    }
+    return window.QuestionnaireStrings
+      ? window.QuestionnaireStrings.en
+      : { ui: {}, steps: {}, sectionLabels: {}, feelings: {}, madLibs: {} };
+  }
+
+  function getUiString(key) {
+    return getStrings().ui[key];
+  }
+
+  function getSectionLabels() {
+    return getStrings().sectionLabels;
+  }
+
+  function getFeelingsTableRows() {
+    return getStrings().feelings.tableRows;
+  }
+
+  function getFeelingsScaleLabels() {
+    return getStrings().feelings.scaleLabels;
+  }
+
+  function getStepConfig(stepId) {
+    var meta = STEP_META[stepId];
+    var str = getStrings().steps[stepId];
+    if (!meta) return null;
+
+    var cfg = {
+      letter: meta.letter,
+      type: meta.type,
+      hideHeading: meta.hideHeading,
+      wrap: meta.wrap,
+      english: meta.english,
+      inputMode: meta.inputMode,
+      maxLength: meta.maxLength,
+      min: meta.min,
+      max: meta.max,
+      step: meta.step,
+      outputSuffix: meta.outputSuffix,
+      sync: meta.sync,
+    };
+
+    if (str) {
+      if (str.label !== undefined) cfg.label = str.label;
+      if (str.placeholder !== undefined) cfg.placeholder = str.placeholder;
+      if (str.ariaLabel !== undefined) cfg.ariaLabel = str.ariaLabel;
+      if (str.modeAriaLabel !== undefined) cfg.modeAriaLabel = str.modeAriaLabel;
+      if (str.rangeLabels) cfg.rangeLabels = str.rangeLabels.slice();
+      if (str.options && meta.options) {
+        cfg.options = meta.options.map(function (opt) {
+          return {
+            value: opt.value,
+            label: str.options[opt.value] || opt.value,
+          };
+        });
+      }
+      if (str.modes && meta.modes) {
+        cfg.modes = meta.modes.map(function (mode) {
+          return {
+            value: mode.value,
+            label: str.modes[mode.value] || mode.value,
+          };
+        });
+      }
+    }
+
+    return cfg;
+  }
+
+  function setDesignStartButtonsDisabled(disabled) {
+    var btnEn = document.getElementById("design-start-btn-en");
+    var btnFa = document.getElementById("design-start-btn-fa");
+    if (btnEn) btnEn.disabled = disabled;
+    if (btnFa) btnFa.disabled = disabled;
+  }
+
+  /** Label-bar / canvas name text — always English, independent of questionnaire UI locale. */
+  function getNameLabelTextForCanvas() {
+    if (answers.nameDisplayMode === "anonymous") return "ANONYMOUS";
+    var trimmed = String(answers.name || "").trim();
+    if (answers.nameDisplayMode === "initials") {
+      return trimmed ? formatNameInitials(trimmed) : "";
+    }
+    if (answers.nameDisplayMode === "name") return trimmed;
+    return "";
+  }
+
+  function ensureQuestionnaireCanvasDirection() {
+    var canvasHost = document.getElementById("questionnaire-canvas-host");
+    if (!canvasHost) return;
+    canvasHost.lang = "en";
+    canvasHost.dir = "ltr";
+    var wrap = canvasHost.querySelector(".stage-wrap");
+    if (wrap) {
+      wrap.lang = "en";
+      wrap.dir = "ltr";
+    }
+  }
+
+  function applyQuestionnaireLocale(locale) {
+    questionnaireLocale = locale === "fa" ? "fa" : "en";
+    var panel = document.getElementById("questionnaire-panel");
+    var scroll = document.getElementById("questionnaire-scroll");
+    if (!panel) return;
+
+    panel.removeAttribute("lang");
+    panel.removeAttribute("dir");
+    panel.classList.toggle(
+      "questionnaire-panel--locale-fa",
+      questionnaireLocale === "fa"
+    );
+
+    if (scroll) {
+      scroll.lang = questionnaireLocale;
+      scroll.dir = questionnaireLocale === "fa" ? "rtl" : "ltr";
+    }
+
+    ensureQuestionnaireCanvasDirection();
+  }
+
+  function resetQuestionnaireLocale() {
+    questionnaireLocale = "en";
+    var panel = document.getElementById("questionnaire-panel");
+    var scroll = document.getElementById("questionnaire-scroll");
+    var canvasHost = document.getElementById("questionnaire-canvas-host");
+    if (panel) {
+      panel.removeAttribute("lang");
+      panel.removeAttribute("dir");
+      panel.classList.remove("questionnaire-panel--locale-fa");
+    }
+    if (scroll) {
+      scroll.lang = "en";
+      scroll.dir = "ltr";
+    }
+    if (canvasHost) {
+      canvasHost.removeAttribute("lang");
+      canvasHost.removeAttribute("dir");
+    }
+  }
 
   function createDefaultAnswers() {
     return {
@@ -169,27 +332,30 @@
     var questionnairePanel = document.getElementById("questionnaire-panel");
 
     questionnaireStarted = false;
+    introSlideActive = false;
     profileTypewriterPlayed = false;
     currentStepId = null;
     displayStepId = null;
     clearStack();
     restoreCanvasToAppShell();
+    clearIntroSlideClasses(sectionDesign);
 
     if (sectionDesign) {
       sectionDesign.classList.remove("section-design--questionnaire-started");
     }
     if (designStart) {
       designStart.hidden = false;
+      designStart.scrollTop = 0;
+      designStart.style.transform = "";
     }
     if (questionnairePanel) {
       questionnairePanel.hidden = true;
+      questionnairePanel.style.transform = "";
     }
-    if (sectionLabelEl) {
-      sectionLabelEl.textContent = "";
-      sectionLabelEl.classList.remove("is-active");
-    }
-    if (progressEl) {
-      progressEl.innerHTML = "";
+    setDesignStartButtonsDisabled(false);
+    resetQuestionnaireLocale();
+    if (remainingEl) {
+      remainingEl.textContent = "";
     }
   }
 
@@ -256,12 +422,6 @@
     "homeAt",
   ];
 
-  var PROFILE_SKIP_DEFAULTS = {
-    livingInIran: false,
-    nameDisplayMode: "anonymous",
-    name: "",
-  };
-
   var PROFILE_ALL_STEP_ID = "__profile_all__";
 
   var PROFILE_MADLIBS_BLANK_ORDER = [
@@ -307,7 +467,7 @@
     "helplessnessPercent",
   ];
 
-  /** Emotion groups shown together on the combined feelings step. */
+  /** Emotion groups (headings unused in current UI; kept for reference). */
   var FEELINGS_EMOTION_GROUPS = [
     {
       heading: "Fear",
@@ -356,29 +516,6 @@
       heading: "Helplessness",
       controls: [{ stepId: "helplessnessPercent" }],
     },
-  ];
-
-  /** Questionnaire feelings table: one row per slider (Hope is outside the table). */
-  var FEELINGS_TABLE_ROWS = [
-    { label: "Fear", stepId: "angerVerticalLength" },
-    { label: "Anxiety / Tension", stepId: "anxietyVerticalStroke" },
-    { label: "Anger", stepId: "angerTriangleDensity" },
-    { label: "Sadness", stepId: "circleDensity" },
-    { label: "Longing", stepId: "longingCircleDensity" },
-    { label: "Grief", stepId: "griefCircleDensity" },
-    { label: "Strength / Power", stepId: "strengthDensity" },
-    { label: "Pride", stepId: "autoMergeIntensity" },
-    { label: "Pain", stepId: "prideFillPercent" },
-    { label: "Guilt / Shame", stepId: "guiltShameFillPercent" },
-    { label: "Helplessness", stepId: "helplessnessPercent" },
-  ];
-
-  var FEELINGS_SCALE_LABELS = [
-    "I do not feel this at all",
-    "I feel this occasionally",
-    "I feel this somewhat",
-    "I feel this clearly",
-    "This feeling is very strong",
   ];
 
   var FEELINGS_SLIDER_BOUNDS = {
@@ -505,141 +642,103 @@
     submitOrder: false,
   };
 
-  var STEPS = {
+  var STEP_META = {
     livingInIran: {
       letter: "A",
-      label: "Did you ever live in Iran?",
       type: "yesno",
-      ariaLabel: "Did you ever live in Iran? Yes or no",
     },
     livingDuration: {
       letter: "B",
-      label: "How much of your life did you live in Iran?",
       type: "choice",
-      ariaLabel: "How much of your life did you live in Iran?",
       wrap: true,
       options: [
-        { value: "smallPart", label: "Small part of my life" },
-        { value: "partOfLife", label: "Yes, part of my life" },
-        { value: "mostAll", label: "Yes, most / all of my life" },
+        { value: "smallPart" },
+        { value: "partOfLife" },
+        { value: "mostAll" },
       ],
     },
     leavingYear: {
       letter: "C",
-      label: "Year of leaving",
       type: "text",
       inputMode: "numeric",
       maxLength: 4,
-      placeholder: "Year you left Iran",
-      ariaLabel: "Year of leaving",
     },
     from: {
       letter: "D",
-      label: "From",
       type: "text",
       english: true,
-      placeholder: "Where you are originally from",
-      ariaLabel: "From",
     },
     nowIn: {
       letter: "E",
-      label: "Now in",
       type: "text",
       english: true,
-      placeholder: "Where you live now",
-      ariaLabel: "Now in",
     },
     name: {
       letter: "F",
-      label: "Name",
       type: "name",
-      placeholder: "Name",
-      ariaLabel: "Name",
-      modeAriaLabel: "How name appears on the label",
       modes: [
-        { value: "anonymous", label: "Anonymous" },
-        { value: "initials", label: "Initials" },
-        { value: "name", label: "Name" },
+        { value: "anonymous" },
+        { value: "initials" },
+        { value: "name" },
       ],
     },
     age: {
       letter: "G",
-      label: "Age",
       type: "text",
       inputMode: "numeric",
       maxLength: 2,
-      ariaLabel: "Age",
     },
     homeAt: {
       letter: "H",
-      label: 'where do you feel most "at home" today?',
       type: "choice",
-      ariaLabel: 'where do you feel most "at home" today?',
       wrap: true,
       options: [
-        { value: "inIran", label: "In Iran" },
-        { value: "whereILive", label: "Outside Iran / where I live now" },
-        { value: "nowhere", label: "Nowhere / in between" },
+        { value: "inIran" },
+        { value: "whereILive" },
+        { value: "nowhere" },
       ],
     },
     gridType: {
       letter: "",
       hideHeading: true,
       type: "choice",
-      ariaLabel: "Grid type",
       options: [
-        { value: "octagon", label: "Octagons" },
-        { value: "star", label: "Stars" },
-        { value: "circles", label: "Circles" },
-        { value: "diamonds", label: "Diamonds" },
+        { value: "octagon" },
+        { value: "star" },
+        { value: "circles" },
+        { value: "diamonds" },
       ],
     },
     octagonsN: {
       letter: "",
-      label:
-        "How much do you feel part of an Iranian community around you (physical or online)?",
       type: "slider",
-      ariaLabel:
-        "How much do you feel part of an Iranian community around you (physical or online)? Barely part to very much part.",
       min: 1,
       max: 10,
       step: 1,
-      rangeLabels: ["Barely part", "Very much part"],
       wrap: true,
     },
     innerScale: {
       letter: "",
-      label:
-        "How much do you feel that Iranian identity is a central part of your life today?",
       type: "slider",
-      ariaLabel:
-        "How much do you feel that Iranian identity is a central part of your life today? Very much in the background to at the center of my life.",
       min: 1,
       max: 10,
       step: 1,
-      rangeLabels: ["Very much in the background", "At the center of my life"],
       wrap: true,
     },
     palette: {
       letter: "",
-      label: "Palette",
       type: "palette-picker",
-      ariaLabel: "החלף בין פלטות 1 עד 12",
     },
     borderFrameDivisions: {
       letter: "",
-      label: "Frame divisions",
       type: "slider",
-      ariaLabel: "Frame horizontal divisions",
       min: 1,
       max: 3,
       step: 1,
     },
     borderSideWhiteFill: {
       letter: "",
-      label: "Margin empty cells",
       type: "slider",
-      ariaLabel: "Margin empty cell fill",
       min: 0,
       max: 100,
       step: 25,
@@ -647,70 +746,37 @@
     },
     closeFamilyInIran: {
       letter: "",
-      label: "Do you have close family still living in Iran today?",
       type: "choice",
-      ariaLabel: "Do you have close family still living in Iran today?",
       wrap: true,
       options: [
-        {
-          value: "largePart",
-          label: "Yes, a large part of the family",
-        },
-        {
-          value: "someMembers",
-          label: "Yes, some family members",
-        },
-        {
-          value: "almostAllOutside",
-          label: "No, almost everyone is outside Iran",
-        },
+        { value: "largePart" },
+        { value: "someMembers" },
+        { value: "almostAllOutside" },
       ],
     },
     iranLossTypes: {
       letter: "",
-      label:
-        "What type of loss / disconnection do you feel in relation to Iran? (select all that apply)",
       type: "multi-choice",
-      ariaLabel:
-        "What type of loss or disconnection do you feel in relation to Iran? Select all that apply.",
       wrap: true,
       options: [
-        { value: "lovedOne", label: "Loss of a loved one" },
-        {
-          value: "place",
-          label: "Loss of place (home, neighborhood, city)",
-        },
-        {
-          value: "languageCulture",
-          label: "Loss of language / culture in daily life",
-        },
-        {
-          value: "freedomOfMovement",
-          label: "Loss of freedom of movement (cannot return / visit)",
-        },
-        {
-          value: "familyFriendsConnection",
-          label: "Loss of connection with part of the family or friends",
-        },
+        { value: "lovedOne" },
+        { value: "place" },
+        { value: "languageCulture" },
+        { value: "freedomOfMovement" },
+        { value: "familyFriendsConnection" },
       ],
     },
     fanLeaves: {
       letter: "",
-      label: "When you lived in Iran, how free did you feel to choose how to dress in public spaces?",
       type: "slider",
-      ariaLabel:
-        "Fan leaves. Step 0 fully open, step 9 four ribs, step 10 closed.",
       min: 0,
       max: 10,
       step: 1,
-      rangeLabels: ["No freedom of choice at all", "Feeling relatively free to choose"],
       wrap: true,
     },
     angerVerticalLength: {
       letter: "",
-      label: "Fear — Vertical line length",
       type: "slider",
-      ariaLabel: "Vertical line length",
       min: 0,
       max: 30,
       step: 7.5,
@@ -718,9 +784,7 @@
     },
     anxietyVerticalStroke: {
       letter: "",
-      label: "Fear — Anxiety / Tension",
       type: "slider",
-      ariaLabel: "Anxiety / Tension — vertical line thickness",
       min: 0,
       max: 100,
       step: 25,
@@ -728,55 +792,40 @@
     },
     angerTriangleDensity: {
       letter: "",
-      label: "Anger",
       type: "slider",
-      ariaLabel: "Anger triangle density",
       min: 0,
       max: 30,
       step: 7.5,
     },
     hopeMode: {
       letter: "",
-      label: "Hope",
       type: "choice",
-      ariaLabel: "Hope interaction mode",
-      options: [
-        { value: "view", label: "View" },
-        { value: "merge", label: "Merge" },
-      ],
+      options: [{ value: "view" }, { value: "merge" }],
     },
     circleDensity: {
       letter: "",
-      label: "Sadness",
       type: "slider",
-      ariaLabel: "Circle density",
       min: 0,
       max: 30,
       step: 7.5,
     },
     longingCircleDensity: {
       letter: "",
-      label: "Longing",
       type: "slider",
-      ariaLabel: "Longing circle density",
       min: 0,
       max: 30,
       step: 7.5,
     },
     griefCircleDensity: {
       letter: "",
-      label: "Grief",
       type: "slider",
-      ariaLabel: "Grief circle density",
       min: 0,
       max: 30,
       step: 7.5,
     },
     strengthDensity: {
       letter: "",
-      label: "Strength / Power",
       type: "slider",
-      ariaLabel: "Strength / Power circle-in-square density",
       min: 0,
       max: 30,
       step: 7.5,
@@ -784,27 +833,21 @@
     },
     autoMergeIntensity: {
       letter: "",
-      label: "Pride",
       type: "slider",
-      ariaLabel: "Pride merged area amount and size",
       min: 0,
       max: 7,
       step: 1.75,
     },
     prideFillPercent: {
       letter: "",
-      label: "Pain",
       type: "slider",
-      ariaLabel: "Pain diamond fill amount",
       min: 0,
       max: 30,
       step: 7.5,
     },
     guiltShameFillPercent: {
       letter: "",
-      label: "Guilt / Shame",
       type: "slider",
-      ariaLabel: "Guilt / Shame hollow diamond fill amount",
       min: 0,
       max: 30,
       step: 7.5,
@@ -812,9 +855,7 @@
     },
     helplessnessPercent: {
       letter: "",
-      label: "Helplessness",
       type: "slider",
-      ariaLabel: "Helplessness junction X mark density",
       min: 0,
       max: 30,
       step: 7.5,
@@ -886,12 +927,13 @@
    * @returns {string}
    */
   function getNameModeDisplayLabel(mode, nameValue) {
-    if (mode === "anonymous") return "Anonymous";
+    var modes = getUiString("nameModes") || {};
+    if (mode === "anonymous") return modes.anonymous || "Anonymous";
     var trimmed = String(nameValue || "").trim();
     if (mode === "initials") {
-      return trimmed ? formatNameInitials(trimmed) : "Initials";
+      return trimmed ? formatNameInitials(trimmed) : modes.initials || "Initials";
     }
-    if (mode === "name") return trimmed || "Name";
+    if (mode === "name") return trimmed || modes.name || "Name";
     return "";
   }
 
@@ -952,9 +994,9 @@
     return null;
   }
 
-  function updateProgressDotsForProfile() {
+  function updateCardAccessibilityForProfile() {
     if (!displayStepId) return;
-    updateProgressDots(displayStepId);
+    updateCardAccessibility(displayStepId);
   }
 
   function syncProfileBlankReached(stepId) {
@@ -972,7 +1014,7 @@
       }
     }
     checkSectionCompletion("profile");
-    updateProgressDotsForProfile();
+    updateCardAccessibilityForProfile();
   }
 
   function getProfileNameInlineInput() {
@@ -994,7 +1036,7 @@
           ? "name"
           : "nameDisplayMode";
         focusWithoutScroll(inlineNameInput);
-        updateProgressDotsForProfile();
+        updateCardAccessibilityForProfile();
         return;
       }
     }
@@ -1009,7 +1051,7 @@
       } else {
         focusWithoutScroll(el);
       }
-      updateProgressDotsForProfile();
+      updateCardAccessibilityForProfile();
     }
   }
 
@@ -1359,8 +1401,9 @@
   function buildQuestionnaireFeelingsPayload() {
     var payload = {};
     var i;
-    for (i = 0; i < FEELINGS_TABLE_ROWS.length; i++) {
-      payload[FEELINGS_TABLE_ROWS[i].stepId] = answers[FEELINGS_TABLE_ROWS[i].stepId];
+    for (i = 0; i < getFeelingsTableRows().length; i++) {
+      payload[getFeelingsTableRows()[i].stepId] =
+        answers[getFeelingsTableRows()[i].stepId];
     }
     return payload;
   }
@@ -1417,6 +1460,10 @@
     if (preview && isGridStructureSliderStep(stepId)) {
       return;
     }
+    if (isBodyAutonomyStep(stepId)) {
+      triggerCanvasRender();
+      return;
+    }
     if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) {
       triggerFeelingsCanvasUpdate(preview);
       return;
@@ -1426,6 +1473,28 @@
       return;
     }
     triggerCanvasRender();
+  }
+
+  function syncFanLeavesToPanel(value, commit) {
+    if (value === undefined || value === null || value === "") return;
+    if (
+      window.UnderCoverComboBridge &&
+      typeof window.UnderCoverComboBridge.applyFanLeavesOpeningStep ===
+        "function"
+    ) {
+      window.UnderCoverComboBridge.applyFanLeavesOpeningStep(value, !!commit);
+      return;
+    }
+    var fanDom = PANEL_SLIDER_DOM.fanLeaves;
+    syncPanelSliderDom(fanDom[0], fanDom[1], value, !!commit);
+  }
+
+  function scheduleFanLeavesSliderCanvasUpdate(stepId, value, preview, commit) {
+    coalescedCanvasUpdate(function () {
+      ensureQuestionnaireCanvasUnlock(stepId);
+      syncFanLeavesToPanel(value, commit);
+      triggerCanvasUpdateAfterSync(stepId, preview);
+    });
   }
 
   // Coalesces rapid slider "input" events into at most one canvas update per
@@ -1637,13 +1706,7 @@
 
   function syncBodyAutonomyToPanel() {
     if (bodyAutonomyStepsReached.fanLeaves) {
-      var fanDom = PANEL_SLIDER_DOM.fanLeaves;
-      syncPanelSliderDom(
-        fanDom[0],
-        fanDom[1],
-        answers.fanLeaves,
-        true
-      );
+      syncFanLeavesToPanel(answers.fanLeaves, true);
     }
   }
 
@@ -1742,16 +1805,6 @@
       feelingsStepsReached[stepId] = true;
     }
   }
-
-  var SECTION_LABELS = {
-    profile: { num: 1, name: "profile" },
-    grid: { num: 2, name: "Grid" },
-    family: { num: 3, name: "Family and friends in Iran" },
-    bodyAutonomy: { num: 4, name: "Body autonomy" },
-    feelings: { num: 5, name: "Feelings" },
-    colors: { num: 6, name: "Colors" },
-    submitOrder: { num: 7, name: "submit&order" },
-  };
 
   var QUESTIONNAIRE_SECTION_ORDER = [
     { key: "profile", entryStepId: PROFILE_ALL_STEP_ID },
@@ -1856,12 +1909,7 @@
     var currentIndex = getCurrentSectionIndex(stepId);
     var targetIndex = getSectionIndex(targetSectionKey);
     if (targetIndex < 0) return false;
-    if (targetIndex === currentIndex) return false;
-
-    if (targetIndex < currentIndex) {
-      return true;
-    }
-    return hasSectionBeenPassed(targetSectionKey);
+    return targetIndex !== currentIndex;
   }
 
   function navigateToSection(targetSectionKey) {
@@ -1881,59 +1929,209 @@
       }
     }
 
-    scrollToSection(targetIndex, "smooth");
+    activateSection(targetIndex, { behavior: "smooth" });
 
-    window.setTimeout(function () {
-      setCurrentSectionByIndex(targetIndex);
-      if (targetSectionKey === "profile") {
+    if (targetSectionKey === "profile") {
+      window.setTimeout(function () {
         var blankId =
           currentProfileBlankId || getFirstIncompleteProfileBlank() || "nameDisplayMode";
         focusProfileBlank(blankId);
+      }, 350);
+    }
+  }
+
+  function updateRemainingSteps(index) {
+    if (!remainingEl) return;
+    var remaining = Math.max(0, QUESTIONNAIRE_SECTION_ORDER.length - index - 1);
+    var ui = getStrings().ui;
+    remainingEl.textContent =
+      remaining === 1
+        ? ui.stepsRemainingOne
+        : typeof ui.stepsRemainingMany === "function"
+          ? ui.stepsRemainingMany(remaining)
+          : remaining + " steps remaining";
+  }
+
+  function updateCardAccessibility(stepId) {
+    if (!stackEl) return;
+
+    var currentIndex = getCurrentSectionIndex(stepId);
+    var cards = stackEl.querySelectorAll(".questionnaire-card");
+
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var header = card.querySelector(".questionnaire-card__header");
+      var isExpanded = i === currentIndex;
+
+      card.classList.toggle("is-expanded", isExpanded);
+      card.classList.remove("is-locked");
+
+      var body = card.querySelector(".questionnaire-card__body");
+      if (body) {
+        body.hidden = !isExpanded;
       }
-    }, 350);
+      if (header) {
+        header.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+        header.disabled = isExpanded;
+      }
+    }
   }
 
-  function formatSectionLabel(sectionKey) {
-    var section = SECTION_LABELS[sectionKey];
-    return section.num + "/ " + section.name;
+  function updateCardExpandedState(activeIndex) {
+    if (!stackEl) return;
+    var cards = stackEl.querySelectorAll(".questionnaire-card");
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var isExpanded = i === activeIndex;
+      card.classList.toggle("is-expanded", isExpanded);
+      var header = card.querySelector(".questionnaire-card__header");
+      var body = card.querySelector(".questionnaire-card__body");
+      if (header) {
+        header.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+      }
+      if (body) {
+        body.hidden = !isExpanded;
+      }
+    }
   }
 
-  function updateSectionLabel(stepId) {
-    if (!sectionLabelEl) return;
-    if (stepId === SUBMIT_ORDER_STEP_ID) {
-      sectionLabelEl.textContent = formatSectionLabel("submitOrder");
-      return;
+  function scrollActiveCardIntoView() {
+    if (!stackEl) return;
+    var activeCard = stackEl.querySelector(".questionnaire-card.is-expanded");
+    if (activeCard && typeof activeCard.scrollIntoView === "function") {
+      activeCard.scrollIntoView({ behavior: "auto", block: "nearest" });
     }
-    if (
-      stepId === FEELINGS_ALL_STEP_ID ||
-      isFeelingsStep(stepId)
-    ) {
-      sectionLabelEl.textContent = formatSectionLabel("feelings");
-      return;
-    }
-    if (isBodyAutonomyStep(stepId)) {
-      sectionLabelEl.textContent = formatSectionLabel("bodyAutonomy");
-      return;
-    }
-    if (isFamilyStep(stepId)) {
-      sectionLabelEl.textContent = formatSectionLabel("family");
-      return;
-    }
-    if (isColorStep(stepId)) {
-      sectionLabelEl.textContent = formatSectionLabel("colors");
-      return;
-    }
-    if (isGridStep(stepId)) {
-      sectionLabelEl.textContent = formatSectionLabel("grid");
-      return;
-    }
-    sectionLabelEl.textContent = formatSectionLabel("profile");
   }
 
-  function updateSkipButtonVisibility(stepId) {
-    if (!skipSectionBtn) return;
-    var showSkip = stepId === PROFILE_ALL_STEP_ID;
-    skipSectionBtn.hidden = !showSkip;
+  function syncQuestionnaireCanvasZoomFromScroll() {
+    if (typeof window.layoutQuestionnaireCanvasFromScroll === "function") {
+      window.layoutQuestionnaireCanvasFromScroll();
+    } else if (typeof window.layoutStage === "function") {
+      window.layoutStage();
+    }
+  }
+
+  function startSectionCanvasTransition(fromIndex, toIndex, behavior) {
+    if (canvasTransitionRafId !== null) {
+      window.cancelAnimationFrame(canvasTransitionRafId);
+      canvasTransitionRafId = null;
+    }
+
+    sectionCanvasTransition = {
+      fromIndex: fromIndex,
+      toIndex: toIndex,
+      progress: 0,
+    };
+
+    var duration =
+      behavior === "smooth" && !prefersReducedMotion() ? SCROLL_SNAP_ANIM_MS : 0;
+
+    if (duration <= 0 || fromIndex === toIndex) {
+      sectionCanvasTransition = {
+        fromIndex: toIndex,
+        toIndex: toIndex,
+        progress: 0,
+      };
+      syncQuestionnaireCanvasZoomFromScroll();
+      return;
+    }
+
+    scrollSnapAnimating = true;
+    lockSectionPaging(toIndex);
+    var startTime = performance.now();
+
+    function tick(now) {
+      var progress = Math.min(1, (now - startTime) / duration);
+      sectionCanvasTransition.progress = progress;
+      syncQuestionnaireCanvasZoomFromScroll();
+      if (progress < 1) {
+        canvasTransitionRafId = window.requestAnimationFrame(tick);
+        return;
+      }
+      canvasTransitionRafId = null;
+      sectionCanvasTransition = {
+        fromIndex: toIndex,
+        toIndex: toIndex,
+        progress: 0,
+      };
+      scrollSnapAnimating = false;
+      sectionPageLockUntil = 0;
+      syncQuestionnaireCanvasZoomFromScroll();
+    }
+
+    canvasTransitionRafId = window.requestAnimationFrame(tick);
+  }
+
+  function activateSection(index, options) {
+    options = options || {};
+    if (!stackEl) return;
+
+    var lastIndex = QUESTIONNAIRE_SECTION_ORDER.length - 1;
+    var targetIndex = Math.min(Math.max(0, index), lastIndex);
+    var previousIndex = currentSectionIndex;
+    var behavior = options.behavior || "auto";
+
+    updateCardExpandedState(targetIndex);
+    scrollActiveCardIntoView();
+
+    if (targetIndex !== previousIndex && previousIndex >= 0) {
+      startSectionCanvasTransition(previousIndex, targetIndex, behavior);
+    } else if (targetIndex !== previousIndex) {
+      sectionCanvasTransition = {
+        fromIndex: targetIndex,
+        toIndex: targetIndex,
+        progress: 0,
+      };
+      syncQuestionnaireCanvasZoomFromScroll();
+    }
+
+    setCurrentSectionByIndex(targetIndex, options);
+    updateRemainingSteps(targetIndex);
+  }
+
+  function onQuestionnaireCardHeaderClick(event) {
+    var header = event.currentTarget;
+    if (!header || header.disabled) return;
+    var card = header.closest(".questionnaire-card");
+    if (!card) return;
+    var sectionKey = card.getAttribute("data-section-key");
+    if (!sectionKey) return;
+    navigateToSection(sectionKey);
+  }
+
+  function onQuestionnaireCardHeaderKeydown(event) {
+    var header = event.currentTarget;
+    var card = header.closest(".questionnaire-card");
+    if (!card || !stackEl) return;
+
+    var cards = stackEl.querySelectorAll(".questionnaire-card__header:not(:disabled)");
+    var cardHeaders = [];
+    var i;
+    for (i = 0; i < cards.length; i++) {
+      cardHeaders.push(cards[i]);
+    }
+    var index = cardHeaders.indexOf(header);
+    if (index < 0) return;
+
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      event.preventDefault();
+      var nextHeader = cardHeaders[(index + 1) % cardHeaders.length];
+      if (nextHeader) focusWithoutScroll(nextHeader);
+      return;
+    }
+
+    if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      var prevHeader =
+        cardHeaders[(index - 1 + cardHeaders.length) % cardHeaders.length];
+      if (prevHeader) focusWithoutScroll(prevHeader);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onQuestionnaireCardHeaderClick(event);
+    }
   }
 
   function markAllProfileStepsReached() {
@@ -1946,69 +2144,6 @@
     }
   }
 
-  function updateProgressDots(stepId) {
-    if (!progressEl) return;
-
-    var currentIndex = getCurrentSectionIndex(stepId);
-    var sectionCount = QUESTIONNAIRE_SECTION_ORDER.length;
-
-    progressEl.innerHTML = "";
-
-    for (var i = 0; i < sectionCount; i++) {
-      var section = QUESTIONNAIRE_SECTION_ORDER[i];
-      var sectionKey = section.key;
-      var sectionMeta = SECTION_LABELS[sectionKey];
-      var isFilled = hasSectionBeenPassed(sectionKey);
-      var isCurrent = i === currentIndex && currentIndex < sectionCount;
-      var isClickable = canNavigateToSection(stepId, sectionKey);
-      var dot = document.createElement("button");
-      dot.type = "button";
-      dot.className = "questionnaire-panel__progress-dot";
-      dot.setAttribute("data-section-key", sectionKey);
-      if (isFilled) {
-        dot.classList.add("is-filled");
-      }
-      if (isCurrent) {
-        dot.classList.add("is-current");
-      }
-      if (isClickable) {
-        dot.classList.add("is-clickable");
-        dot.setAttribute(
-          "aria-label",
-          (i < currentIndex ? "Back to section " : "Go to section ") +
-            sectionMeta.num +
-            " of " +
-            sectionCount +
-            ": " +
-            sectionMeta.name
-        );
-        dot.addEventListener("click", function (event) {
-          var targetKey = event.currentTarget.getAttribute("data-section-key");
-          navigateToSection(targetKey);
-        });
-      } else {
-        dot.disabled = true;
-        dot.setAttribute(
-          "aria-label",
-          isCurrent
-            ? "Current section " +
-                sectionMeta.num +
-                " of " +
-                sectionCount +
-                ": " +
-                sectionMeta.name
-            : "Section " +
-                sectionMeta.num +
-                " of " +
-                sectionCount +
-                ": " +
-                sectionMeta.name
-        );
-      }
-      progressEl.appendChild(dot);
-    }
-  }
-
   function clearStack() {
     if (!stackEl) return;
     cancelProfileTypewriter();
@@ -2018,7 +2153,6 @@
     stackEl.innerHTML = "";
     activeStepEl = null;
     currentSectionIndex = -1;
-    canvasHostSectionIndex = -1;
   }
 
   function getStackPanelByIndex(index) {
@@ -2026,12 +2160,8 @@
     return stackEl.children[index] || null;
   }
 
-  function getCanvasLiveSlot(sectionKey) {
-    if (!stackEl) return null;
-    var panel = stackEl.querySelector(
-      '[data-section-key="' + sectionKey + '"]'
-    );
-    return panel ? panel.querySelector(".canvas-stack__live-slot") : null;
+  function getQuestionnaireCanvasHost() {
+    return document.getElementById("questionnaire-canvas-host");
   }
 
   function resetStageWrapLayoutStyles(wrap) {
@@ -2041,90 +2171,23 @@
     wrap.classList.remove("is-questionnaire-focus-zoom");
   }
 
-  function copyElementLayoutStyles(source, target) {
-    if (!source || !target) return;
-    var props = [
-      "width",
-      "height",
-      "position",
-      "top",
-      "left",
-      "bottom",
-      "right",
-      "transform",
-      "display",
-      "marginTop",
-      "marginLeft",
-    ];
-    var i;
-    for (i = 0; i < props.length; i++) {
-      target.style[props[i]] = source.style[props[i]];
-    }
-  }
-
-  function clearCanvasSnapshot(sectionIndex) {
-    var panel = getStackPanelByIndex(sectionIndex);
-    if (!panel) return;
-    var snapshotEl = panel.querySelector(".canvas-stack__snapshot");
-    if (snapshotEl) snapshotEl.innerHTML = "";
-  }
-
-  function freezeCanvasSnapshot(sectionIndex) {
-    if (canvasHostSectionIndex !== sectionIndex) return;
-
-    var panel = getStackPanelByIndex(sectionIndex);
-    var snapshotEl = panel ? panel.querySelector(".canvas-stack__snapshot") : null;
-    var svg = document.getElementById("design-svg");
-    var wrap = document.getElementById("stage-wrap");
-    if (!snapshotEl || !svg || !wrap) return;
-
-    var clone = svg.cloneNode(true);
-    clone.removeAttribute("id");
-    clone.setAttribute("aria-hidden", "true");
-    copyElementLayoutStyles(svg, clone);
-
-    var wrapClone = document.createElement("div");
-    wrapClone.className = "canvas-stack__snapshot-wrap stage-wrap";
-    copyElementLayoutStyles(wrap, wrapClone);
-    wrapClone.style.pointerEvents = "none";
-    wrapClone.appendChild(clone);
-
-    snapshotEl.innerHTML = "";
-    snapshotEl.appendChild(wrapClone);
-  }
-
   function resetQuestionnaireCanvasLayoutCache() {
     if (typeof window.resetPage2QuestionnaireCanvasLayoutCache === "function") {
       window.resetPage2QuestionnaireCanvasLayoutCache();
     }
   }
 
-  function reparentCanvasToSection(sectionIndex) {
-    if (sectionIndex < 0) return;
-
+  function mountCanvasToQuestionnaireHost() {
     var wrap = document.getElementById("stage-wrap");
-    if (!wrap) return;
+    var host = getQuestionnaireCanvasHost();
+    if (!wrap || !host) return;
 
-    if (
-      canvasHostSectionIndex >= 0 &&
-      canvasHostSectionIndex !== sectionIndex
-    ) {
-      freezeCanvasSnapshot(canvasHostSectionIndex);
-    }
-
-    if (canvasHostSectionIndex === sectionIndex) {
-      return;
-    }
-
-    var panel = getStackPanelByIndex(sectionIndex);
-    if (!panel) return;
-    var liveSlot = panel.querySelector(".canvas-stack__live-slot");
-    if (!liveSlot) return;
-
-    clearCanvasSnapshot(sectionIndex);
     resetStageWrapLayoutStyles(wrap);
-    liveSlot.appendChild(wrap);
-    canvasHostSectionIndex = sectionIndex;
+    if (wrap.parentNode !== host) {
+      host.appendChild(wrap);
+    }
+    host.setAttribute("aria-hidden", "false");
+    ensureQuestionnaireCanvasDirection();
     resetQuestionnaireCanvasLayoutCache();
     syncCanvasLayoutForStep();
   }
@@ -2132,20 +2195,15 @@
   function restoreCanvasToAppShell() {
     var wrap = document.getElementById("stage-wrap");
     var main = document.querySelector("#section-design .app-shell .main");
+    var host = getQuestionnaireCanvasHost();
     if (!wrap || !main) return;
 
     resetStageWrapLayoutStyles(wrap);
     if (wrap.parentNode !== main) {
       main.appendChild(wrap);
     }
-    canvasHostSectionIndex = -1;
-
-    if (stackEl) {
-      var snapshots = stackEl.querySelectorAll(".canvas-stack__snapshot");
-      var i;
-      for (i = 0; i < snapshots.length; i++) {
-        snapshots[i].innerHTML = "";
-      }
+    if (host) {
+      host.setAttribute("aria-hidden", "true");
     }
 
     resetQuestionnaireCanvasLayoutCache();
@@ -2196,7 +2254,7 @@
     markSectionPassed(sectionKey);
     syncToPanel();
     triggerCanvasUpdateAfterSync(entryStepId);
-    updateProgressDots(displayStepId || entryStepId);
+    updateCardAccessibility(displayStepId || entryStepId);
   }
 
   function getMaxAccessibleSectionIndex() {
@@ -2212,47 +2270,18 @@
     return max;
   }
 
-  function getQuestionnaireStepHeight() {
-    if (!scrollEl) return 0;
-    return scrollEl.clientHeight;
-  }
-
-  function getActiveSectionIndexFromScroll() {
-    var stepHeight = getQuestionnaireStepHeight();
-    if (!stepHeight) return 0;
-    var raw = Math.round(scrollEl.scrollTop / stepHeight);
-    return Math.min(
-      QUESTIONNAIRE_SECTION_ORDER.length - 1,
-      Math.max(0, raw)
-    );
-  }
-
-  function scrollToSection(index, behavior) {
-    if (!scrollEl) return;
-    var stepHeight = getQuestionnaireStepHeight();
-    if (!stepHeight) return;
-    var maxIndex = getMaxAccessibleSectionIndex();
-    var targetIndex = Math.min(index, maxIndex);
-    targetIndex = Math.max(0, targetIndex);
-    scrollEl.scrollTo({
-      top: targetIndex * stepHeight,
-      behavior: behavior || "smooth",
-    });
-  }
-
-  function clampScrollToAccessible() {
-    if (!scrollEl || scrollClampActive) return;
-    var stepHeight = getQuestionnaireStepHeight();
-    if (!stepHeight) return;
-    var maxIndex = getMaxAccessibleSectionIndex();
-    var maxScrollTop = maxIndex * stepHeight;
-    if (scrollEl.scrollTop > maxScrollTop + 2) {
-      scrollClampActive = true;
-      scrollEl.scrollTo({ top: maxScrollTop, behavior: "smooth" });
-      window.setTimeout(function () {
-        scrollClampActive = false;
-      }, 400);
+  function getEffectiveMaxAccessibleSectionIndex() {
+    var max = getMaxAccessibleSectionIndex();
+    if (
+      currentSectionIndex >= 0 &&
+      currentSectionIndex < QUESTIONNAIRE_SECTION_ORDER.length
+    ) {
+      var currentKey = QUESTIONNAIRE_SECTION_ORDER[currentSectionIndex].key;
+      if (isSectionComplete(currentKey)) {
+        max = Math.max(max, currentSectionIndex + 1);
+      }
     }
+    return Math.min(max, QUESTIONNAIRE_SECTION_ORDER.length - 1);
   }
 
   function setCurrentSectionByIndex(index, options) {
@@ -2268,7 +2297,9 @@
       currentSectionIndex = index;
       applyStepUIState(stepId, stepEl);
       checkSectionCompletion(section.key);
-      reparentCanvasToSection(index);
+      triggerCanvasRender();
+    } else {
+      updateCardAccessibility(displayStepId || stepId);
     }
 
     if (!options.deferFocus && !options.skipFocus) {
@@ -2277,66 +2308,134 @@
     }
   }
 
-  function handleQuestionnaireScroll() {
-    clampScrollToAccessible();
-    updateQuestionnaireScrollPolish();
-    var activeIndex = getActiveSectionIndexFromScroll();
-    if (activeIndex !== currentSectionIndex) {
-      setCurrentSectionByIndex(activeIndex, { skipFocus: true });
+  function getQuestionnaireScrollZoomTransition() {
+    return {
+      fromIndex: sectionCanvasTransition.fromIndex,
+      toIndex: sectionCanvasTransition.toIndex,
+      progress: sectionCanvasTransition.progress,
+    };
+  }
+
+  function lockSectionPaging() {
+    sectionPageLockUntil = Date.now() + SECTION_PAGE_LOCK_MS;
+  }
+
+  function handleQuestionnaireResize() {
+    syncQuestionnaireCardHeights();
+    syncQuestionnaireCanvasZoomFromScroll();
+  }
+
+  function getQuestionnaireCardMeasureWidth() {
+    var width = 0;
+
+    if (stackEl) width = stackEl.clientWidth;
+    if (width <= 0 && scrollEl) width = scrollEl.clientWidth;
+
+    if (width <= 0 && panelGridEl) {
+      var gridRect = panelGridEl.getBoundingClientRect();
+      if (gridRect.width > 0) {
+        var gridStyles = window.getComputedStyle(panelGridEl);
+        var paddingInline =
+          parseFloat(gridStyles.paddingLeft) +
+          parseFloat(gridStyles.paddingRight);
+        var columnGap = parseFloat(gridStyles.columnGap) || 0;
+        var innerWidth = gridRect.width - paddingInline;
+        width = ((innerWidth - columnGap * 11) / 12) * 6 + columnGap * 5;
+      }
+    }
+
+    return Math.max(0, Math.floor(width));
+  }
+
+  function syncQuestionnaireCardHeights() {
+    if (!panelEl || !stackEl) return;
+
+    var cards = stackEl.querySelectorAll(".questionnaire-card");
+    if (!cards.length) return;
+
+    var measureWidth = getQuestionnaireCardMeasureWidth();
+    if (measureWidth <= 0) return;
+
+    panelEl.classList.add("questionnaire-panel--measuring");
+
+    var maxHeaderPx = 0;
+    var maxBodyPx = 0;
+    var i;
+
+    for (i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var header = card.querySelector(".questionnaire-card__header");
+      var body = card.querySelector(".questionnaire-card__body");
+
+      if (header) {
+        maxHeaderPx = Math.max(
+          maxHeaderPx,
+          Math.ceil(header.getBoundingClientRect().height)
+        );
+      }
+
+      if (!body) continue;
+
+      var wasHidden = body.hidden;
+      body.hidden = false;
+      body.style.position = "absolute";
+      body.style.left = "-10000px";
+      body.style.top = "0";
+      body.style.width = measureWidth + "px";
+      body.style.visibility = "hidden";
+      body.style.pointerEvents = "none";
+
+      var measureHidden = body.querySelectorAll(
+        ".questionnaire-feelings-spider, .questionnaire-palette-picker, .questionnaire-options--grid-type"
+      );
+      var hiddenDisplays = [];
+      var j;
+      for (j = 0; j < measureHidden.length; j++) {
+        hiddenDisplays[j] = measureHidden[j].style.display;
+        measureHidden[j].style.display = "none";
+      }
+
+      maxBodyPx = Math.max(maxBodyPx, Math.ceil(body.scrollHeight));
+
+      for (j = 0; j < measureHidden.length; j++) {
+        measureHidden[j].style.display = hiddenDisplays[j];
+      }
+
+      body.hidden = wasHidden;
+      body.style.position = "";
+      body.style.left = "";
+      body.style.top = "";
+      body.style.width = "";
+      body.style.visibility = "";
+      body.style.pointerEvents = "";
+    }
+
+    panelEl.classList.remove("questionnaire-panel--measuring");
+
+    if (maxHeaderPx > 0) {
+      panelEl.style.setProperty(
+        "--questionnaire-card-header-height",
+        maxHeaderPx + "px"
+      );
+    }
+    if (maxBodyPx > 0) {
+      panelEl.style.setProperty(
+        "--questionnaire-card-expanded-height",
+        maxHeaderPx + maxBodyPx + "px"
+      );
     }
   }
 
-  function updateQuestionnaireScrollPolish() {
-    if (!scrollEl || !stackEl || prefersReducedMotion()) return;
-
-    var panels = stackEl.querySelectorAll(".questionnaire-stack__panel");
-    if (!panels.length) return;
-
-    var stepHeight = getQuestionnaireStepHeight();
-    if (!stepHeight) return;
-
-    var scrollTop = scrollEl.scrollTop;
-
-    for (var i = 0; i < panels.length; i++) {
-      var inner = panels[i].querySelector(".questionnaire-stack__panel-inner");
-      var canvasInner = panels[i].querySelector(".canvas-stack__panel-inner");
-
-      if (i === panels.length - 1) {
-        if (inner) {
-          inner.style.transform = "";
-          inner.style.opacity = "";
-        }
-        if (canvasInner) {
-          canvasInner.style.transform = "";
-          canvasInner.style.opacity = "";
-        }
-        continue;
-      }
-
-      var progress = Math.min(
-        1,
-        Math.max(0, (scrollTop - i * stepHeight) / stepHeight)
-      );
-      var scale = 1 - progress * 0.06;
-      var opacity = String(1 - progress * 0.25);
-      if (inner) {
-        inner.style.transform = "scale(" + scale + ")";
-        inner.style.opacity = opacity;
-      }
-      if (canvasInner) {
-        canvasInner.style.transform = "scale(" + scale + ")";
-        canvasInner.style.opacity = opacity;
-      }
-    }
+  function scheduleQuestionnaireCardHeightSync() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(syncQuestionnaireCardHeights);
+    });
   }
 
   function initQuestionnaireScroll() {
     if (!scrollEl) return;
 
-    scrollEl.addEventListener("scroll", handleQuestionnaireScroll, {
-      passive: true,
-    });
-    window.addEventListener("resize", handleQuestionnaireScroll, {
+    window.addEventListener("resize", handleQuestionnaireResize, {
       passive: true,
     });
   }
@@ -2348,56 +2447,62 @@
     var i;
     for (i = 0; i < QUESTIONNAIRE_SECTION_ORDER.length; i++) {
       var section = QUESTIONNAIRE_SECTION_ORDER[i];
-      var panel = document.createElement("section");
-      panel.className = "questionnaire-stack__panel";
-      panel.classList.add(
-        i % 2 === 0
-          ? "questionnaire-stack__panel--light"
-          : "questionnaire-stack__panel--brown"
-      );
-      panel.setAttribute("data-section-key", section.key);
+      var sectionMeta = getSectionLabels()[section.key];
+      var card = document.createElement("article");
+      card.className = "questionnaire-card";
+      card.classList.add("questionnaire-card--light");
+      card.setAttribute("data-section-key", section.key);
       if (section.key === "feelings") {
-        panel.classList.add("questionnaire-stack__panel--feelings");
+        card.classList.add("questionnaire-card--feelings");
       }
 
-      var bg = document.createElement("div");
-      bg.className = "questionnaire-stack__panel-bg";
-      bg.setAttribute("aria-hidden", "true");
+      var header = document.createElement("button");
+      header.type = "button";
+      header.className = "questionnaire-card__header";
+      header.setAttribute("aria-expanded", "false");
+      header.setAttribute(
+        "aria-controls",
+        "questionnaire-card-body-" + section.key
+      );
+      header.setAttribute(
+        "aria-label",
+        getUiString("sectionAriaPrefix") +
+          sectionMeta.num +
+          ": " +
+          sectionMeta.name
+      );
 
-      var inner = document.createElement("div");
-      inner.className = "questionnaire-stack__panel-inner";
+      var num = document.createElement("span");
+      num.className = "questionnaire-card__num";
+      num.textContent = String(sectionMeta.num);
+
+      var title = document.createElement("span");
+      title.className = "questionnaire-card__title";
+      title.textContent = sectionMeta.name;
+
+      header.appendChild(num);
+      header.appendChild(title);
+      header.addEventListener("click", onQuestionnaireCardHeaderClick);
+      header.addEventListener("keydown", onQuestionnaireCardHeaderKeydown);
+
+      var body = document.createElement("div");
+      body.className = "questionnaire-card__body";
+      body.id = "questionnaire-card-body-" + section.key;
+      body.hidden = true;
 
       var stepEl = buildStepElement(section.entryStepId);
       if (stepEl) {
-        inner.appendChild(stepEl);
+        body.appendChild(stepEl);
       }
 
-      var canvasBg = document.createElement("div");
-      canvasBg.className = "canvas-stack__panel-bg";
-      canvasBg.setAttribute("aria-hidden", "true");
-
-      var canvasInner = document.createElement("div");
-      canvasInner.className = "canvas-stack__panel-inner";
-
-      var snapshot = document.createElement("div");
-      snapshot.className = "canvas-stack__snapshot";
-      snapshot.setAttribute("aria-hidden", "true");
-
-      var liveSlot = document.createElement("div");
-      liveSlot.className = "canvas-stack__live-slot";
-
-      canvasInner.appendChild(snapshot);
-      canvasInner.appendChild(liveSlot);
-
-      panel.appendChild(bg);
-      panel.appendChild(inner);
-      panel.appendChild(canvasBg);
-      panel.appendChild(canvasInner);
-      stackEl.appendChild(panel);
+      card.appendChild(header);
+      card.appendChild(body);
+      stackEl.appendChild(card);
     }
 
-    setCurrentSectionByIndex(0, { deferFocus: true, skipFocus: true });
-    updateQuestionnaireScrollPolish();
+    mountCanvasToQuestionnaireHost();
+    sectionCanvasTransition = { fromIndex: 0, toIndex: 0, progress: 0 };
+    activateSection(0, { deferFocus: true, skipFocus: true, behavior: "auto" });
   }
 
   function createHeading(step) {
@@ -2449,8 +2554,8 @@
       return btn;
     }
 
-    group.appendChild(makeBtn("Yes", true));
-    group.appendChild(makeBtn("No", false));
+    group.appendChild(makeBtn(getUiString("yes"), true));
+    group.appendChild(makeBtn(getUiString("no"), false));
     parent.appendChild(group);
   }
 
@@ -2581,8 +2686,8 @@
       return btn;
     }
 
-    group.appendChild(makeBtn("Yes", true));
-    group.appendChild(makeBtn("No", false));
+    group.appendChild(makeBtn(getUiString("yes"), true));
+    group.appendChild(makeBtn(getUiString("no"), false));
     answersWrap.appendChild(group);
     appendContinueIfComplete(answersWrap, stepId);
     return answersWrap;
@@ -2595,7 +2700,7 @@
     var continueBtn = document.createElement("button");
     continueBtn.type = "button";
     continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
+    continueBtn.textContent = getUiString("continue");
     continueBtn.disabled = !isStepComplete(stepId);
 
     appendQuestionnaireMultiChoiceControl(
@@ -2636,7 +2741,7 @@
       continueBtn = document.createElement("button");
       continueBtn.type = "button";
       continueBtn.className = "questionnaire-continue";
-      continueBtn.textContent = "Continue";
+      continueBtn.textContent = getUiString("continue");
       continueBtn.disabled = !isStepComplete(stepId);
       continueBtn.addEventListener("click", function () {
         advance();
@@ -2691,7 +2796,7 @@
   }
 
   function appendQuestionnaireGridTypeChoice(parent, onChange) {
-    var stepConfig = STEPS.gridType;
+    var stepConfig = getStepConfig("gridType");
     var stepId = "gridType";
 
     var group = document.createElement("div");
@@ -2763,7 +2868,7 @@
     var continueBtn = document.createElement("button");
     continueBtn.type = "button";
     continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
+    continueBtn.textContent = getUiString("continue");
     continueBtn.disabled = !isStepComplete(stepId);
 
     function syncValue() {
@@ -2811,7 +2916,7 @@
     var continueBtn = document.createElement("button");
     continueBtn.type = "button";
     continueBtn.className = "questionnaire-continue";
-    continueBtn.textContent = "Continue";
+    continueBtn.textContent = getUiString("continue");
     continueBtn.disabled = !isStepComplete("name");
 
     function syncContinue() {
@@ -2963,10 +3068,20 @@
       }
       var domIds = PANEL_SLIDER_DOM[stepId];
       if (domIds) {
-        coalescedCanvasUpdate(function () {
-          syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
-          triggerCanvasUpdateAfterSync(stepId, true);
-        });
+        if (stepId === "fanLeaves") {
+          scheduleFanLeavesSliderCanvasUpdate(
+            stepId,
+            answers[stepId],
+            true,
+            false
+          );
+        } else {
+          coalescedCanvasUpdate(function () {
+            ensureQuestionnaireCanvasUnlock(stepId);
+            syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
+            triggerCanvasUpdateAfterSync(stepId, true);
+          });
+        }
       }
       if (onChange) onChange();
     });
@@ -2981,6 +3096,13 @@
         // vector render on the final value.
         if (isGridStructureSliderStep(stepId)) {
           syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], true);
+        } else if (stepId === "fanLeaves") {
+          scheduleFanLeavesSliderCanvasUpdate(
+            stepId,
+            answers[stepId],
+            false,
+            true
+          );
         } else {
           syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
           triggerCanvasUpdateAfterSync(stepId, false);
@@ -2995,98 +3117,56 @@
     parent.appendChild(sliderWrap);
   }
 
-  function appendFeelingsGridTable(parent, onChange) {
-    var steps =
-      typeof FEELINGS_SLIDER_STEPS !== "undefined" ? FEELINGS_SLIDER_STEPS : 5;
-    var grid = document.createElement("div");
-    grid.className = "questionnaire-feelings-grid";
-    grid.setAttribute("role", "grid");
-    grid.setAttribute("aria-label", "Feelings intensity");
+  function appendFeelingsShuffleButton(parent) {
+    var actions = document.createElement("div");
+    actions.className = "questionnaire-feelings-actions";
 
-    var headerRow = document.createElement("div");
-    headerRow.className =
-      "questionnaire-feelings-grid__row questionnaire-feelings-grid__row--header";
-    headerRow.setAttribute("role", "row");
-
-    var headerLabelCell = document.createElement("div");
-    headerLabelCell.className =
-      "questionnaire-feelings-grid__label-cell questionnaire-feelings-grid__label-cell--header";
-    headerLabelCell.setAttribute("role", "columnheader");
-    headerRow.appendChild(headerLabelCell);
-
-    var headerIdx;
-    for (headerIdx = 0; headerIdx < steps; headerIdx++) {
-      var headerCell = document.createElement("div");
-      headerCell.className = "questionnaire-feelings-grid__scale-header";
-      headerCell.setAttribute("role", "columnheader");
-
-      var headerNumber = document.createElement("span");
-      headerNumber.className = "questionnaire-feelings-grid__scale-number";
-      headerNumber.textContent = String(headerIdx + 1);
-      headerCell.appendChild(headerNumber);
-
-      var headerText = document.createElement("span");
-      headerText.className = "questionnaire-feelings-grid__scale-label";
-      headerText.textContent =
-        FEELINGS_SCALE_LABELS[headerIdx] || String(headerIdx + 1);
-      headerCell.appendChild(headerText);
-
-      headerRow.appendChild(headerCell);
-    }
-    grid.appendChild(headerRow);
-
-    FEELINGS_TABLE_ROWS.forEach(function (rowDef) {
-      var stepId = rowDef.stepId;
-      var bounds = getQuestionnaireFeelingsBounds(stepId);
-      if (!bounds) return;
-      var min = bounds[0];
-      var max = bounds[1];
-      var currentStep = feelingsStepFromValue(answers[stepId], min, max);
-
-      var rowEl = document.createElement("div");
-      rowEl.className = "questionnaire-feelings-grid__row";
-      rowEl.setAttribute("role", "radiogroup");
-      rowEl.setAttribute("aria-label", rowDef.label + " — intensity");
-
-      var labelCell = document.createElement("div");
-      labelCell.className = "questionnaire-feelings-grid__label-cell";
-      labelCell.setAttribute("role", "rowheader");
-      labelCell.textContent = rowDef.label;
-      rowEl.appendChild(labelCell);
-
-      var stepNum;
-      for (stepNum = 1; stepNum <= steps; stepNum++) {
-        var cell = document.createElement("div");
-        cell.className = "questionnaire-feelings-grid__cell";
-        cell.setAttribute("role", "gridcell");
-
-        var radio = document.createElement("input");
-        radio.type = "radio";
-        radio.className = "questionnaire-feelings-grid__radio";
-        radio.name = "feelings-" + stepId;
-        radio.value = String(stepNum);
-        radio.checked = currentStep === stepNum;
-        radio.setAttribute(
-          "aria-label",
-          rowDef.label + ": " + (FEELINGS_SCALE_LABELS[stepNum - 1] || stepNum)
-        );
-
-        radio.addEventListener("change", function () {
-          if (!this.checked) return;
-          var chosenStep = clampFeelingsStepNumber(this.value);
-          answers[stepId] = feelingsValueFromStep(chosenStep, min, max);
-          applyQuestionnaireFeelingsToCanvas();
-          if (onChange) onChange();
-        });
-
-        cell.appendChild(radio);
-        rowEl.appendChild(cell);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "questionnaire-feelings-shuffle-btn";
+    btn.textContent = getUiString("shuffleLayout");
+    btn.setAttribute("aria-label", getUiString("shuffleLayoutAria"));
+    btn.addEventListener("click", function () {
+      if (
+        window.UnderCoverComboBridge &&
+        typeof window.UnderCoverComboBridge.randomizeFeelingsPlacement ===
+          "function"
+      ) {
+        window.UnderCoverComboBridge.randomizeFeelingsPlacement();
       }
-
-      grid.appendChild(rowEl);
     });
 
-    parent.appendChild(grid);
+    actions.appendChild(btn);
+    parent.appendChild(actions);
+  }
+
+  function appendFeelingsSpiderChart(parent, onChange) {
+    var wrap = document.createElement("div");
+    wrap.className = "questionnaire-feelings-spider";
+    parent.appendChild(wrap);
+
+    if (
+      !window.FeelingsSpiderChart ||
+      typeof window.FeelingsSpiderChart.create !== "function"
+    ) {
+      return;
+    }
+
+    window.FeelingsSpiderChart.create(wrap, {
+      rows: getFeelingsTableRows(),
+      scaleLabels: getFeelingsScaleLabels(),
+      getBounds: getQuestionnaireFeelingsBounds,
+      getValue: function (stepId) {
+        return answers[stepId];
+      },
+      setValue: function (stepId, value) {
+        answers[stepId] = value;
+      },
+      onChange: function () {
+        applyQuestionnaireFeelingsToCanvas();
+        if (onChange) onChange();
+      },
+    });
   }
 
   function appendQuestionnaireHopeChoice(parent, stepConfig, stepId, onChange) {
@@ -3135,7 +3215,7 @@
     });
     el.addEventListener("focus", function () {
       currentProfileBlankId = stepId;
-      updateProgressDotsForProfile();
+      updateCardAccessibilityForProfile();
     });
   }
 
@@ -3432,7 +3512,7 @@
   }
 
   function createMadlibsTextBlank(stepId, sizeClass) {
-    var stepConfig = STEPS[stepId];
+    var stepConfig = getStepConfig(stepId);
     var input = document.createElement("input");
     input.type = "text";
     input.className =
@@ -3660,7 +3740,7 @@
 
     trigger.addEventListener("focus", function () {
       currentProfileBlankId = stepId;
-      updateProgressDotsForProfile();
+      updateCardAccessibilityForProfile();
     });
 
     trigger.addEventListener("keydown", function (event) {
@@ -3692,8 +3772,9 @@
     ensureMadlibsDropdownDismiss();
 
     var stepId = "nameDisplayMode";
-    var options = STEPS.name.modes;
-    var ariaLabel = STEPS.name.modeAriaLabel;
+    var nameStepConfig = getStepConfig("name");
+    var options = nameStepConfig.modes;
+    var ariaLabel = nameStepConfig.modeAriaLabel;
     var nameInputEditing = false;
 
     var wrap = document.createElement("div");
@@ -3712,8 +3793,8 @@
     nameInput.type = "text";
     nameInput.className = "questionnaire-madlibs-name-mode__input";
     nameInput.setAttribute("data-step-id", "name");
-    nameInput.setAttribute("aria-label", STEPS.name.ariaLabel);
-    nameInput.placeholder = STEPS.name.placeholder;
+    nameInput.setAttribute("aria-label", nameStepConfig.ariaLabel);
+    nameInput.placeholder = nameStepConfig.placeholder;
     nameInput.autocomplete = "off";
     nameInput.spellcheck = false;
     nameInput.lang = "en";
@@ -3816,16 +3897,18 @@
         nameInput.placeholder = "";
       } else if (mode === "initials" && !nameInputEditing) {
         var initialsLabel = getNameModeDisplayLabel("initials", answers.name);
-        nameInput.value = initialsLabel === "Initials" ? "" : initialsLabel;
-        nameInput.placeholder = "Initials";
+        var emptyInitials = getNameModeDisplayLabel("initials", "");
+        nameInput.value = initialsLabel === emptyInitials ? "" : initialsLabel;
+        nameInput.placeholder = getUiString("initialsPlaceholder");
       } else if (mode === "name" && !nameInputEditing) {
         var nameLabel = getNameModeDisplayLabel("name", answers.name);
+        var emptyName = getNameModeDisplayLabel("name", "");
         nameInput.value =
-          nameLabel === "Name" ? "" : String(answers.name || "").toUpperCase();
-        nameInput.placeholder = "Name";
+          nameLabel === emptyName ? "" : String(answers.name || "").toUpperCase();
+        nameInput.placeholder = getUiString("namePlaceholder");
       } else {
         nameInput.value = String(answers.name || "").toUpperCase();
-        nameInput.placeholder = STEPS.name.placeholder;
+        nameInput.placeholder = nameStepConfig.placeholder;
       }
       syncMadlibsDropdownWidth(wrap);
     }
@@ -3888,11 +3971,11 @@
       nameInputEditing = true;
       if (answers.nameDisplayMode === "initials") {
         nameInput.value = String(answers.name || "").toUpperCase();
-        nameInput.placeholder = STEPS.name.placeholder;
+        nameInput.placeholder = nameStepConfig.placeholder;
       }
       currentProfileBlankId =
         answers.nameDisplayMode === "anonymous" ? stepId : "name";
-      updateProgressDotsForProfile();
+      updateCardAccessibilityForProfile();
     });
     nameInput.addEventListener("click", function (event) {
       if (nameInput.readOnly) {
@@ -3943,7 +4026,7 @@
   }
 
   function createMadlibsSelectBlank(stepId, sizeClass) {
-    var stepConfig = STEPS[stepId];
+    var stepConfig = getStepConfig(stepId);
     return createMadlibsDropdown(
       stepId,
       sizeClass,
@@ -4126,11 +4209,49 @@
     );
   }
 
+  function countTypewriterTicks(lines) {
+    var ticks = 0;
+    var li;
+    var si;
+    var seg;
+    for (li = 0; li < lines.length; li++) {
+      for (si = 0; si < lines[li].segments.length; si++) {
+        seg = lines[li].segments[si];
+        if (seg.type === "text") {
+          ticks += (seg.content || "").length;
+        } else if (seg.type === "blank" && !seg.skipTyping) {
+          ticks += seg.placeholderChars || 0;
+        }
+      }
+    }
+    return {
+      ticks: ticks,
+      linePauses: Math.max(0, lines.length - 1),
+    };
+  }
+
+  function getTypewriterTiming(lines) {
+    var counts = countTypewriterTicks(lines);
+    if (counts.ticks === 0 && counts.linePauses === 0) {
+      return { charMs: 0, linePauseMs: 0 };
+    }
+    var unitMs =
+      TYPEWRITER_TOTAL_MS /
+      (counts.ticks + counts.linePauses * TYPEWRITER_LINE_PAUSE_RATIO);
+    return {
+      charMs: Math.max(6, Math.round(unitMs)),
+      linePauseMs: Math.max(4, Math.round(unitMs * TYPEWRITER_LINE_PAUSE_RATIO)),
+    };
+  }
+
   function runProfileTypewriter(madlibsEl, onComplete) {
     madlibsEl.classList.add("is-typewriting");
     madlibsEl.setAttribute("aria-busy", "true");
 
     var lines = prepareProfileTypewriter(madlibsEl);
+    var timing = getTypewriterTiming(lines);
+    var charMs = timing.charMs;
+    var linePauseMs = timing.linePauseMs;
     var controller = createTypewriterController();
     profileTypewriterController = controller;
     profileTypewriterState = { madlibsEl: madlibsEl, lines: lines };
@@ -4159,7 +4280,7 @@
         }
         seg.el.textContent += seg.content.charAt(index);
         index += 1;
-        controller.wait(TYPEWRITER_CHAR_MS, function (ok) {
+        controller.wait(charMs, function (ok) {
           if (ok) step();
           else cb();
         });
@@ -4217,7 +4338,7 @@
           "--typewriter-underline-progress",
           String(index / total)
         );
-        controller.wait(TYPEWRITER_CHAR_MS, function (ok) {
+        controller.wait(charMs, function (ok) {
           if (ok) step();
           else {
             clearTypewriterUnderlineDraw(seg);
@@ -4237,7 +4358,7 @@
 
       var line = lines[lineIndex];
       if (segIndex >= line.segments.length) {
-        controller.wait(TYPEWRITER_LINE_PAUSE_MS, function (ok) {
+        controller.wait(linePauseMs, function (ok) {
           if (ok) runSegment(lineIndex + 1, 0);
         });
         return;
@@ -4258,6 +4379,24 @@
     runSegment(0, 0);
   }
 
+  function appendMadlibsTemplatePart(lineEl, part) {
+    if (part.t === "text") {
+      lineEl.appendChild(document.createTextNode(part.v));
+      return;
+    }
+    if (part.t === "nameMode") {
+      lineEl.appendChild(createMadlibsNameModeSelect(part.size || "medium"));
+      return;
+    }
+    if (part.t === "blank") {
+      var blankEl =
+        part.kind === "select"
+          ? createMadlibsSelectBlank(part.id, part.size || "medium")
+          : createMadlibsTextBlank(part.id, part.size || "medium");
+      lineEl.appendChild(wrapMadlibsFieldWithIcon(part.id, blankEl));
+    }
+  }
+
   function renderProfileMadLibs() {
     var stepEl = document.createElement("div");
     stepEl.className =
@@ -4267,60 +4406,23 @@
     var answersWrap = document.createElement("div");
     answersWrap.className = "questionnaire-step__answers";
 
+    var madlibsTemplate = getStrings().madLibs;
     var madlibs = document.createElement("div");
     madlibs.className = "questionnaire-profile-madlibs";
     madlibs.setAttribute("role", "group");
-    madlibs.setAttribute("aria-label", "Profile");
+    madlibs.setAttribute("aria-label", madlibsTemplate.ariaLabel);
 
-    var line1 = document.createElement("p");
-    line1.className = "questionnaire-madlibs-line";
-    line1.appendChild(document.createTextNode("My name is "));
-    line1.appendChild(createMadlibsNameModeSelect("medium"));
-    line1.appendChild(document.createTextNode(", I'm "));
-    line1.appendChild(
-      wrapMadlibsFieldWithIcon("age", createMadlibsTextBlank("age", "short"))
-    );
-    line1.appendChild(document.createTextNode(" years old."));
-    madlibs.appendChild(line1);
-
-    var line2 = document.createElement("p");
-    line2.className = "questionnaire-madlibs-line";
-    line2.appendChild(document.createTextNode("I lived in Iran "));
-    line2.appendChild(
-      wrapMadlibsFieldWithIcon(
-        "livingDuration",
-        createMadlibsSelectBlank("livingDuration", "medium")
-      )
-    );
-    line2.appendChild(document.createTextNode(" until "));
-    line2.appendChild(
-      wrapMadlibsFieldWithIcon(
-        "leavingYear",
-        createMadlibsTextBlank("leavingYear", "short")
-      )
-    );
-    line2.appendChild(document.createTextNode(", I came from "));
-    line2.appendChild(
-      wrapMadlibsFieldWithIcon("from", createMadlibsTextBlank("from", "medium"))
-    );
-    line2.appendChild(document.createTextNode(" to "));
-    line2.appendChild(
-      wrapMadlibsFieldWithIcon("nowIn", createMadlibsTextBlank("nowIn", "medium"))
-    );
-    line2.appendChild(document.createTextNode("."));
-    madlibs.appendChild(line2);
-
-    var line3 = document.createElement("p");
-    line3.className = "questionnaire-madlibs-line";
-    line3.appendChild(document.createTextNode("I feel most at home in "));
-    line3.appendChild(
-      wrapMadlibsFieldWithIcon(
-        "homeAt",
-        createMadlibsSelectBlank("homeAt", "medium")
-      )
-    );
-    line3.appendChild(document.createTextNode("."));
-    madlibs.appendChild(line3);
+    var lineIndex;
+    for (lineIndex = 0; lineIndex < madlibsTemplate.lines.length; lineIndex++) {
+      var lineParts = madlibsTemplate.lines[lineIndex];
+      var lineEl = document.createElement("p");
+      lineEl.className = "questionnaire-madlibs-line";
+      var partIndex;
+      for (partIndex = 0; partIndex < lineParts.length; partIndex++) {
+        appendMadlibsTemplatePart(lineEl, lineParts[partIndex]);
+      }
+      madlibs.appendChild(lineEl);
+    }
 
     answersWrap.appendChild(madlibs);
 
@@ -4343,30 +4445,35 @@
 
     var intro = document.createElement("p");
     intro.className = "questionnaire-feelings-intro";
-    intro.textContent =
-      "How much do you feel these emotions when you think about Iran?";
+    intro.textContent = getStrings().feelings.intro;
     answersWrap.appendChild(intro);
 
     var list = document.createElement("div");
     list.className = "questionnaire-feelings-list";
     list.setAttribute("role", "group");
-    list.setAttribute("aria-label", "Feelings");
+    list.setAttribute("aria-label", getUiString("feelingsAria"));
 
     function syncSectionChange() {
       checkSectionCompletion("feelings");
     }
 
-    appendFeelingsGridTable(list, syncSectionChange);
+    // Shuffle button is pinned (via CSS) to the top-right of the chart, so it
+    // lives inside the list — the chart's positioning context — rather than in
+    // the column flow above the chart.
+    appendFeelingsShuffleButton(list);
+
+    appendFeelingsSpiderChart(list, syncSectionChange);
 
     var hopeBlock = document.createElement("div");
-    hopeBlock.className = "questionnaire-feelings-hope-block";
+    hopeBlock.className =
+      "questionnaire-feelings-hope-block questionnaire-section-question";
 
-    var hopeHeading = document.createElement("h4");
-    hopeHeading.className = "questionnaire-feelings-emotion-heading";
-    hopeHeading.textContent = "Hope";
-    hopeBlock.appendChild(hopeHeading);
+    appendQuestionnaireSectionQuestionHeading(
+      hopeBlock,
+      getStrings().feelings.hopeHeading
+    );
 
-    var hopeStepConfig = STEPS.hopeMode;
+    var hopeStepConfig = getStepConfig("hopeMode");
     if (hopeStepConfig) {
       appendQuestionnaireHopeChoice(
         hopeBlock,
@@ -4396,7 +4503,7 @@
     var list = document.createElement("div");
     list.className = "questionnaire-section-list";
     list.setAttribute("role", "group");
-    list.setAttribute("aria-label", "Grid");
+    list.setAttribute("aria-label", getUiString("gridAria"));
 
     function syncSectionChange() {
       checkSectionCompletion("grid");
@@ -4411,11 +4518,11 @@
     octagonsBlock.className = "questionnaire-section-question";
     appendQuestionnaireSectionQuestionHeading(
       octagonsBlock,
-      STEPS.octagonsN.label
+      getStepConfig("octagonsN").label
     );
     appendQuestionnaireSliderControl(
       octagonsBlock,
-      STEPS.octagonsN,
+      getStepConfig("octagonsN"),
       "octagonsN",
       syncSectionChange
     );
@@ -4425,11 +4532,11 @@
     innerScaleBlock.className = "questionnaire-section-question";
     appendQuestionnaireSectionQuestionHeading(
       innerScaleBlock,
-      STEPS.innerScale.label
+      getStepConfig("innerScale").label
     );
     appendQuestionnaireSliderControl(
       innerScaleBlock,
-      STEPS.innerScale,
+      getStepConfig("innerScale"),
       "innerScale",
       syncSectionChange
     );
@@ -4451,7 +4558,7 @@
     var list = document.createElement("div");
     list.className = "questionnaire-section-list";
     list.setAttribute("role", "group");
-    list.setAttribute("aria-label", "Family and friends in Iran");
+    list.setAttribute("aria-label", getUiString("familyAria"));
 
     function syncSectionChange() {
       if (answers.iranLossTypes === null && isAllFamilyComplete()) {
@@ -4462,7 +4569,7 @@
     }
 
     FAMILY_STEP_ORDER.forEach(function (stepId) {
-      var stepConfig = STEPS[stepId];
+      var stepConfig = getStepConfig(stepId);
       if (!stepConfig) return;
 
       var questionBlock = document.createElement("div");
@@ -4556,9 +4663,19 @@
         syncPaletteToPanel(answers[stepId]);
         return;
       }
+      if (stepId === "fanLeaves") {
+        scheduleFanLeavesSliderCanvasUpdate(
+          stepId,
+          answers[stepId],
+          true,
+          false
+        );
+        return;
+      }
       var domIds = PANEL_SLIDER_DOM[stepId];
       if (domIds) {
         coalescedCanvasUpdate(function () {
+          ensureQuestionnaireCanvasUnlock(stepId);
           syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
           triggerCanvasUpdateAfterSync(stepId, true);
         });
@@ -4568,13 +4685,20 @@
     // Release: run the full commit once on the final value.
     slider.addEventListener("change", function () {
       if (stepConfig.sync === "palette") return;
+      if (stepId === "fanLeaves") {
+        scheduleFanLeavesSliderCanvasUpdate(
+          stepId,
+          answers[stepId],
+          false,
+          true
+        );
+        checkSectionCompletion("bodyAutonomy");
+        return;
+      }
       var domIds = PANEL_SLIDER_DOM[stepId];
       if (domIds) {
         syncPanelSliderDom(domIds[0], domIds[1], answers[stepId], false);
         triggerCanvasUpdateAfterSync(stepId, false);
-      }
-      if (stepId === "fanLeaves") {
-        checkSectionCompletion("bodyAutonomy");
       }
     });
 
@@ -4660,6 +4784,7 @@
     palettesLoadedHookRegistered = true;
     window.SheetPalettes.onPalettesLoaded(function () {
       refreshPalettePickerGradients();
+      scheduleQuestionnaireCardHeightSync();
     });
   }
 
@@ -4678,7 +4803,7 @@
       btn.type = "button";
       btn.className = "questionnaire-palette-dot";
       btn.setAttribute("data-palette-num", String(n));
-      btn.setAttribute("aria-label", "Palette " + n);
+      btn.setAttribute("aria-label", getUiString("palettePrefix") + n);
       btn.setAttribute("aria-pressed", answers.palette === n ? "true" : "false");
       if (answers.palette === n) {
         btn.classList.add("is-selected");
@@ -4756,12 +4881,12 @@
     var saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "questionnaire-archive-btn";
-    saveBtn.textContent = "submit & order";
+    saveBtn.textContent = getUiString("submitOrder");
 
     var confirmEl = document.createElement("p");
     confirmEl.className = "questionnaire-archive-confirm";
     confirmEl.hidden = true;
-    confirmEl.textContent = "Saved to archive";
+    confirmEl.textContent = getUiString("savedToArchive");
 
     saveBtn.addEventListener("click", function () {
       // Canvas already reflects questionnaire choices — resyncing the hidden
@@ -4787,14 +4912,17 @@
         window.requestAnimationFrame(function () {
           window.HandkerchiefArchive.saveCurrentDesign()
             .then(function () {
-              confirmEl.textContent = "Saved to archive";
+              confirmEl.textContent = getUiString("savedToArchive");
               confirmEl.hidden = false;
               resetQuestionnaireAfterSubmit();
               navigateToArchiveAfterSubmit();
             })
             .catch(function (err) {
               console.warn("[Questionnaire] Save failed:", err);
-              confirmEl.textContent = "Could not save image. Try again.";
+              confirmEl.textContent =
+                err && err.message === "Archive storage is full"
+                  ? getUiString("archiveFull")
+                  : getUiString("archiveError");
               confirmEl.hidden = false;
             })
             .finally(function () {
@@ -4863,7 +4991,7 @@
     } else if (stepId === SUBMIT_ORDER_STEP_ID) {
       stepEl = renderComplete();
     } else {
-      var stepConfig = STEPS[stepId];
+      var stepConfig = getStepConfig(stepId);
       if (!stepConfig) return null;
 
       stepEl = document.createElement("div");
@@ -4946,7 +5074,7 @@
       );
     }
     return stepEl.querySelector(
-      "input, button.questionnaire-option, button.questionnaire-archive-btn, input.questionnaire-slider"
+      "input, button.questionnaire-option, button.questionnaire-archive-btn, button.questionnaire-feelings-shuffle-btn, input.questionnaire-slider"
     );
   }
 
@@ -4954,14 +5082,14 @@
     displayStepId = stepId;
     currentStepId = stepId === SUBMIT_ORDER_STEP_ID ? null : stepId;
     activeStepEl = stepEl;
-    updateSectionLabel(stepId);
-    updateSkipButtonVisibility(stepId);
-    updateProgressDots(stepId);
-    if (sectionLabelEl) {
-      sectionLabelEl.classList.add("is-active");
-    }
+    updateCardAccessibility(stepId);
+    updateRemainingSteps(getCurrentSectionIndex(stepId));
     ensureQuestionnaireCanvasUnlock(stepId);
     syncCanvasLayoutForStep();
+    if (isBodyAutonomyStep(stepId)) {
+      syncFanLeavesToPanel(answers.fanLeaves, true);
+      triggerCanvasRender();
+    }
     if (
       (stepId === "gridType" || stepId === GRID_ALL_STEP_ID) &&
       answers.gridType &&
@@ -5214,8 +5342,7 @@
     var index = getSectionIndex(sectionKey);
     if (index < 0) return;
 
-    scrollToSection(index, "auto");
-    setCurrentSectionByIndex(index, options);
+    activateSection(index, { behavior: "auto", skipFocus: options.skipFocus, deferFocus: options.deferFocus });
   }
 
   function goToStep(nextId) {
@@ -5239,39 +5366,32 @@
   }
 
   function advance() {
+    if (
+      currentSectionIndex >= 0 &&
+      currentSectionIndex < QUESTIONNAIRE_SECTION_ORDER.length
+    ) {
+      checkSectionCompletion(QUESTIONNAIRE_SECTION_ORDER[currentSectionIndex].key);
+    }
     var nextIndex = Math.min(
       currentSectionIndex + 1,
-      getMaxAccessibleSectionIndex()
+      QUESTIONNAIRE_SECTION_ORDER.length - 1
     );
     if (nextIndex !== currentSectionIndex) {
-      scrollToSection(nextIndex, "smooth");
+      activateSection(nextIndex, { behavior: "smooth" });
     }
   }
 
-  function skipProfileSection() {
-    if (!currentStepId || currentStepId !== PROFILE_ALL_STEP_ID) return;
-
-    cancelProfileTypewriter();
-    Object.assign(answers, PROFILE_SKIP_DEFAULTS);
-    markAllProfileStepsReached();
-    markQuestionnaireProfileComplete();
-    markSectionPassed("profile");
-    syncToPanel();
-    triggerCanvasUpdateAfterSync("homeAt");
-    updateProgressDots(GRID_ALL_STEP_ID);
-    scrollToSection(1, "smooth");
-    window.setTimeout(function () {
-      setCurrentSectionByIndex(1);
-    }, 350);
-  }
-
   var questionnaireStarted = false;
+  var introSlideActive = false;
+  /* Set true to restore the 3D headscarf on the design intro panel */
+  var DESIGN_INTRO_HEADSCARF_3D_ENABLED = false;
   var headscarf3dInstance = null;
   var headscarf3dObserver = null;
   var headscarf3dInitPromise = null;
   var headscarf3dRetryCount = 0;
 
   function scheduleHeadscarf3dRetry() {
+    if (!DESIGN_INTRO_HEADSCARF_3D_ENABLED) return;
     if (headscarf3dRetryCount >= 4 || headscarf3dInstance) return;
     headscarf3dRetryCount += 1;
     window.setTimeout(function () {
@@ -5302,6 +5422,9 @@
   }
 
   function ensureDesignIntroHeadscarf3d() {
+    if (!DESIGN_INTRO_HEADSCARF_3D_ENABLED) {
+      return Promise.resolve(null);
+    }
     var root = document.getElementById("design-intro-headscarf-3d");
     if (!root || headscarf3dInstance || prefersReducedMotion()) {
       return Promise.resolve(null);
@@ -5366,6 +5489,7 @@
   }
 
   function initDesignIntroHeadscarf3d() {
+    if (!DESIGN_INTRO_HEADSCARF_3D_ENABLED) return;
     var root = document.getElementById("design-intro-headscarf-3d");
     if (!root || prefersReducedMotion()) return;
 
@@ -5435,50 +5559,229 @@
     }
   }
 
-  function beginQuestionnaire() {
-    if (questionnaireStarted || !scrollEl || !stackEl) return;
-    questionnaireStarted = true;
+  function clearIntroSlideClasses(sectionDesign) {
+    if (!sectionDesign) return;
+    sectionDesign.classList.remove(
+      "section-design--intro-slide",
+      "section-design--intro-slide-prep",
+      "section-design--intro-slide-active"
+    );
+  }
 
+  function runPostQuestionnaireStartFocus() {
+    // Profile typewriter animation disabled: jump straight to the first blank.
+    // The madlibs text is hidden by CSS only while the ".is-typewriting" class
+    // is present, so skipping the animation leaves everything visible.
+    profileTypewriterPlayed = true;
+    focusProfileBlank("nameDisplayMode");
+  }
+
+  function finalizeQuestionnaireStart() {
     var sectionDesign = document.getElementById("section-design");
     var designStart = document.getElementById("design-start");
     var questionnairePanel = document.getElementById("questionnaire-panel");
+
+    clearIntroSlideClasses(sectionDesign);
+
     if (sectionDesign) {
       sectionDesign.classList.add("section-design--questionnaire-started");
     }
     if (designStart) {
       designStart.hidden = true;
+      designStart.style.transform = "";
+    }
+    if (questionnairePanel) {
+      questionnairePanel.style.transform = "";
     }
     destroyDesignIntroHeadscarf3d();
-    if (questionnairePanel) {
-      questionnairePanel.hidden = false;
-    }
-
-    buildQuestionnaireStack();
+    introSlideActive = false;
 
     if (typeof window.render === "function") {
       window.render();
     }
+    scheduleQuestionnaireCardHeightSync();
+  }
 
-    var profileStep = getStepElForSection("profile");
-    var madlibs = profileStep
-      ? profileStep.querySelector(".questionnaire-profile-madlibs")
-      : null;
-    if (madlibs && !profileTypewriterPlayed && !prefersReducedMotion()) {
-      runProfileTypewriter(/** @type {HTMLElement} */ (madlibs), function () {
-        profileTypewriterPlayed = true;
-        focusProfileBlank("nameDisplayMode");
-      });
-      return;
+  function isQuestionnaireCanvasHostReady() {
+    var host = document.getElementById("questionnaire-canvas-host");
+    return !!(host && host.clientWidth > 40);
+  }
+
+  function primeQuestionnaireCanvasForSlide(questionnairePanel, done) {
+    if (questionnairePanel) {
+      void questionnairePanel.offsetHeight;
     }
 
-    focusProfileBlank("nameDisplayMode");
+    var attemptsLeft = 4;
+
+    function attemptPrime() {
+      syncQuestionnaireCardHeights();
+      if (typeof window.render === "function") {
+        window.render();
+      }
+      if (typeof window.layoutStage === "function") {
+        window.layoutStage();
+      }
+
+      attemptsLeft -= 1;
+      if (isQuestionnaireCanvasHostReady() || attemptsLeft <= 0) {
+        if (typeof done === "function") {
+          done();
+        }
+        return;
+      }
+
+      window.requestAnimationFrame(attemptPrime);
+    }
+
+    window.requestAnimationFrame(attemptPrime);
+  }
+
+  function startQuestionnaireIntroSlide(sectionDesign, questionnairePanel) {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        if (sectionDesign) {
+          sectionDesign.classList.add("section-design--intro-slide-active");
+          sectionDesign.classList.remove("section-design--intro-slide-prep");
+        }
+
+        var slideTarget = questionnairePanel;
+        if (!slideTarget) {
+          finalizeQuestionnaireStart();
+          runPostQuestionnaireStartFocus();
+          return;
+        }
+
+        var slideFinished = false;
+        var finishSlide = function () {
+          if (slideFinished) return;
+          slideFinished = true;
+          finalizeQuestionnaireStart();
+          runPostQuestionnaireStartFocus();
+        };
+
+        var onSlideEnd = function (event) {
+          if (event.propertyName !== "transform") return;
+          slideTarget.removeEventListener("transitionend", onSlideEnd);
+          finishSlide();
+        };
+
+        slideTarget.addEventListener("transitionend", onSlideEnd);
+        window.setTimeout(function () {
+          slideTarget.removeEventListener("transitionend", onSlideEnd);
+          finishSlide();
+        }, INTRO_SLIDE_MS + 80);
+      });
+    });
+  }
+
+  function beginQuestionnaire(locale) {
+    if (questionnaireStarted || introSlideActive || !scrollEl || !stackEl) return;
+
+    var sectionDesign = document.getElementById("section-design");
+    var designStart = document.getElementById("design-start");
+    var questionnairePanel = document.getElementById("questionnaire-panel");
+    var reduced = prefersReducedMotion();
+
+    applyQuestionnaireLocale(locale);
+    questionnaireStarted = true;
+    introSlideActive = true;
+
+    setDesignStartButtonsDisabled(true);
+
+    if (questionnairePanel) {
+      questionnairePanel.hidden = false;
+    }
+
+    if (sectionDesign && !reduced) {
+      sectionDesign.classList.add(
+        "section-design--intro-slide",
+        "section-design--intro-slide-prep"
+      );
+    }
+
+    buildQuestionnaireStack();
+    primeQuestionnaireCanvasForSlide(questionnairePanel, function () {
+      if (reduced) {
+        finalizeQuestionnaireStart();
+        runPostQuestionnaireStartFocus();
+        return;
+      }
+      startQuestionnaireIntroSlide(sectionDesign, questionnairePanel);
+    });
+
+    if (reduced) {
+      return;
+    }
+  }
+
+  function returnToDesignIntro() {
+    if (!questionnaireStarted) return;
+
+    var sectionDesign = document.getElementById("section-design");
+    var designStart = document.getElementById("design-start");
+    var questionnairePanel = document.getElementById("questionnaire-panel");
+
+    questionnaireStarted = false;
+    introSlideActive = false;
+    currentSectionIndex = 0;
+    currentStepId = null;
+    displayStepId = null;
+    sectionPageLockUntil = 0;
+
+    clearStack();
+    restoreCanvasToAppShell();
+    clearIntroSlideClasses(sectionDesign);
+    resetQuestionnaireLocale();
+
+    if (sectionDesign) {
+      sectionDesign.classList.remove("section-design--questionnaire-started");
+    }
+    if (questionnairePanel) {
+      questionnairePanel.hidden = true;
+      questionnairePanel.style.transform = "";
+    }
+    if (scrollEl) {
+      scrollEl.scrollTop = 0;
+    }
+    if (designStart) {
+      designStart.hidden = false;
+      designStart.style.transform = "";
+      var stepHeight = designStart.clientHeight;
+      var contentPanels = getDesignIntroContentPanels(designStart);
+      if (stepHeight && contentPanels.length) {
+        designStart.scrollTop = (contentPanels.length - 1) * stepHeight;
+      }
+      window.requestAnimationFrame(function () {
+        updateDesignIntroScrollPolish();
+        ensureDesignIntroHeadscarf3d();
+      });
+    }
+    setDesignStartButtonsDisabled(false);
+
+    if (typeof window.render === "function") {
+      window.render();
+    }
+    if (typeof window.layoutStage === "function") {
+      window.layoutStage();
+    }
   }
 
   function clampDesignIntroProgress(value) {
     return Math.min(1, Math.max(0, value));
   }
 
+  function getDesignIntroContentPanels(designStart) {
+    return designStart.querySelectorAll(".design-intro__panel");
+  }
+
+  function onDesignIntroScroll() {
+    updateDesignIntroScrollPolish();
+  }
+
   function updateDesignIntroScrollPolish() {
+    if (prefersReducedMotion()) return;
+
     var designStart = document.getElementById("design-start");
     if (!designStart || designStart.hidden) return;
 
@@ -5511,30 +5814,25 @@
 
   function initDesignIntroScrollPolish() {
     var designStart = document.getElementById("design-start");
-    if (!designStart || prefersReducedMotion()) return;
+    if (!designStart) return;
 
-    designStart.addEventListener("scroll", updateDesignIntroScrollPolish, {
+    designStart.addEventListener("scroll", onDesignIntroScroll, {
       passive: true,
     });
-    window.addEventListener("resize", updateDesignIntroScrollPolish, {
+    window.addEventListener("resize", onDesignIntroScroll, {
       passive: true,
     });
-    updateDesignIntroScrollPolish();
+    onDesignIntroScroll();
   }
 
   function init() {
     scrollEl = document.getElementById("questionnaire-scroll");
     stackEl = document.getElementById("questionnaire-stack");
-    sectionLabelEl = document.getElementById("questionnaire-section-label");
-    progressEl = document.getElementById("questionnaire-progress");
-    skipSectionBtn = document.getElementById("questionnaire-skip-btn");
-    if (skipSectionBtn) {
-      skipSectionBtn.addEventListener("click", skipProfileSection);
-    }
-    var startBtn = document.getElementById("design-start-btn");
-    if (startBtn) {
-      startBtn.addEventListener("click", beginQuestionnaire);
-    }
+    panelEl = document.getElementById("questionnaire-panel");
+    panelGridEl = document.querySelector(
+      "#questionnaire-panel .questionnaire-panel__grid"
+    );
+    remainingEl = document.getElementById("questionnaire-remaining");
     var shopLink = document.getElementById("design-intro-shop-link");
     if (shopLink) {
       shopLink.addEventListener("click", function () {
@@ -5544,6 +5842,18 @@
         ) {
           window.Page2Navigation.showSection(3);
         }
+      });
+    }
+    var startBtnEn = document.getElementById("design-start-btn-en");
+    var startBtnFa = document.getElementById("design-start-btn-fa");
+    if (startBtnEn) {
+      startBtnEn.addEventListener("click", function () {
+        beginQuestionnaire("en");
+      });
+    }
+    if (startBtnFa) {
+      startBtnFa.addEventListener("click", function () {
+        beginQuestionnaire("fa");
       });
     }
     if (
@@ -5579,7 +5889,9 @@
   }
 
   window.Questionnaire = {
-    start: beginQuestionnaire,
+    start: function (locale) {
+      beginQuestionnaire(locale || "en");
+    },
     isStarted: function () {
       return questionnaireStarted;
     },
@@ -5587,7 +5899,7 @@
       return Object.assign({}, answers);
     },
     getNameLabelText: function () {
-      return getNameModeDisplayLabel(answers.nameDisplayMode, answers.name);
+      return getNameLabelTextForCanvas();
     },
     getCurrentStepId: function () {
       return currentStepId;
@@ -5596,5 +5908,12 @@
     isGridStep: isGridStep,
     isPreFamilyQuestionnaireStep: isPreFamilyQuestionnaireStep,
     isBodyAutonomyStep: isBodyAutonomyStep,
+    getScrollZoomTransition: getQuestionnaireScrollZoomTransition,
+    getSectionCount: function () {
+      return QUESTIONNAIRE_SECTION_ORDER.length;
+    },
+    getActiveSectionIndex: function () {
+      return currentSectionIndex;
+    },
   };
 })();

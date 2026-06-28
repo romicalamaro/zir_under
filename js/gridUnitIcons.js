@@ -16,6 +16,29 @@
     return document.createElementNS(NS, tag);
   }
 
+  function resolveInnerScale(innerScale) {
+    if (typeof innerScale !== "number" || !isFinite(innerScale)) {
+      return typeof INNER_SCALE_MAX !== "undefined" ? INNER_SCALE_MAX : 1;
+    }
+    var min =
+      typeof INNER_SCALE_MIN !== "undefined" ? INNER_SCALE_MIN : 0.3;
+    var max =
+      typeof INNER_SCALE_MAX !== "undefined" ? INNER_SCALE_MAX : 1;
+    return Math.min(max, Math.max(min, innerScale));
+  }
+
+  /** Star grid: slider min → max pinwheel; slider max → symmetric middle star. */
+  function getStarPinwheelFactorFromInnerScale(innerScale) {
+    var min =
+      typeof INNER_SCALE_MIN !== "undefined" ? INNER_SCALE_MIN : 0.3;
+    var max =
+      typeof INNER_SCALE_MAX !== "undefined" ? INNER_SCALE_MAX : 1;
+    var span = max - min;
+    if (span < 1e-9) return 0;
+    var t = (resolveInnerScale(innerScale) - min) / span;
+    return Math.max(0, Math.min(1, 1 - t));
+  }
+
   function filterSegmentsInBounds(segments, max) {
     var eps = 1e-6;
     var out = [];
@@ -70,87 +93,78 @@
     appendCircle(g, 0, half, r);
   }
 
-  function buildSquareCellSegments(T) {
+  function buildSplitCellSegments(T, innerScale) {
     var Circles = global.CirclesGridGeometry;
-    if (!Circles || !Circles.buildSplitGridSegments) return [];
     var half = T / 2;
-    return Circles.buildSplitGridSegments([0, half, T], [0, half, T]);
-  }
-
-  function getOctagonEdgeSegments(T, cut) {
-    var innerRight = T - cut;
-    var innerBottom = T - cut;
-    return [
-      { x1: cut, y1: 0, x2: innerRight, y2: 0 },
-      { x1: innerRight, y1: 0, x2: T, y2: cut },
-      { x1: T, y1: cut, x2: T, y2: innerBottom },
-      { x1: T, y1: innerBottom, x2: innerRight, y2: T },
-      { x1: innerRight, y1: T, x2: cut, y2: T },
-      { x1: cut, y1: T, x2: 0, y2: innerBottom },
-      { x1: 0, y1: innerBottom, x2: 0, y2: cut },
-      { x1: 0, y1: cut, x2: cut, y2: 0 },
+    var sideHalf =
+      Circles && Circles.sideHalfWidthFromInnerScale
+        ? Circles.sideHalfWidthFromInnerScale(T, innerScale)
+        : half;
+    var xs = [
+      Math.max(0, half - sideHalf),
+      half,
+      Math.min(T, half + sideHalf),
     ];
+    var ys = xs.slice();
+    if (!Circles || !Circles.buildSplitGridSegments) return [];
+    return Circles.buildSplitGridSegments(xs, ys);
   }
 
-  function buildOctagonIconData(T) {
-    var cutRatio =
-      typeof CUT_RATIO !== "undefined" ? CUT_RATIO : 1 / (2 + Math.SQRT2);
-    var cut = T * cutRatio;
-    var half = T / 2;
-    var innerRight = T - cut;
-    var innerBottom = T - cut;
-
-    var segments = getOctagonEdgeSegments(T, cut);
-
-    // Inner square (inset within the cell)
-    segments.push(
-      { x1: cut, y1: cut, x2: innerRight, y2: cut },
-      { x1: innerRight, y1: cut, x2: innerRight, y2: innerBottom },
-      { x1: innerRight, y1: innerBottom, x2: cut, y2: innerBottom },
-      { x1: cut, y1: innerBottom, x2: cut, y2: cut },
-      // Outer square corners → inner square corners
-      { x1: 0, y1: 0, x2: cut, y2: cut },
-      { x1: T, y1: 0, x2: innerRight, y2: cut },
-      { x1: T, y1: T, x2: innerRight, y2: innerBottom },
-      { x1: 0, y1: T, x2: cut, y2: innerBottom },
-      // Diamond inscribed in inner square (vertices at side midpoints)
-      { x1: half, y1: cut, x2: innerRight, y2: half },
-      { x1: innerRight, y1: half, x2: half, y2: innerBottom },
-      { x1: half, y1: innerBottom, x2: cut, y2: half },
-      { x1: cut, y1: half, x2: half, y2: cut }
-    );
-
-    return { segments: segments };
+  function buildOctagonIconData(T, innerScale) {
+    var Topkapi = global.TopkapiGeometry;
+    if (Topkapi && Topkapi.buildUnitCellSegments) {
+      return {
+        segments: Topkapi.buildUnitCellSegments(T, resolveInnerScale(innerScale)),
+      };
+    }
+    return { segments: [] };
   }
 
-  function buildStarIconData(T) {
+  function buildStarIconData(T, innerScale) {
     var Star = global.NestedStarOctagonsGeometry;
-    if (!Star || !Star.buildUnitCellPattern) return { segments: [], starFills: [] };
-    var pattern = Star.buildUnitCellPattern(T, 0);
+    if (!Star || !Star.buildUnitCellPattern) {
+      return { segments: [], starFills: [] };
+    }
+    var pinwheelFactor = getStarPinwheelFactorFromInnerScale(innerScale);
+    var pattern = Star.buildUnitCellPattern(T, pinwheelFactor);
     return {
       segments: filterSegmentsInBounds(pattern.segments, T),
       starFills: pattern.starFills || [],
     };
   }
 
-  function buildCirclesIconData(T) {
-    var segments = buildSquareCellSegments(T);
+  function buildCirclesIconData(T, innerScale) {
+    var Circles = global.CirclesGridGeometry;
     var half = T / 2;
+    var sideHalf =
+      Circles && Circles.sideHalfWidthFromInnerScale
+        ? Circles.sideHalfWidthFromInnerScale(T, innerScale)
+        : half;
     return {
-      segments: segments,
-      circle: { cx: half, cy: half, r: half },
+      segments: buildSplitCellSegments(T, innerScale),
+      circle: {
+        cx: half,
+        cy: half,
+        r: Math.min(sideHalf, half),
+      },
       dots: true,
     };
   }
 
-  function buildDiamondsIconData(T) {
-    var segments = buildSquareCellSegments(T);
+  function buildDiamondsIconData(T, innerScale) {
+    var Circles = global.CirclesGridGeometry;
     var half = T / 2;
+    var sideHalf =
+      Circles && Circles.sideHalfWidthFromInnerScale
+        ? Circles.sideHalfWidthFromInnerScale(T, innerScale)
+        : half;
+    var rx = Math.min(sideHalf, half);
+    var segments = buildSplitCellSegments(T, innerScale);
     segments.push(
-      { x1: half, y1: 0, x2: T, y2: half },
-      { x1: T, y1: half, x2: half, y2: T },
-      { x1: half, y1: T, x2: 0, y2: half },
-      { x1: 0, y1: half, x2: half, y2: 0 }
+      { x1: half, y1: half - rx, x2: half + rx, y2: half },
+      { x1: half + rx, y1: half, x2: half, y2: half + rx },
+      { x1: half, y1: half + rx, x2: half - rx, y2: half },
+      { x1: half - rx, y1: half, x2: half, y2: half - rx }
     );
     return { segments: segments, dots: true };
   }
@@ -174,6 +188,56 @@
     }
   }
 
+  function populateGeomGroup(geom, gridType, innerScale) {
+    var T = UNIT_SIZE;
+    var data;
+    var dotR = DOT_DIAMETER / 2;
+    var scale = resolveInnerScale(innerScale);
+
+    if (gridType === "octagon") {
+      data = buildOctagonIconData(T, scale);
+      appendSegments(geom, data.segments);
+    } else if (gridType === "star") {
+      data = buildStarIconData(T, scale);
+      appendStarFills(geom, data.starFills);
+      appendSegments(geom, data.segments);
+    } else if (gridType === "circles") {
+      data = buildCirclesIconData(T, scale);
+      appendSegments(geom, data.segments);
+      appendCircle(geom, data.circle.cx, data.circle.cy, data.circle.r);
+      if (data.dots) {
+        var dotsG = elSvg("g");
+        dotsG.setAttribute("class", "grid-unit-icon__dots");
+        dotsG.setAttribute("fill", "currentColor");
+        dotsG.setAttribute("stroke", "none");
+        appendDotsAtSideMidpoints(dotsG, T, dotR);
+        geom.appendChild(dotsG);
+      }
+    } else if (gridType === "diamonds") {
+      data = buildDiamondsIconData(T, scale);
+      appendSegments(geom, data.segments);
+      if (data.dots) {
+        var diamondDots = elSvg("g");
+        diamondDots.setAttribute("class", "grid-unit-icon__dots");
+        diamondDots.setAttribute("fill", "currentColor");
+        diamondDots.setAttribute("stroke", "none");
+        appendDotsAtSideMidpoints(diamondDots, T, dotR);
+        geom.appendChild(diamondDots);
+      }
+    }
+  }
+
+  function createGeomGroup() {
+    var geom = elSvg("g");
+    geom.setAttribute("class", "grid-unit-icon__geom");
+    geom.setAttribute("fill", "none");
+    geom.setAttribute("stroke", "currentColor");
+    geom.setAttribute("stroke-width", String(STROKE_WIDTH));
+    geom.setAttribute("stroke-linecap", "square");
+    geom.setAttribute("stroke-linejoin", "miter");
+    return geom;
+  }
+
   function createIconShell() {
     var svg = elSvg("svg");
     svg.setAttribute("viewBox", "0 0 " + UNIT_SIZE + " " + UNIT_SIZE);
@@ -194,58 +258,31 @@
     return svg;
   }
 
-  function createIcon(gridType) {
-    var T = UNIT_SIZE;
+  function createIcon(gridType, innerScale) {
+    var scale = resolveInnerScale(innerScale);
     var svg = createIconShell();
-    var geom = elSvg("g");
-    geom.setAttribute("class", "grid-unit-icon__geom");
-    geom.setAttribute("fill", "none");
-    geom.setAttribute("stroke", "currentColor");
-    geom.setAttribute("stroke-width", String(STROKE_WIDTH));
-    geom.setAttribute("stroke-linecap", "square");
-    geom.setAttribute("stroke-linejoin", "miter");
-
-    var data;
-    var dotR = DOT_DIAMETER / 2;
-
-    if (gridType === "octagon") {
-      data = buildOctagonIconData(T);
-      appendSegments(geom, data.segments);
-    } else if (gridType === "star") {
-      data = buildStarIconData(T);
-      appendStarFills(geom, data.starFills);
-      appendSegments(geom, data.segments);
-    } else if (gridType === "circles") {
-      data = buildCirclesIconData(T);
-      appendSegments(geom, data.segments);
-      appendCircle(geom, data.circle.cx, data.circle.cy, data.circle.r);
-      if (data.dots) {
-        var dotsG = elSvg("g");
-        dotsG.setAttribute("class", "grid-unit-icon__dots");
-        dotsG.setAttribute("fill", "currentColor");
-        dotsG.setAttribute("stroke", "none");
-        appendDotsAtSideMidpoints(dotsG, T, dotR);
-        geom.appendChild(dotsG);
-      }
-    } else if (gridType === "diamonds") {
-      data = buildDiamondsIconData(T);
-      appendSegments(geom, data.segments);
-      if (data.dots) {
-        var diamondDots = elSvg("g");
-        diamondDots.setAttribute("class", "grid-unit-icon__dots");
-        diamondDots.setAttribute("fill", "currentColor");
-        diamondDots.setAttribute("stroke", "none");
-        appendDotsAtSideMidpoints(diamondDots, T, dotR);
-        geom.appendChild(diamondDots);
-      }
-    }
-
+    var geom = createGeomGroup();
+    populateGeomGroup(geom, gridType, scale);
     svg.appendChild(geom);
+    svg.setAttribute("data-grid-type", gridType || "");
     return svg;
+  }
+
+  function updateIconInnerScale(svg, gridType, innerScale) {
+    if (!svg || !gridType) return;
+    var geom = svg.querySelector(".grid-unit-icon__geom");
+    if (!geom) return;
+    while (geom.firstChild) {
+      geom.removeChild(geom.firstChild);
+    }
+    populateGeomGroup(geom, gridType, innerScale);
+    svg.setAttribute("data-grid-type", gridType);
   }
 
   global.GridUnitIcons = {
     createIcon: createIcon,
+    updateIconInnerScale: updateIconInnerScale,
+    resolveInnerScale: resolveInnerScale,
     UNIT_SIZE: UNIT_SIZE,
   };
 })(typeof window !== "undefined" ? window : this);

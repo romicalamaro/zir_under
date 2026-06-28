@@ -7,6 +7,9 @@
   var HALF_CIRCLE_FOCAL_Y = 450;
   var NS = "http://www.w3.org/2000/svg";
   var designSvg = null;
+  /** Signs glossary: bypass SectionProgression locks while capturing canvas previews. */
+  var signPreviewBypass = false;
+  var signPreviewsReady = false;
   /** H1–H5 pipette picks override sheet palette until palette button / sheet reload clears them */
   var cachedExportFontDataUri = null;
   var cachedExportOpentypeFont = null;
@@ -276,6 +279,10 @@
   }
 
   function shouldShowGridBleedFill() {
+    var questionnaireFrame = isQuestionnaireFrameVisibleForCurrentSection();
+    if (questionnaireFrame !== null) {
+      return canRenderGridCanvas() && !questionnaireFrame;
+    }
     return canRenderGridCanvas() && !isFrameContentUnlocked();
   }
 
@@ -1918,7 +1925,11 @@
   }
 
   function canRenderGridCanvas() {
-    return isGridContentUnlocked() || isQuestionnaireGridPreviewActive();
+    return (
+      signPreviewBypass ||
+      isGridContentUnlocked() ||
+      isQuestionnaireGridPreviewActive()
+    );
   }
 
   function setGridType(nextType, opts) {
@@ -16172,6 +16183,7 @@
   }
 
   var FAN_SHARED_LEAVES_ID = "fan-leaves";
+  var fanSectorClipSeq = 0;
 
   function getRadialFanOuterArcScale() {
     return typeof RADIAL_FAN_OUTER_ARC_SCALE_DEFAULT !== "undefined"
@@ -16417,10 +16429,14 @@
   }
 
   function isFanCanvasDragEligible() {
-    return (
-      isFrameContentUnlocked() &&
-      (getHalfCircleVisible() || getHalfCircleBottomVisible())
-    );
+    // Canvas drag-to-open the fan is disabled. The fan-leaves slider is now the
+    // only control for opening/closing the fan in the body-autonomy section.
+    // Returning false here disables both the drag start (onPointerDown) and the
+    // drag-ready hover cursor, without affecting the slider in any way.
+    // Original gate (kept for easy restoration):
+    //   return isFrameContentUnlocked() &&
+    //     (getHalfCircleVisible() || getHalfCircleBottomVisible());
+    return false;
   }
 
   function updateFanDragFromPointer(clientY) {
@@ -20169,7 +20185,9 @@
 
   /** Clip path in the same fan group so top/bottom mirror transforms stay aligned. */
   function appendRadialFanSectorClipPath(parentGroup, idPrefix, sectorPath) {
-    var clipId = "radial-fan-sector-clip-" + idPrefix;
+    fanSectorClipSeq += 1;
+    var clipId =
+      "radial-fan-sector-clip-" + idPrefix + "-" + fanSectorClipSeq;
     var clip = elSvg("clipPath");
     clip.setAttribute("id", clipId);
     var path = elSvg("path");
@@ -21029,6 +21047,7 @@
   }
 
   function isFrameContentUnlocked() {
+    if (signPreviewBypass) return true;
     return (
       typeof window.SectionProgression === "undefined" ||
       !window.SectionProgression.isFrameContentUnlocked ||
@@ -21037,6 +21056,7 @@
   }
 
   function isFanContentUnlocked() {
+    if (signPreviewBypass) return true;
     return (
       typeof window.SectionProgression === "undefined" ||
       !window.SectionProgression.isFanContentUnlocked ||
@@ -21050,10 +21070,23 @@
     if (node) node.style.display = visible ? "" : "none";
   }
 
+  function isQuestionnaireFrameVisibleForCurrentSection() {
+    var q = window.Questionnaire;
+    if (!q || !q.isStarted || !q.isStarted()) return null;
+    if (typeof q.getActiveSectionIndex !== "function") return null;
+    var sectionIndex = q.getActiveSectionIndex();
+    if (sectionIndex < 0) return null;
+    return sectionIndex >= 2;
+  }
+
   function applyGridContentVisibility() {
     if (!designSvg) return;
     var gridOn = canRenderGridCanvas();
     var frameOn = isFrameContentUnlocked();
+    var questionnaireFrame = isQuestionnaireFrameVisibleForCurrentSection();
+    if (questionnaireFrame !== null) {
+      frameOn = isGridContentUnlocked() && questionnaireFrame;
+    }
     var fanOn = isFanContentUnlocked();
 
     setCanvasLayerDisplay("color-divisions-blend-root", gridOn);
@@ -21106,6 +21139,7 @@
 
     applyGridContentVisibility();
     updateCanvasEdgeBrownBars();
+    refreshLabelBarContent();
     layoutStage();
   }
 
@@ -21515,14 +21549,15 @@
       var prideIntensity = getAutoMergeIntensity();
       var prideIntensityChanged =
         prideIntensity !== lastAppliedAutoMergeIntensity;
-      if (
-        options.skipRender &&
-        (!hasActivePrideAutoMergeRegions() || prideIntensityChanged)
-      ) {
+      var shouldRunPrideMerge =
+        forceReshuffle ||
+        !hasActivePrideAutoMergeRegions() ||
+        prideIntensityChanged;
+      if (options.skipRender && shouldRunPrideMerge) {
         runAutoMerge();
       } else if (options.skipRender) {
         /* deferred until after startup render or idle callback */
-      } else if (!hasActivePrideAutoMergeRegions() || prideIntensityChanged) {
+      } else if (shouldRunPrideMerge) {
         runAutoMerge();
         return;
       }
@@ -21748,9 +21783,13 @@
 
   function isQuestionnaireCanvasLayoutActive() {
     var q = window.Questionnaire;
-    if (!q || !q.getCurrentStepId) return false;
+    if (!q || !q.isStarted || !q.isStarted()) return false;
+    if (typeof q.getActiveSectionIndex === "function") {
+      if (q.getActiveSectionIndex() >= 0) return true;
+    }
+    if (!q.getCurrentStepId) return false;
     var stepId = q.getCurrentStepId();
-    return stepId && stepId !== "__feelings_complete__";
+    return !!(stepId && stepId !== "__feelings_complete__");
   }
 
   function isPage2DesignSectionActive() {
@@ -21800,7 +21839,7 @@
     page2QuestionnaireCanvasLayoutCache = null;
     if (!wrap || !mode) return null;
     var anchor =
-      wrap.closest(".canvas-stack__panel-inner") ||
+      wrap.closest("#questionnaire-canvas-host") ||
       wrap.closest("#section-design .main") ||
       wrap.closest("#section-design");
     if (!anchor) return null;
@@ -21917,6 +21956,36 @@
     return window.innerHeight / 2;
   }
 
+  function isDesignIntroSlideActive() {
+    var sectionDesign = document.getElementById("section-design");
+    return !!(
+      sectionDesign &&
+      sectionDesign.classList.contains("section-design--intro-slide")
+    );
+  }
+
+  function getQuestionnairePanelTranslateYPx() {
+    var panel = document.getElementById("questionnaire-panel");
+    if (!panel) return 0;
+    var transform = window.getComputedStyle(panel).transform;
+    if (!transform || transform === "none") return 0;
+    try {
+      return new DOMMatrixReadOnly(transform).m42;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  /** Screen top of stage-wrap as if the intro slide transform were at rest. */
+  function getWrapViewportTopAtRest(wrap) {
+    if (!wrap) return 0;
+    var top = wrap.getBoundingClientRect().top;
+    if (isDesignIntroSlideActive()) {
+      top -= getQuestionnairePanelTranslateYPx();
+    }
+    return top;
+  }
+
   function positionQuestionnaireProfileCanvasBottom(svg, wrap, cache) {
     if (!svg || !wrap || !cache) return;
     var scale = cache.profileScale;
@@ -21927,15 +21996,15 @@
     var targetFocusCenterY = getProfileLabelFocusCenterScreenYPx();
 
     void svg.offsetHeight;
-    var wrapRect = wrap.getBoundingClientRect();
-    var topInWrap = targetFocusCenterY - focusCenterOffsetInSvg - wrapRect.top;
+    var wrapTopAtRest = getWrapViewportTopAtRest(wrap);
+    var topInWrap = targetFocusCenterY - focusCenterOffsetInSvg - wrapTopAtRest;
 
     svg.style.top = topInWrap + "px";
     svg.style.bottom = "auto";
 
     void svg.offsetHeight;
     var actualFocusCenterY =
-      wrapRect.top + topInWrap + focusCenterOffsetInSvg;
+      wrapTopAtRest + topInWrap + focusCenterOffsetInSvg;
     var drift = actualFocusCenterY - targetFocusCenterY;
     if (Math.abs(drift) > 0.5) {
       svg.style.top = topInWrap - drift + "px";
@@ -22055,12 +22124,12 @@
     };
   }
 
-  /** Full .main area on page 2 design — or canvas-stack panel when wrap lives in questionnaire scroll stack. */
+  /** Full .main area on page 2 design — or static questionnaire canvas host. */
   function getStageLayoutRect(wrap) {
     if (!wrap) return null;
-    var canvasInner = wrap.closest(".canvas-stack__panel-inner");
-    if (canvasInner) {
-      return canvasInner.getBoundingClientRect();
+    var canvasHost = wrap.closest("#questionnaire-canvas-host");
+    if (canvasHost) {
+      return canvasHost.getBoundingClientRect();
     }
     var page2 = document.getElementById("page2");
     var sectionDesign = wrap.closest("#section-design");
@@ -22244,7 +22313,7 @@
   }
 
   function getQuestionnaireFocusGridCols(mode) {
-    if (mode === "body-autonomy-top") {
+    if (mode === "body-autonomy-top" || mode === "grid-large") {
       return {
         start:
           typeof QUESTIONNAIRE_FOCUS_GRID_COL_START !== "undefined"
@@ -22256,7 +22325,7 @@
             : 5,
       };
     }
-    if (isProfileOnlyQuestionnaireZoomActive()) {
+    if (mode === "profile-bottom" || isProfileOnlyQuestionnaireZoomActive()) {
       return {
         start:
           typeof PROFILE_LABEL_FOCUS_GRID_COL_START !== "undefined"
@@ -22285,12 +22354,35 @@
     var sectionDesign = wrap ? wrap.closest("#section-design") : null;
     if (!wrap) return null;
 
-    var canvasInner = wrap.closest(".canvas-stack__panel-inner");
-    if (canvasInner) {
-      var innerRect = canvasInner.getBoundingClientRect();
+    if (
+      page2 &&
+      typeof colStart === "number" &&
+      typeof colSpan === "number"
+    ) {
+      var explicitCols = page2.querySelectorAll(".page2-guides .page2-col");
+      var explicitStartIndex = colStart - 1;
+      var explicitEndIndex = explicitStartIndex + colSpan - 1;
+      if (explicitCols.length > explicitEndIndex) {
+        var explicitStartRect =
+          explicitCols[explicitStartIndex].getBoundingClientRect();
+        var explicitEndRect =
+          explicitCols[explicitEndIndex].getBoundingClientRect();
+        return {
+          slotLeft: explicitStartRect.left,
+          slotWidth: explicitEndRect.right - explicitStartRect.left,
+          wrapRect: wrap.getBoundingClientRect(),
+        };
+      }
+    }
+
+    var canvasHost = wrap.closest("#questionnaire-canvas-host");
+    if (canvasHost) {
+      var hostRect = canvasHost.getBoundingClientRect();
+      var hostWidth =
+        canvasHost.clientWidth > 0 ? canvasHost.clientWidth : hostRect.width;
       return {
-        slotLeft: innerRect.left,
-        slotWidth: innerRect.width,
+        slotLeft: hostRect.left,
+        slotWidth: hostWidth,
         wrapRect: wrap.getBoundingClientRect(),
       };
     }
@@ -22372,6 +22464,286 @@
     });
   }
 
+  var QUESTIONNAIRE_SECTION_ZOOM_LEVELS = [
+    "in",
+    "in",
+    "out",
+    "in",
+    "out",
+    "out",
+    "out",
+  ];
+
+  function isCanvasInQuestionnaireHost(wrap) {
+    return !!(wrap && wrap.closest("#questionnaire-canvas-host"));
+  }
+
+  function getQuestionnaireZoomLevelForSection(sectionIndex) {
+    if (
+      typeof sectionIndex !== "number" ||
+      sectionIndex < 0 ||
+      sectionIndex >= QUESTIONNAIRE_SECTION_ZOOM_LEVELS.length
+    ) {
+      return "out";
+    }
+    return QUESTIONNAIRE_SECTION_ZOOM_LEVELS[sectionIndex];
+  }
+
+  function getQuestionnaireGridSlotForLevel(level) {
+    if (level === "in") {
+      return {
+        colStart:
+          typeof QUESTIONNAIRE_ZOOM_IN_GRID_COL_START !== "undefined"
+            ? QUESTIONNAIRE_ZOOM_IN_GRID_COL_START
+            : 7,
+        colSpan:
+          typeof QUESTIONNAIRE_ZOOM_IN_GRID_COL_SPAN !== "undefined"
+            ? QUESTIONNAIRE_ZOOM_IN_GRID_COL_SPAN
+            : 6,
+      };
+    }
+    return {
+      colStart:
+        typeof QUESTIONNAIRE_ZOOM_OUT_GRID_COL_START !== "undefined"
+          ? QUESTIONNAIRE_ZOOM_OUT_GRID_COL_START
+          : 9,
+      colSpan:
+        typeof QUESTIONNAIRE_ZOOM_OUT_GRID_COL_SPAN !== "undefined"
+          ? QUESTIONNAIRE_ZOOM_OUT_GRID_COL_SPAN
+          : 3,
+    };
+  }
+
+  function getQuestionnaireScaleForLevel(level, wrap, f) {
+    var grid = getQuestionnaireGridSlotForLevel(level);
+    var slot = getPage2CanvasSlot(wrap, grid.colStart, grid.colSpan);
+    var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
+    var totalW = CANVAS_W + 2 * framePx;
+    var totalH = CANVAS_H + 2 * framePx;
+    var scaleFromWidth = 1;
+
+    if (slot && slot.slotWidth > 0) {
+      scaleFromWidth = getProfileLabelFocusScale(slot.slotWidth, framePx, CANVAS_W);
+    } else {
+      var rect = getStageLayoutRect(wrap);
+      if (!rect) return 1;
+      var availW = Math.max(60, rect.width - VIEW_MARGIN * 2);
+      scaleFromWidth = availW / totalW;
+    }
+
+    if (level !== "out") {
+      return scaleFromWidth;
+    }
+
+    var host = wrap ? wrap.closest("#questionnaire-canvas-host") : null;
+    var hostHeight = host && host.clientHeight > 0 ? host.clientHeight : 0;
+    if (!hostHeight) {
+      hostHeight = getQuestionnaireHostCenter(wrap).hostHeight || 0;
+    }
+    if (!(hostHeight > 0)) {
+      return scaleFromWidth;
+    }
+
+    var shadowBleed = scalePage2ScreenPx(
+      typeof CANVAS_LAYOUT_BOX_SHADOW_BLEED_PX !== "undefined"
+        ? CANVAS_LAYOUT_BOX_SHADOW_BLEED_PX
+        : 12
+    );
+    var edgePad = scalePage2ScreenPx(
+      typeof QUESTIONNAIRE_ZOOM_OUT_EDGE_PAD_PX !== "undefined"
+        ? QUESTIONNAIRE_ZOOM_OUT_EDGE_PAD_PX
+        : 12
+    );
+    var availH = Math.max(1, hostHeight - 2 * (shadowBleed + edgePad));
+    var scaleFromHeight = availH / totalH;
+
+    return Math.min(scaleFromWidth, scaleFromHeight);
+  }
+
+  function getQuestionnaireHostCenter(wrap) {
+    var host = wrap ? wrap.closest("#questionnaire-canvas-host") : null;
+    if (host) {
+      return {
+        centerX: host.clientWidth / 2,
+        centerY: host.clientHeight / 2,
+        hostHeight: host.clientHeight,
+      };
+    }
+    return {
+      centerX: wrap ? wrap.clientWidth / 2 : 0,
+      centerY: wrap ? wrap.clientHeight / 2 : 0,
+      hostHeight: wrap ? wrap.clientHeight : 0,
+    };
+  }
+
+  function isQuestionnaireProfileSection(sectionIndex) {
+    return sectionIndex === 0;
+  }
+
+  function isQuestionnaireBodyAutonomySection(sectionIndex) {
+    return sectionIndex === 3;
+  }
+
+  /** Profile: same zoom-in width, horizontal center, label band at viewport vertical center. */
+  function computeQuestionnaireProfileLabelCenteredTop(wrap, scale, f) {
+    if (!wrap) return 0;
+    var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
+    var focusRect = getProfileLabelFocusRect();
+    var focusCenterOffsetInSvg =
+      (focusRect.y + framePx + focusRect.height / 2) * scale;
+    var targetFocusCenterY = getViewportCenterYPx();
+    var wrapTopAtRest = getWrapViewportTopAtRest(wrap);
+
+    void wrap.offsetHeight;
+    var topInWrap =
+      targetFocusCenterY - focusCenterOffsetInSvg - wrapTopAtRest;
+
+    void wrap.offsetHeight;
+    var drift =
+      wrapTopAtRest + topInWrap + focusCenterOffsetInSvg - targetFocusCenterY;
+    if (Math.abs(drift) > 0.5) {
+      topInWrap -= drift;
+    }
+    return topInWrap;
+  }
+
+  /**
+   * Vertical offset (relative to the canvas stage-wrap) of the profile
+   * section's top separator line — the top border of the first questionnaire
+   * card. That line sits at the scroll panel's top plus its padding-top, so we
+   * measure it at rest (scroll-independent) to keep the body-autonomy
+   * handkerchief anchored to a stable design line rather than the moving list.
+   */
+  function getProfileTopSeparatorOffsetInWrap(wrap) {
+    if (!wrap) return 0;
+    var scrollEl = document.getElementById("questionnaire-scroll");
+    if (!scrollEl) return 0;
+    var scrollRect = scrollEl.getBoundingClientRect();
+    var paddingTop =
+      parseFloat(window.getComputedStyle(scrollEl).paddingTop) || 0;
+    var separatorViewportTop = scrollRect.top + paddingTop;
+    var wrapTop = wrap.getBoundingClientRect().top;
+    return separatorViewportTop - wrapTop;
+  }
+
+  /** Body autonomy: zoom-in width, horizontal center, focus band (top bar + fan) anchored to the profile section's top separator line. */
+  function computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f) {
+    if (!wrap) return 0;
+    var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
+    var focusRect = getBodyAutonomyTopFocusRect();
+    var focusTopOffsetInSvg = (focusRect.y + framePx) * scale;
+    var anchorTopInWrap = getProfileTopSeparatorOffsetInWrap(wrap);
+    return anchorTopInWrap - focusTopOffsetInSvg;
+  }
+
+  function computeQuestionnaireSectionLayout(sectionIndex) {
+    var wrap = document.getElementById("stage-wrap");
+    if (!wrap || !isCanvasInQuestionnaireHost(wrap)) return null;
+
+    var f = getHandkerchiefOuterFramePx();
+    var totalW = CANVAS_W + 2 * f;
+    var totalH = CANVAS_H + 2 * f;
+    var level = getQuestionnaireZoomLevelForSection(sectionIndex);
+    var scale = getQuestionnaireScaleForLevel(level, wrap, f);
+    var svgWidth = totalW * scale;
+    var svgHeight = totalH * scale;
+    var center = getQuestionnaireHostCenter(wrap);
+    var svgTop;
+    if (isQuestionnaireProfileSection(sectionIndex)) {
+      svgTop = computeQuestionnaireProfileLabelCenteredTop(wrap, scale, f);
+    } else if (isQuestionnaireBodyAutonomySection(sectionIndex)) {
+      svgTop = computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f);
+    } else {
+      svgTop = center.centerY - svgHeight / 2;
+    }
+
+    return {
+      svgWidth: svgWidth,
+      svgHeight: svgHeight,
+      svgLeft: center.centerX - svgWidth / 2,
+      svgTop: svgTop,
+      centerX: center.centerX,
+      centerY: center.centerY,
+      extendUp: 0,
+      focusZoom: false,
+    };
+  }
+
+  function lerpQuestionnaireLayoutValue(fromValue, toValue, progress) {
+    return fromValue + (toValue - fromValue) * progress;
+  }
+
+  function applyQuestionnaireLayoutParams(wrap, svg, params) {
+    if (!wrap || !svg || !params) return;
+
+    applyQuestionnaireCanvasClipExtend(wrap, null);
+    setQuestionnaireFocusZoomClass(wrap, false);
+    svg.style.display = "block";
+    svg.style.width = params.svgWidth + "px";
+    svg.style.height = params.svgHeight + "px";
+    svg.style.position = "absolute";
+    svg.style.top = params.svgTop + "px";
+    svg.style.left = params.svgLeft + "px";
+    svg.style.bottom = "auto";
+    svg.style.transform = "none";
+  }
+
+  function layoutQuestionnaireCanvasInterpolated(fromIndex, toIndex, progress) {
+    var wrap = document.getElementById("stage-wrap");
+    var svg = document.getElementById("design-svg");
+    if (!wrap || !svg || !isCanvasInQuestionnaireHost(wrap)) return;
+
+    var fromLayout = computeQuestionnaireSectionLayout(fromIndex);
+    var toLayout = computeQuestionnaireSectionLayout(toIndex);
+    if (!fromLayout || !toLayout) return;
+
+    var t = Math.min(1, Math.max(0, progress));
+    if (t <= 0.001 || fromIndex === toIndex) {
+      applyQuestionnaireLayoutParams(wrap, svg, fromLayout);
+      return;
+    }
+    if (t >= 0.999) {
+      applyQuestionnaireLayoutParams(wrap, svg, toLayout);
+      return;
+    }
+
+    var svgWidth = lerpQuestionnaireLayoutValue(
+      fromLayout.svgWidth,
+      toLayout.svgWidth,
+      t
+    );
+    var svgHeight = lerpQuestionnaireLayoutValue(
+      fromLayout.svgHeight,
+      toLayout.svgHeight,
+      t
+    );
+
+    applyQuestionnaireLayoutParams(wrap, svg, {
+      svgWidth: svgWidth,
+      svgHeight: svgHeight,
+      svgLeft: lerpQuestionnaireLayoutValue(
+        fromLayout.svgLeft,
+        toLayout.svgLeft,
+        t
+      ),
+      svgTop: lerpQuestionnaireLayoutValue(fromLayout.svgTop, toLayout.svgTop, t),
+      extendUp: 0,
+      focusZoom: false,
+    });
+  }
+
+  function layoutQuestionnaireCanvasFromScroll() {
+    var q = window.Questionnaire;
+    if (!q || typeof q.getScrollZoomTransition !== "function") return;
+    var transition = q.getScrollZoomTransition();
+    if (!transition) return;
+    layoutQuestionnaireCanvasInterpolated(
+      transition.fromIndex,
+      transition.toIndex,
+      transition.progress
+    );
+  }
+
   function layoutStage() {
     var wrap = document.getElementById("stage-wrap");
     var svg = document.getElementById("design-svg");
@@ -22384,6 +22756,11 @@
 
     if (isPage2DesignPreQuestionnaireStart()) {
       resetPage2DesignCanvasLayout(wrap);
+      return;
+    }
+
+    if (isCanvasInQuestionnaireHost(wrap) && isQuestionnaireCanvasLayoutActive()) {
+      layoutQuestionnaireCanvasFromScroll();
       return;
     }
 
@@ -24035,6 +24412,668 @@
 
     sheetPaletteInitComplete = true;
 
+    function captureSignPreviewSliderState() {
+      var state = {
+        gridType: gridType,
+        hopeMode: hopeInteractionMode,
+        frameInsetVisible: frameInsetOverlayVisible,
+        sliders: {},
+      };
+      var sliderIds = [
+        "anger-vertical-length",
+        "anxiety-vertical-stroke",
+        "anger-triangle-density",
+        "circle-density",
+        "longing-circle-density",
+        "grief-circle-density",
+        "strength-density",
+        "auto-merge-intensity",
+        "pride-fill-percent",
+        "guilt-shame-fill-percent",
+        "helplessness-percent",
+        "border-frame-divisions",
+        "border-side-white-fill",
+        FAN_SHARED_LEAVES_ID,
+      ];
+      var i;
+      for (i = 0; i < sliderIds.length; i++) {
+        var id = sliderIds[i];
+        var el = document.getElementById(id);
+        if (el) state.sliders[id] = el.value;
+      }
+      return state;
+    }
+
+    function restoreSignPreviewSliderState(state) {
+      if (!state) return;
+      gridType = state.gridType;
+      hopeInteractionMode = state.hopeMode;
+      frameInsetOverlayVisible = state.frameInsetVisible;
+      var id;
+      for (id in state.sliders) {
+        if (Object.prototype.hasOwnProperty.call(state.sliders, id)) {
+          setSliderValue(id, state.sliders[id]);
+        }
+      }
+      updateHopeInteractionModeUi();
+    }
+
+    function zeroAllFeelingsSlidersForPreview() {
+      var key;
+      for (key in QUESTIONNAIRE_FEELINGS_SLIDER_DOM) {
+        if (!Object.prototype.hasOwnProperty.call(QUESTIONNAIRE_FEELINGS_SLIDER_DOM, key)) {
+          continue;
+        }
+        var bounds = getFeelingsSliderBoundsResolved(key);
+        if (!bounds) continue;
+        var dom = QUESTIONNAIRE_FEELINGS_SLIDER_DOM[key];
+        setFeelingsSliderInternalValue(dom[0], bounds.min, bounds.min, bounds.max);
+        if (dom[1]) {
+          setFeelingsStepOutputById(dom[1], bounds.min, bounds.min, bounds.max);
+        }
+      }
+    }
+
+    function applyFeelingsPresetForPreview(preset) {
+      var key;
+      for (key in preset) {
+        if (!Object.prototype.hasOwnProperty.call(preset, key)) continue;
+        var dom = QUESTIONNAIRE_FEELINGS_SLIDER_DOM[key];
+        if (!dom) continue;
+        var bounds = getFeelingsSliderBoundsResolved(key);
+        if (!bounds) continue;
+        var value = Number(preset[key]);
+        if (!isFinite(value)) continue;
+        setFeelingsSliderInternalValue(dom[0], value, bounds.min, bounds.max);
+        if (dom[1]) {
+          setFeelingsStepOutputById(dom[1], value, bounds.min, bounds.max);
+        }
+      }
+      syncAllFeelingsSliderOutputs();
+    }
+
+    function ensureSignsPreviewHostSvg() {
+      var host = document.getElementById("signs-preview-svg");
+      if (!host) {
+        host = elSvg("svg");
+        host.setAttribute("id", "signs-preview-svg");
+        host.setAttribute("aria-hidden", "true");
+        host.setAttribute("focusable", "false");
+        host.setAttribute("width", "0");
+        host.setAttribute("height", "0");
+        host.style.cssText =
+          "position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden";
+        document.body.appendChild(host);
+      }
+      while (host.firstChild) host.removeChild(host.firstChild);
+      return host;
+    }
+
+    function stripClipPathsFromPreviewClone(root) {
+      if (!root) return;
+      if (root.removeAttribute) {
+        root.removeAttribute("clip-path");
+      }
+      var clipped = root.querySelectorAll
+        ? root.querySelectorAll("[clip-path]")
+        : [];
+      var i;
+      for (i = 0; i < clipped.length; i++) {
+        clipped[i].removeAttribute("clip-path");
+      }
+    }
+
+    function captureLayerContentWrapper(layerSelectors) {
+      if (!designSvg) return null;
+      var selectors = Array.isArray(layerSelectors)
+        ? layerSelectors
+        : [layerSelectors];
+      var wrapper = elSvg("g");
+      wrapper.setAttribute("class", "signs-preview-capture");
+      var s;
+      var n;
+      for (s = 0; s < selectors.length; s++) {
+        var nodes = designSvg.querySelectorAll(selectors[s]);
+        for (n = 0; n < nodes.length; n++) {
+          var node = nodes[n];
+          if (!node || node.style.display === "none") continue;
+          wrapper.appendChild(node.cloneNode(true));
+        }
+      }
+      stripClipPathsFromPreviewClone(wrapper);
+      return wrapper.childNodes.length ? wrapper : null;
+    }
+
+    function copyMarkerPaintFromLayer(markerG, sourceLayer) {
+      if (!sourceLayer || !markerG) return;
+      var attrs = [
+        "fill",
+        "stroke",
+        "stroke-width",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "paint-order",
+      ];
+      var i;
+      for (i = 0; i < attrs.length; i++) {
+        var val = sourceLayer.getAttribute(attrs[i]);
+        if (val !== null && val !== "") {
+          markerG.setAttribute(attrs[i], val);
+        }
+      }
+    }
+
+    function findSourcePaintLayer(wrapper, selector) {
+      if (!wrapper) return null;
+      return wrapper.querySelector(selector) || wrapper.firstElementChild;
+    }
+
+    function extractSingleMarkerGroup(wrapper, previewId) {
+      var markerG = elSvg("g");
+      markerG.setAttribute("class", "sign-card__single-marker");
+      if (!wrapper) return markerG;
+
+      var layer;
+      var nodes;
+      var i;
+
+      if (previewId === "grief") {
+        layer = findSourcePaintLayer(wrapper, "#layer-grief-circles");
+        nodes = (layer || wrapper).querySelectorAll("circle");
+        if (nodes.length >= 1) {
+          copyMarkerPaintFromLayer(markerG, layer);
+          markerG.appendChild(nodes[0].cloneNode(true));
+          if (
+            nodes.length >= 2 &&
+            nodes[0].getAttribute("cx") === nodes[1].getAttribute("cx") &&
+            nodes[0].getAttribute("cy") === nodes[1].getAttribute("cy")
+          ) {
+            markerG.appendChild(nodes[1].cloneNode(true));
+          }
+        }
+        return markerG;
+      }
+
+      if (previewId === "strength") {
+        layer = findSourcePaintLayer(wrapper, "#layer-strength");
+        var strengthSource = layer || wrapper;
+        var strengthRect = strengthSource.querySelector("rect");
+        var strengthCircle = strengthSource.querySelector("circle");
+        if (strengthRect) markerG.appendChild(strengthRect.cloneNode(true));
+        if (strengthCircle) markerG.appendChild(strengthCircle.cloneNode(true));
+        return markerG;
+      }
+
+      if (previewId === "helplessness") {
+        layer = findSourcePaintLayer(wrapper, "#layer-helplessness");
+        copyMarkerPaintFromLayer(markerG, layer);
+        nodes = (layer || wrapper).querySelectorAll("line");
+        if (nodes[0]) markerG.appendChild(nodes[0].cloneNode(true));
+        if (nodes[1]) markerG.appendChild(nodes[1].cloneNode(true));
+        return markerG;
+      }
+
+      if (previewId === "fear" || previewId === "anxiety") {
+        layer =
+          findSourcePaintLayer(wrapper, "#layer-vertical-grid") ||
+          findSourcePaintLayer(wrapper, "#layer-vertical-grid-overlay");
+        nodes = (layer || wrapper).querySelectorAll("rect");
+        var bestRect = null;
+        var bestHeight = 0;
+        for (i = 0; i < nodes.length; i++) {
+          var rectHeight = parseFloat(nodes[i].getAttribute("height") || "0");
+          if (rectHeight > bestHeight) {
+            bestHeight = rectHeight;
+            bestRect = nodes[i];
+          }
+        }
+        if (bestRect) {
+          if (previewId === "anxiety") {
+            // Signs-page Fear/Anxiety only: render the vertical mark as a
+            // hairline that always displays at 1px on screen, matching the
+            // 1px square frame border around the sign at any responsive size.
+            var rectClone = bestRect.cloneNode(true);
+            var rx = parseFloat(rectClone.getAttribute("x") || "0");
+            var ry = parseFloat(rectClone.getAttribute("y") || "0");
+            var rw = parseFloat(rectClone.getAttribute("width") || "0");
+            var rh = parseFloat(rectClone.getAttribute("height") || "0");
+            var rectFill = rectClone.getAttribute("fill");
+            // Keep the original rect, but make it invisible. It still defines
+            // the marker's bounding box, which the icon uses to scale/position.
+            rectClone.setAttribute("fill", "none");
+            rectClone.setAttribute("stroke", "none");
+            markerG.appendChild(rectClone);
+            // Visible hairline centered on the original rect. The
+            // non-scaling-stroke keeps it at a constant 1px regardless of how
+            // the icon SVG is scaled, so it matches the frame border exactly.
+            var centerX = rx + rw / 2;
+            var hairline = elSvg("line");
+            hairline.setAttribute("x1", String(centerX));
+            hairline.setAttribute("y1", String(ry));
+            hairline.setAttribute("x2", String(centerX));
+            hairline.setAttribute("y2", String(ry + rh));
+            hairline.setAttribute("fill", "none");
+            hairline.setAttribute(
+              "stroke",
+              rectFill && rectFill !== "none" ? rectFill : "#685450"
+            );
+            hairline.setAttribute("stroke-width", "1");
+            hairline.setAttribute("vector-effect", "non-scaling-stroke");
+            markerG.appendChild(hairline);
+          } else {
+            markerG.appendChild(bestRect.cloneNode(true));
+          }
+        }
+        return markerG;
+      }
+
+      if (previewId === "anger") {
+        layer = findSourcePaintLayer(wrapper, "#layer-anger-diamond-triangles");
+        nodes = (layer || wrapper).querySelectorAll("polygon");
+        if (nodes[0]) {
+          copyMarkerPaintFromLayer(markerG, layer);
+          if (!markerG.getAttribute("fill") && nodes[0].getAttribute("fill")) {
+            markerG.setAttribute("fill", nodes[0].getAttribute("fill"));
+          }
+          markerG.appendChild(nodes[0].cloneNode(true));
+        }
+        return markerG;
+      }
+
+      if (previewId === "guiltShame") {
+        layer = findSourcePaintLayer(wrapper, "#layer-hollow-diamond-fills");
+        nodes = (layer || wrapper).querySelectorAll("path");
+        if (nodes[0]) {
+          copyMarkerPaintFromLayer(markerG, layer);
+          markerG.appendChild(nodes[0].cloneNode(true));
+        }
+        return markerG;
+      }
+
+      if (previewId === "pain") {
+        layer = findSourcePaintLayer(wrapper, "#layer-diamond-fills");
+        nodes = (layer || wrapper).querySelectorAll("polygon");
+        if (nodes[0]) {
+          copyMarkerPaintFromLayer(markerG, layer);
+          markerG.appendChild(nodes[0].cloneNode(true));
+        }
+        return markerG;
+      }
+
+      if (previewId === "pride") {
+        layer = wrapper.querySelector("#pride-auto-merge-root") || wrapper;
+        nodes = layer.querySelectorAll("polygon, path");
+        if (nodes[0]) markerG.appendChild(nodes[0].cloneNode(true));
+        return markerG;
+      }
+
+      if (previewId === "hope") {
+        layer = wrapper.querySelector("#color-divisions-blend-root") || wrapper;
+        nodes = layer.querySelectorAll("rect, polygon, path");
+        for (i = 0; i < nodes.length; i++) {
+          var nodeFill = nodes[i].getAttribute("fill");
+          if (nodeFill && nodeFill !== "none" && nodeFill !== "transparent") {
+            markerG.appendChild(nodes[i].cloneNode(true));
+            break;
+          }
+        }
+        return markerG;
+      }
+
+      if (previewId === "sadness") {
+        layer = findSourcePaintLayer(wrapper, "#layer-circles");
+      } else if (previewId === "longing") {
+        layer = findSourcePaintLayer(wrapper, "#layer-longing-circles");
+      }
+
+      if (layer) {
+        copyMarkerPaintFromLayer(markerG, layer);
+        nodes = layer.querySelectorAll("circle");
+        if (nodes[0]) markerG.appendChild(nodes[0].cloneNode(true));
+        return markerG;
+      }
+
+      nodes = wrapper.querySelectorAll("circle, polygon, path, rect, line");
+      if (nodes[0]) markerG.appendChild(nodes[0].cloneNode(true));
+      return markerG;
+    }
+
+    function fitMarkerGroupToIconViewBox(markerGroup, iconSize) {
+      iconSize = iconSize || 100;
+      if (!markerGroup || !markerGroup.childNodes.length) return null;
+
+      var host = ensureSignsPreviewHostSvg();
+      var measureG = elSvg("g");
+      measureG.appendChild(markerGroup.cloneNode(true));
+      host.appendChild(measureG);
+      var bbox;
+      try {
+        bbox = measureG.getBBox();
+      } catch (bboxErr) {
+        bbox = null;
+      }
+      host.removeChild(measureG);
+      if (!bbox || bbox.width <= 0 || bbox.height <= 0) return null;
+
+      var pad = iconSize * 0.14;
+      var inner = iconSize - pad * 2;
+      var scale = Math.min(inner / bbox.width, inner / bbox.height);
+      var cx = bbox.x + bbox.width / 2;
+      var cy = bbox.y + bbox.height / 2;
+
+      var out = elSvg("svg");
+      out.setAttribute("class", "sign-card__canvas-icon");
+      out.setAttribute("viewBox", "0 0 " + String(iconSize) + " " + String(iconSize));
+      out.setAttribute("aria-hidden", "true");
+      out.setAttribute("focusable", "false");
+
+      var placed = elSvg("g");
+      placed.setAttribute(
+        "transform",
+        "translate(" +
+          String(iconSize / 2) +
+          " " +
+          String(iconSize / 2) +
+          ") scale(" +
+          String(scale) +
+          ") translate(" +
+          String(-cx) +
+          " " +
+          String(-cy) +
+          ")"
+      );
+      placed.appendChild(markerGroup.cloneNode(true));
+      out.appendChild(placed);
+      return out;
+    }
+
+    function isSingleMarkerFeelingPreview(previewId) {
+      return (
+        previewId === "fear" ||
+        previewId === "anxiety" ||
+        previewId === "anger" ||
+        previewId === "hope" ||
+        previewId === "sadness" ||
+        previewId === "longing" ||
+        previewId === "grief" ||
+        previewId === "strength" ||
+        previewId === "pride" ||
+        previewId === "pain" ||
+        previewId === "guiltShame" ||
+        previewId === "helplessness"
+      );
+    }
+
+    function captureSingleFeelingMarkerPreview(previewId) {
+      var wrapper = captureLayerContentWrapper(
+        getSignPreviewLayerSelectors(previewId)
+      );
+      if (!wrapper) return null;
+      var marker = extractSingleMarkerGroup(wrapper, previewId);
+      return fitMarkerGroupToIconViewBox(marker);
+    }
+
+    function captureLayerPreview(layerSelectors, cropRect, options) {
+      options = options || {};
+      if (!designSvg) return null;
+      var selectors = Array.isArray(layerSelectors)
+        ? layerSelectors
+        : [layerSelectors];
+      var host = ensureSignsPreviewHostSvg();
+      var defs = designSvg.querySelector("defs");
+      if (defs) {
+        host.appendChild(defs.cloneNode(true));
+      }
+
+      var wrapper = elSvg("g");
+      wrapper.setAttribute("class", "signs-preview-capture");
+      var s;
+      var n;
+      for (s = 0; s < selectors.length; s++) {
+        var nodes = designSvg.querySelectorAll(selectors[s]);
+        for (n = 0; n < nodes.length; n++) {
+          var node = nodes[n];
+          if (!node || node.style.display === "none") continue;
+          wrapper.appendChild(node.cloneNode(true));
+        }
+      }
+      host.appendChild(wrapper);
+
+      var vbX;
+      var vbY;
+      var vbW;
+      var vbH;
+      if (cropRect) {
+        vbX = cropRect.x;
+        vbY = cropRect.y;
+        vbW = cropRect.width;
+        vbH = cropRect.height;
+      } else {
+        var bbox;
+        try {
+          bbox = wrapper.getBBox();
+        } catch (bboxErr) {
+          bbox = null;
+        }
+        if (!bbox || !(bbox.width > 0) || !(bbox.height > 0)) {
+          vbX = CANVAS_W * 0.12;
+          vbY = CANVAS_H * 0.18;
+          vbW = CANVAS_W * 0.76;
+          vbH = CANVAS_H * 0.42;
+        } else {
+          var padRatio = options.signsFanTightCrop ? 0.04 : 0.08;
+          var pad = Math.max(bbox.width, bbox.height) * padRatio;
+          vbX = bbox.x - pad;
+          vbY = bbox.y - pad;
+          vbW = bbox.width + pad * 2;
+          vbH = bbox.height + pad * 2;
+        }
+      }
+
+      var out = elSvg("svg");
+      out.setAttribute(
+        "viewBox",
+        String(vbX) +
+          " " +
+          String(vbY) +
+          " " +
+          String(vbW) +
+          " " +
+          String(vbH)
+      );
+      out.setAttribute("aria-hidden", "true");
+      out.setAttribute("focusable", "false");
+      var exportGroup = wrapper.cloneNode(true);
+      if (!options.signsFanPreserveClip) {
+        stripClipPathsFromPreviewClone(exportGroup);
+      }
+      out.appendChild(exportGroup);
+      return out;
+    }
+
+    var SIGN_PREVIEW_MID_DENSITY = 15;
+    var SIGN_PREVIEW_FAMILY_CROP = {
+      x: CANVAS_W * 0.08,
+      y: CANVAS_H * 0.1,
+      width: CANVAS_W * 0.84,
+      height: CANVAS_H * 0.45,
+    };
+    var SIGN_PREVIEW_FAN_CROP = {
+      x: CANVAS_W * 0.1,
+      y: CANVAS_H * 0.05,
+      width: CANVAS_W * 0.8,
+      height: CANVAS_H * 0.42,
+    };
+    /** Top fan only — crop tuned to upper semicircle (Signs accordion). */
+    var SIGN_PREVIEW_FAN_SIGNS_CROP = {
+      x: CANVAS_W * 0.06,
+      y: CANVAS_H * 0.048,
+      width: CANVAS_W * 0.88,
+      height: CANVAS_H * 0.16,
+    };
+    var SIGN_PREVIEW_INNER_CROP = {
+      x: CANVAS_W * 0.15,
+      y: CANVAS_H * 0.22,
+      width: CANVAS_W * 0.7,
+      height: CANVAS_H * 0.38,
+    };
+
+    function applySignPreviewPreset(previewId, options) {
+      options = options || {};
+      zeroAllFeelingsSlidersForPreview();
+      setSliderValue("border-side-white-fill", "0");
+      setSliderValue("border-frame-divisions", "2");
+      setHopeInteractionMode("view");
+      clearMergeState();
+      clearAutoMergeState();
+
+      if (previewId.indexOf("family-loss-") === 0) {
+        frameInsetOverlayVisible = true;
+        var lossKey = previewId.slice("family-loss-".length);
+        var lossTypes = [lossKey];
+        var whiteFill = 0;
+        if (
+          window.FamilyControls &&
+          window.FamilyControls.borderSideWhiteFillFromLossTypes
+        ) {
+          whiteFill =
+            window.FamilyControls.borderSideWhiteFillFromLossTypes(lossTypes);
+        }
+        setSliderValue("border-side-white-fill", String(whiteFill));
+        return;
+      }
+
+      if (previewId === "fanLeaves") {
+        var fanStep =
+          typeof options.fanLeavesStep === "number"
+            ? options.fanLeavesStep
+            : typeof WEAR_CONTROL_OPENING_STEP_DEFAULT !== "undefined"
+              ? WEAR_CONTROL_OPENING_STEP_DEFAULT
+              : 0;
+        var fanSlider = document.getElementById(FAN_SHARED_LEAVES_ID);
+        if (fanSlider) {
+          var fanMaxStep =
+            typeof WEAR_CONTROL_OPENING_STEP_MAX !== "undefined"
+              ? WEAR_CONTROL_OPENING_STEP_MAX
+              : 10;
+          var fanMinStep =
+            typeof WEAR_CONTROL_OPENING_STEP_MIN !== "undefined"
+              ? WEAR_CONTROL_OPENING_STEP_MIN
+              : 0;
+          fanStep = Math.max(
+            fanMinStep,
+            Math.min(fanMaxStep, Math.round(fanStep))
+          );
+          fanSlider.value = String(fanStep);
+          snapFanLeavesSlider(fanSlider);
+          renderHalfCircleLayer();
+        }
+        return;
+      }
+
+      var feelingsPresets = {
+        fear: { angerVerticalLength: SIGN_PREVIEW_MID_DENSITY },
+        anxiety: {
+          angerVerticalLength: SIGN_PREVIEW_MID_DENSITY,
+          anxietyVerticalStroke: 50,
+        },
+        anger: { angerTriangleDensity: SIGN_PREVIEW_MID_DENSITY },
+        sadness: { circleDensity: SIGN_PREVIEW_MID_DENSITY },
+        longing: { longingCircleDensity: SIGN_PREVIEW_MID_DENSITY },
+        grief: { griefCircleDensity: SIGN_PREVIEW_MID_DENSITY },
+        strength: { strengthDensity: SIGN_PREVIEW_MID_DENSITY },
+        pride: { autoMergeIntensity: 4 },
+        pain: { prideFillPercent: SIGN_PREVIEW_MID_DENSITY },
+        guiltShame: { guiltShameFillPercent: SIGN_PREVIEW_MID_DENSITY },
+        helplessness: { helplessnessPercent: SIGN_PREVIEW_MID_DENSITY },
+      };
+
+      if (feelingsPresets[previewId]) {
+        applyFeelingsPresetForPreview(feelingsPresets[previewId]);
+        return;
+      }
+
+      if (previewId === "hope") {
+        setHopeInteractionMode("view");
+      }
+    }
+
+    function getSignPreviewLayerSelectors(previewId, options) {
+      options = options || {};
+      if (previewId.indexOf("family-loss-") === 0) {
+        return ["#layer-border-divisions", "#layer-border-divisions-overlay"];
+      }
+      if (previewId === "fanLeaves") {
+        if (options.signsFanTightCrop) {
+          return ["#half-circle-top"];
+        }
+        return ["#layer-half-circle"];
+      }
+      if (previewId === "hope") {
+        return ["#color-divisions-blend-root"];
+      }
+      var layerMap = {
+        fear: ["#layer-vertical-grid", "#layer-vertical-grid-overlay"],
+        anxiety: ["#layer-vertical-grid", "#layer-vertical-grid-overlay"],
+        anger: ["#layer-anger-diamond-triangles"],
+        sadness: ["#layer-circles"],
+        longing: ["#layer-longing-circles"],
+        grief: ["#layer-grief-circles"],
+        strength: ["#layer-strength"],
+        pride: ["#pride-auto-merge-root"],
+        pain: ["#layer-diamond-fills"],
+        guiltShame: ["#layer-hollow-diamond-fills"],
+        helplessness: ["#layer-helplessness"],
+      };
+      return layerMap[previewId] || ["#emotion-markers-root"];
+    }
+
+    function getSignPreviewCropRect(previewId, options) {
+      options = options || {};
+      if (previewId.indexOf("family-loss-") === 0) {
+        return SIGN_PREVIEW_FAMILY_CROP;
+      }
+      if (previewId === "fanLeaves") {
+        if (options.signsFanTightCrop) {
+          return SIGN_PREVIEW_FAN_SIGNS_CROP;
+        }
+        return SIGN_PREVIEW_FAN_CROP;
+      }
+      return SIGN_PREVIEW_INNER_CROP;
+    }
+
+    function renderSignPreviewInternal(previewId, options) {
+      if (!previewId) return null;
+      var saved = captureSignPreviewSliderState();
+      var result = null;
+      signPreviewBypass = true;
+      try {
+        setGridType(GRID_TYPE_OCTAGON, { preview: true });
+        applySignPreviewPreset(previewId, options);
+        resetFeelingsLayoutSignatures();
+        applyFeelingsControlState({ forceReshuffle: true });
+        syncBorderSideWhiteFillOutput();
+        updateFrameInsetOverlayLayer();
+        updateBorderDivisionLines();
+        updateBorderDivisionOverlay();
+        render();
+        if (isSingleMarkerFeelingPreview(previewId)) {
+          result = captureSingleFeelingMarkerPreview(previewId);
+        } else {
+          result = captureLayerPreview(
+            getSignPreviewLayerSelectors(previewId, options),
+            getSignPreviewCropRect(previewId, options),
+            options
+          );
+        }
+      } finally {
+        signPreviewBypass = false;
+        restoreSignPreviewSliderState(saved);
+        render();
+      }
+      return result;
+    }
+
     window.UnderCoverComboBridge = {
       applyColorDivisionLayout: function (seed, areaOrderStr) {
         var parsedSeed = parseInt(String(seed), 10);
@@ -24066,6 +25105,7 @@
       },
       getFeelingsSliderBounds: getFeelingsSliderBoundsForCombo,
       applyFeelingsFromQuestionnaire: applyFeelingsFromQuestionnaire,
+      applyFanLeavesOpeningStep: applyFanLeavesOpeningStep,
       finalizeApplySilent: function () {
         syncBorderSideWhiteFillOutput();
         syncJunctionEmotionSliderRangesForGridType();
@@ -24110,6 +25150,18 @@
         applyFeelingsControlState({ skipRender: true, forceReshuffle: false });
         render();
       },
+      /** Keep slider values; randomize where emotion marks appear on the canvas. */
+      randomizeFeelingsPlacement: function () {
+        if (!isGridContentUnlocked()) return;
+        resetFeelingsLayoutSignatures();
+        applyFeelingsControlState({
+          randomHelplessness: true,
+          forceReshuffle: true,
+        });
+        refreshLocationCoordinates();
+        refreshLabelBarContent();
+        render();
+      },
       applyPrideLayers: function () {
         syncAllFeelingsSliderOutputs();
         if (getAutoMergeIntensity() > 0) {
@@ -24134,6 +25186,17 @@
         };
       },
     };
+
+    signPreviewsReady = true;
+    window.UnderCoverSignPreviews = {
+      isReady: function () {
+        return signPreviewsReady;
+      },
+      renderPreview: function (previewId, options) {
+        return renderSignPreviewInternal(previewId, options);
+      },
+    };
+    window.dispatchEvent(new CustomEvent("undercover:sign-previews-ready"));
 
     if (
       window.HandkerchiefCombinations &&
@@ -24240,6 +25303,8 @@
     window.layoutStage = layoutStage;
     window.resetPage2QuestionnaireCanvasLayoutCache =
       resetPage2QuestionnaireCanvasLayoutCache;
+    window.layoutQuestionnaireCanvasFromScroll =
+      layoutQuestionnaireCanvasFromScroll;
     window.captureArchiveDesignPng = captureArchiveDesignPng;
 
     window.addEventListener("resize", function () {

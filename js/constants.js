@@ -89,6 +89,13 @@ var BODY_AUTONOMY_FOCUS_PAD_BELOW_PX = 450;
 var BODY_AUTONOMY_FOCUS_TOP_SCREEN_GAP_PX = 100;
 /** Grid + palette: gap from handkerchief bottom to viewport bottom (CSS px) */
 var GRID_COLOR_FOCUS_BOTTOM_SCREEN_GAP_PX = 150;
+/** Questionnaire static canvas: zoom-in width (6 cols) and zoom-out width (3 cols), 1-based */
+var QUESTIONNAIRE_ZOOM_IN_GRID_COL_START = 7;
+var QUESTIONNAIRE_ZOOM_IN_GRID_COL_SPAN = 6;
+var QUESTIONNAIRE_ZOOM_OUT_GRID_COL_START = 9;
+var QUESTIONNAIRE_ZOOM_OUT_GRID_COL_SPAN = 3;
+/** Extra inset so zoom-out handkerchief (incl. shadow) fits inside the canvas host */
+var QUESTIONNAIRE_ZOOM_OUT_EDGE_PAD_PX = 12;
 var CANVAS_EDGE_BROWN_BAR_COLOR = "#685450";
 /** Label bar background (color picker default) */
 var LABEL_BAR_BACKGROUND_COLOR_DEFAULT = CANVAS_EDGE_BROWN_BAR_COLOR;

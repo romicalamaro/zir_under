@@ -1,0 +1,59 @@
+---
+description: Convert Figma px to relative CSS units for Page 2 layout (1728px reference)
+globs: index.html,css/styles.css,js/page2Units.js,js/handkerchiefArchive.js
+alwaysApply: false
+---
+
+# Page 2 — Relative Units (לא פיקסלים ל-layout)
+
+## כשהמשתמשת נותנת ערכים ב-px
+
+**תמיד** להמיר לפני כתיבת קוד. לרשום בקוד רק `clamp()`, `rem`, `vw`, `calc(var(--page2-...))` — לא `px` ל-spacing, typography, width, height, padding, margin, gap.
+
+הסבר למשתמשת בפשטות, למשל: "20px → clamp(0.875rem, 1.157vw, 2.5rem)".
+
+## רפרנס עיצוב
+
+- רוחב: **1728px** (`--page2-ref-width`)
+- גובה: **1117px** (`--page2-ref-height`)
+- בסיס rem: **16px**
+
+## נוסחאות
+
+| מ-Figma | CSS |
+|--------|-----|
+| `vw` | `px ÷ 1728 × 100` |
+| `rem` | `px ÷ 16` |
+| fluid | `clamp(min-rem, vw, max-rem)` |
+
+דוגמה: 20px → `clamp(0.875rem, 1.157vw, 2.5rem)` כ-`--page2-gutter`.
+
+## איפה לכתוב
+
+1. טוקן חדש על `#page2` ב-`index.html` (`#page2-isolated-styles`)
+2. הערה: `/* Npx @ 1728 */`
+3. שימוש: `var(--page2-...)` ב-selectors
+
+עוזר JS: `js/page2Units.js` — `page2PxToVw`, `page2PxToRem`, `page2FluidPx`, `readPage2CssLengthPx`.
+
+## מה **לא** להמיר
+
+- `border: 1px`, overlap `-1px` בחנות
+- `outline: 2px` (נגישות)
+- `@media (min-width: …px)`
+- **קנבס / ייצוא** ב-`js/constants.js` (`CANVAS_W`, `LABEL_BAR_*_PX`, גיאומטריית SVG)
+- מדידות ריצה: `getBoundingClientRect()`, `gridTemplateColumns` דינמי ב-px ממדידת עמודות
+
+## טוקנים קיימים (להעדיף)
+
+- `--page2-gutter` / `--page2-space-20` — 20px @ ref
+- `--page2-space-4` — 4px micro-adjust
+- `--page2-space-50` — 50px section offset
+- `--page2-marker-size` — 15px
+- `--page2-header-hover-expand` — 20px
+- `--page2-about-*` — טיפוגרפיית about
+
+## JS layout
+
+קרא ערכי מסך מ-CSS vars דרך `readPage2CssLengthPx('--page2-marker-size')`, לא קבועי `_PX` קשיחים.
+לזום שאלון על המסך: `scalePage2Px(px)` מ-`page2Units.js` (לא לגיאומטריית הקנבס).

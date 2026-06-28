@@ -59,6 +59,9 @@
   }
 
   function isGridContentUnlocked() {
+    if (isQuestionnaireActive() && gridTypeChosen) {
+      return true;
+    }
     return (
       (isProfileSectionComplete() || questionnaireProfileComplete) &&
       gridTypeChosen
@@ -66,11 +69,25 @@
   }
 
   function isFrameContentUnlocked() {
-    return isGridContentUnlocked() && frameSectionEngaged;
+    if (!isGridContentUnlocked()) return false;
+    if (isQuestionnaireActive()) {
+      var sectionIndex = getQuestionnaireActiveSectionIndex();
+      if (sectionIndex >= 0) {
+        return sectionIndex >= 2;
+      }
+    }
+    return frameSectionEngaged;
   }
 
   function isFanContentUnlocked() {
-    return isFrameContentUnlocked() && fanSectionEngaged;
+    if (!isFrameContentUnlocked()) return false;
+    if (isQuestionnaireActive()) {
+      var sectionIndex = getQuestionnaireActiveSectionIndex();
+      if (sectionIndex >= 0) {
+        return sectionIndex >= 3;
+      }
+    }
+    return fanSectionEngaged;
   }
 
   function isSectionUnlocked(sectionId) {
@@ -181,9 +198,21 @@
     var q =
       typeof window.Questionnaire !== "undefined" ? window.Questionnaire : null;
     if (!q || !q.isStarted || !q.isStarted()) return false;
+    if (typeof q.getActiveSectionIndex === "function") {
+      var sectionIndex = q.getActiveSectionIndex();
+      if (sectionIndex >= 0) return true;
+    }
     if (!q.getCurrentStepId) return false;
     var stepId = q.getCurrentStepId();
     return !!(stepId && stepId !== "__feelings_complete__");
+  }
+
+  function getQuestionnaireActiveSectionIndex() {
+    var q =
+      typeof window.Questionnaire !== "undefined" ? window.Questionnaire : null;
+    if (!q || !q.isStarted || !q.isStarted()) return -1;
+    if (typeof q.getActiveSectionIndex !== "function") return -1;
+    return q.getActiveSectionIndex();
   }
 
   function shouldShowProfileLabelSymbol(partId) {
