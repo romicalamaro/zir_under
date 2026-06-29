@@ -504,9 +504,28 @@
                   </div>
                   <div class="page2-footer__col">
                     <span class="page2-footer__heading">Credits</span>
-                    <span class="page2-footer__note"
-                      >Under &mdash; Bezalel graduation project</span
-                    >
+                    <div class="page2-footer__credit-group">
+                      <span class="page2-footer__subheading">Mentors</span>
+                      <span class="page2-footer__note"
+                        >Uri Sukkary, Eli Magaziner</span
+                      >
+                    </div>
+                    <div class="page2-footer__credit-group">
+                      <span class="page2-footer__subheading"
+                        >Headscarf Designers</span
+                      >
+                      <span class="page2-footer__note"
+                        >Orly Noy, Sana, [Name &mdash; TBD], Atusa, [Name &mdash;
+                        TBD]</span
+                      >
+                    </div>
+                    <div class="page2-footer__credit-group">
+                      <span class="page2-footer__subheading">Models</span>
+                      <span class="page2-footer__note"
+                        >Avigail Brander, Vera Kanevsky, Eti, Hadar Price, Niv
+                        Yagor</span
+                      >
+                    </div>
                   </div>
                 </div>
                 <div
@@ -1564,18 +1583,19 @@
         pointer-events: auto;
       }
 
-      /* Home footer — fills the white space below the signs section. */
-      #page2 #section-home .page2-footer {
+      /* Footer (shared) — base layout used on home, shop and archive.
+         Uses the same 12-column grid as .page2-guides (repeat(12, 1fr) +
+         gutter + margin-inline) so every block lines up on the grid columns. */
+      #page2 .page2-footer {
         position: relative;
         z-index: 2;
         box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: var(--page2-gutter);
-        min-height: calc(100vh - var(--page2-signs-section-min-height));
-        padding-top: var(--page2-signs-row-padding-block);
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        column-gap: var(--page2-gutter);
+        align-content: end;
+        align-items: end;
+        padding-top: 0;
         padding-bottom: 0;
         padding-inline: var(--page2-margin-inline);
         background-color: var(--page2-bg);
@@ -1583,16 +1603,36 @@
         pointer-events: auto;
       }
 
-      #page2 #section-home .page2-footer__top {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: var(--page2-space-30) var(--page2-space-50);
+      /* Home footer — fills the white space below the signs section. */
+      #page2 #section-home .page2-footer {
+        min-height: calc(100vh - var(--page2-signs-section-min-height));
+        padding-top: var(--page2-signs-row-padding-block);
+      }
+
+      /* Shop / archive footer — sits at the bottom of the scrolled content. */
+      #page2 #section-shop .page2-footer,
+      #page2 #section-archive .page2-footer {
+        padding-top: var(--page2-space-50);
+        padding-bottom: var(--page2-margin-block-end);
+      }
+
+      /* Text block sits on grid columns 7–12 and re-exposes those columns as a
+         subgrid, so Pages / Contact / Credits inherit the exact grid lines. */
+      #page2 .page2-footer__top {
+        grid-column: 7 / -1;
+        grid-row: 1;
+        display: grid;
+        grid-template-columns: subgrid;
+        align-items: start;
         box-sizing: border-box;
       }
 
-      #page2 #section-home .page2-footer__col {
+      /* Pages → cols 7–8, Contact → cols 9–10, Credits → cols 11–12. */
+      #page2 .page2-footer__top > .page2-footer__col {
+        grid-column: span 2;
+      }
+
+      #page2 .page2-footer__col {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -1600,7 +1640,7 @@
         min-width: 0;
       }
 
-      #page2 #section-home .page2-footer__heading {
+      #page2 .page2-footer__heading {
         margin-bottom: var(--page2-space-4);
         font-family: "Suisse Intl", sans-serif;
         font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
@@ -1609,7 +1649,7 @@
         color: #442c28;
       }
 
-      #page2 #section-home .page2-footer__link {
+      #page2 .page2-footer__link {
         margin: 0;
         padding: 0;
         border: 0;
@@ -1626,24 +1666,24 @@
         transition: opacity 0.15s ease;
       }
 
-      #page2 #section-home .page2-footer__link:hover {
+      #page2 .page2-footer__link:hover {
         opacity: 0.6;
       }
 
-      #page2 #section-home .page2-footer__link:focus-visible {
+      #page2 .page2-footer__link:focus-visible {
         outline: 2px solid #442c28;
         outline-offset: 2px;
       }
 
-      #page2 #section-home .page2-footer__link-sep {
+      #page2 .page2-footer__link-sep {
         margin: 0 0.25em;
       }
 
-      #page2 #section-home .page2-footer__link-fa {
+      #page2 .page2-footer__link-fa {
         font-family: "Vazirmatn", sans-serif;
       }
 
-      #page2 #section-home .page2-footer__note {
+      #page2 .page2-footer__note {
         font-family: "Suisse Intl", sans-serif;
         font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
         font-weight: 300;
@@ -1651,23 +1691,41 @@
         color: #442c28;
       }
 
-      #page2 #section-home .page2-footer__logo {
-        order: -1;
-        flex-shrink: 0;
-        align-self: flex-end;
-        width: 40%;
+      /* Each credit group stacks a bold sub-label above its light name list. */
+      #page2 .page2-footer__credit-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      /* Bold sub-label inside Credits (lighter weight than the column heading,
+         distinguished from the light name list by font-weight 500). */
+      #page2 .page2-footer__subheading {
+        font-family: "Suisse Intl", sans-serif;
+        font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
+        font-weight: 500;
+        line-height: 1.5;
+        color: #442c28;
+      }
+
+      /* Logo fills grid columns 1–5 (≈40% width, matching the previous layout). */
+      #page2 .page2-footer__logo {
+        grid-column: 1 / 6;
+        grid-row: 1;
+        align-self: end;
+        width: 100%;
         line-height: 0;
       }
 
-      #page2 #section-home .page2-footer__logo svg {
+      #page2 .page2-footer__logo svg {
         display: block;
         width: 100%;
         height: auto;
         fill: #442c28;
       }
 
-      #page2 #section-home .page2-footer__logo svg path,
-      #page2 #section-home .page2-footer__logo svg rect {
+      #page2 .page2-footer__logo svg path,
+      #page2 .page2-footer__logo svg rect {
         fill: #442c28;
       }
 
@@ -4625,32 +4683,54 @@
           });
         });
 
-        /* Footer (home): wire small links to the header sections and clone the logo. */
-        (function setupHomeFooter() {
-          var footer = page2 && page2.querySelector(".page2-footer");
-          if (!footer) return;
+        /* Footers: wire small links to the header sections and clone the logo.
+           The home footer is authored in HTML; shop & archive reuse a clone of
+           it so there is a single source of truth for the footer markup. */
+        (function setupFooters() {
+          var sourceFooter = page2 && page2.querySelector(".page2-footer");
+          if (!sourceFooter) return;
 
-          footer
-            .querySelectorAll(".page2-footer__link[data-footer-col]")
-            .forEach(function (link) {
-              link.addEventListener("click", function () {
-                var colIndex = parseInt(
-                  link.getAttribute("data-footer-col"),
-                  10
-                );
-                if (isNaN(colIndex)) return;
-                showSection(colIndex);
-              });
-            });
-
-          var logoTarget = footer.querySelector(".page2-footer__logo");
           var sourceLogoSvg = logoEl ? logoEl.querySelector("svg") : null;
-          if (logoTarget && sourceLogoSvg) {
-            var clonedLogo = sourceLogoSvg.cloneNode(true);
-            clonedLogo.removeAttribute("class");
-            clonedLogo.setAttribute("aria-hidden", "true");
-            logoTarget.appendChild(clonedLogo);
+
+          function wireFooter(footer) {
+            footer
+              .querySelectorAll(".page2-footer__link[data-footer-col]")
+              .forEach(function (link) {
+                link.addEventListener("click", function () {
+                  var colIndex = parseInt(
+                    link.getAttribute("data-footer-col"),
+                    10
+                  );
+                  if (isNaN(colIndex)) return;
+                  showSection(colIndex);
+                });
+              });
+
+            var logoTarget = footer.querySelector(".page2-footer__logo");
+            if (logoTarget && sourceLogoSvg) {
+              logoTarget.innerHTML = "";
+              var clonedLogo = sourceLogoSvg.cloneNode(true);
+              clonedLogo.removeAttribute("class");
+              clonedLogo.setAttribute("aria-hidden", "true");
+              logoTarget.appendChild(clonedLogo);
+            }
           }
+
+          /* Home footer (already in the DOM). */
+          wireFooter(sourceFooter);
+
+          /* Clone the footer into the shop and archive sections. */
+          ["section-shop", "section-archive"].forEach(function (sectionId) {
+            var section = page2.querySelector("#" + sectionId);
+            if (!section || section.querySelector(".page2-footer")) return;
+            var footerClone = sourceFooter.cloneNode(true);
+            /* Drop the logo clone copied from home so wireFooter rebuilds it. */
+            var clonedLogoTarget =
+              footerClone.querySelector(".page2-footer__logo");
+            if (clonedLogoTarget) clonedLogoTarget.innerHTML = "";
+            section.appendChild(footerClone);
+            wireFooter(footerClone);
+          });
         })();
 
         header.querySelectorAll(".page2-header-cell").forEach(function (cell) {

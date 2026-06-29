@@ -728,6 +728,7 @@
     palette: {
       letter: "",
       type: "palette-picker",
+      hideHeading: true,
     },
     borderFrameDivisions: {
       letter: "",
