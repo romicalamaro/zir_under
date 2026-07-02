@@ -16,7 +16,7 @@
   var isOpen = false;
   var closeTimer = null;
   var items = [];
-  var DRAWER_TRANSITION_MS = 450;
+  var DRAWER_TRANSITION_MS = 400;
   var prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
@@ -252,6 +252,7 @@
   function openCart() {
     if (isOpen) return;
     clearCloseTimer();
+    page2.classList.remove("page2--cart-closing");
     isOpen = true;
     drawer.hidden = false;
     scrim.hidden = false;
@@ -263,16 +264,30 @@
     });
   }
 
+  function isShopSection() {
+    return page2.classList.contains("page2--section-shop");
+  }
+
+  function closeCartIfLeavingShop() {
+    if (!isShopSection() && isOpen) {
+      closeCart();
+    }
+  }
+
   function closeCart() {
     if (!isOpen) return;
     isOpen = false;
+    page2.classList.add("page2--cart-closing");
     page2.classList.remove("page2--cart-open");
     setAriaOpen(false);
     stopHeightSync();
-    trigger.focus();
+    if (isShopSection()) {
+      trigger.focus();
+    }
 
     clearCloseTimer();
     if (prefersReducedMotion) {
+      page2.classList.remove("page2--cart-closing");
       drawer.hidden = true;
       scrim.hidden = true;
       return;
@@ -281,6 +296,7 @@
     closeTimer = window.setTimeout(function () {
       closeTimer = null;
       if (!isOpen) {
+        page2.classList.remove("page2--cart-closing");
         drawer.hidden = true;
         scrim.hidden = true;
       }
@@ -324,6 +340,15 @@
   page2.addEventListener("page2:hide", function () {
     closeCart();
   });
+
+  new MutationObserver(function (mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      if (mutations[i].attributeName === "class") {
+        closeCartIfLeavingShop();
+        break;
+      }
+    }
+  }).observe(page2, { attributes: true, attributeFilter: ["class"] });
 
   renderCart();
 

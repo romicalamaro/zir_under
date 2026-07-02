@@ -89,7 +89,7 @@
           { t: "text", v: " years old." },
         ],
         [
-          { t: "text", v: "I lived in Iran " },
+          { t: "text", v: "I lived in Iran for " },
           { t: "blank", id: "livingDuration", size: "medium", kind: "select" },
         ],
         [
@@ -105,7 +105,7 @@
           { t: "text", v: "." },
         ],
         [
-          { t: "text", v: "I feel most at home in " },
+          { t: "text", v: "I feel most at home " },
           { t: "blank", id: "homeAt", size: "medium", kind: "select" },
           { t: "text", v: "." },
         ],
@@ -121,8 +121,8 @@
         ariaLabel: "How much of your life did you live in Iran?",
         options: {
           smallPart: "Small part of my life",
-          partOfLife: "Yes, part of my life",
-          mostAll: "Yes, most / all of my life",
+          partOfLife: "Part of my life",
+          mostAll: "Most / all of my life",
         },
       },
       leavingYear: {
@@ -165,6 +165,7 @@
         },
       },
       gridType: {
+        label: "choose your grid",
         ariaLabel: "Grid type",
         options: {
           octagon: "Octagons",
@@ -184,8 +185,8 @@
         label:
           "How much do you feel that Iranian identity is a central part of your life today?",
         ariaLabel:
-          "How much do you feel that Iranian identity is a central part of your life today? Very much in the background to at the center of my life.",
-        rangeLabels: ["Very much in the background", "At the center of my life"],
+          "How much do you feel that Iranian identity is a central part of your life today? in the background to very central.",
+        rangeLabels: ["in the background", "very central"],
       },
       palette: {
         label: "choose your palette",
@@ -229,8 +230,8 @@
         ariaLabel:
           "Fan leaves. Step 0 fully open, step 9 four ribs, step 10 closed.",
         rangeLabels: [
-          "No freedom of choice at all",
-          "Feeling relatively free to choose",
+          "No freedom",
+          "free to choose",
         ],
       },
       angerVerticalLength: {
@@ -382,7 +383,7 @@
           { t: "text", v: " آمدم." },
         ],
         [
-          { t: "text", v: "امروز بیشتر در " },
+          { t: "text", v: "امروز بیشتر " },
           { t: "blank", id: "homeAt", size: "medium", kind: "select" },
           { t: "text", v: " احساس خانه بودن دارم." },
         ],
@@ -398,8 +399,8 @@
         ariaLabel: "چه مقدار از زندگی‌تان را در ایران گذرانده‌اید؟",
         options: {
           smallPart: "بخش کوچکی از زندگی‌ام",
-          partOfLife: "بله، بخشی از زندگی‌ام",
-          mostAll: "بله، بیشتر / تمام زندگی‌ام",
+          partOfLife: "بخشی از زندگی‌ام",
+          mostAll: "بیشتر / تمام زندگی‌ام",
         },
       },
       leavingYear: {
@@ -442,6 +443,7 @@
         },
       },
       gridType: {
+        label: "شبکه خود را انتخاب کنید",
         ariaLabel: "نوع شبکه",
         options: {
           octagon: "هشت‌ضلعی‌ها",
@@ -461,8 +463,8 @@
         label:
           "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان امروز است؟",
         ariaLabel:
-          "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان است؟ از بسیار پس‌زمینه تا در مرکز زندگی‌ام.",
-        rangeLabels: ["بسیار در پس‌زمینه", "در مرکز زندگی‌ام"],
+          "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان است؟ از پس‌زمینه تا بسیار مرکزی.",
+        rangeLabels: ["در پس‌زمینه", "بسیار مرکزی"],
       },
       palette: {
         label: "پالت خود را انتخاب کنید",
@@ -506,8 +508,8 @@
         ariaLabel:
           "برگ‌های بادبزن. گام ۰ کاملاً باز، گام ۹ چهار پره، گام ۱۰ بسته.",
         rangeLabels: [
-          "هیچ آزادی انتخابی نداشتم",
-          "نسبتاً آزاد برای انتخاب بودم",
+          "بدون آزادی",
+          "آزاد برای انتخاب",
         ],
       },
       angerVerticalLength: {

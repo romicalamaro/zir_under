@@ -1350,9 +1350,10 @@
    * @param {{x1:number,y1:number,x2:number,y2:number}[]} segments
    * @returns {number[]}
    */
-  function shuffleArray(arr) {
+  function shuffleArray(arr, rng) {
+    rng = typeof rng === "function" ? rng : Math.random;
     for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
+      var j = Math.floor(rng() * (i + 1));
       var tmp = arr[i];
       arr[i] = arr[j];
       arr[j] = tmp;
@@ -1360,8 +1361,9 @@
     return arr;
   }
 
-  function randomIntInRange(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  function randomIntInRange(min, max, rng) {
+    rng = typeof rng === "function" ? rng : Math.random;
+    return Math.floor(rng() * (max - min + 1)) + min;
   }
 
   /**
@@ -1479,6 +1481,7 @@
     var edgesMin = options.edgesMin;
     var edgesMax = options.edgesMax;
     var targetEdges = options.targetEdges;
+    var rng = typeof options.rng === "function" ? options.rng : Math.random;
     var cluster = [seedIndex];
     var clusterSet = {};
     clusterSet[seedIndex] = true;
@@ -1503,7 +1506,7 @@
 
       for (fi = 0; fi < cluster.length; fi++) {
         neighbors = adjacency[cluster[fi]].slice();
-        shuffleArray(neighbors);
+        shuffleArray(neighbors, rng);
         for (n = 0; n < neighbors.length; n++) {
           nb = neighbors[n];
           if (!canAddFaceToCluster(nb, clusterSet, claimedGlobal, adjacency)) {
@@ -1717,7 +1720,7 @@
   /**
    * @param {{ points: { x: number, y: number }[] }[]} faces
    * @param {{ x: number, y: number, width: number, height: number }} bounds
-   * @param {{ areaCountMin?: number, areaCountMax?: number, edgesPerAreaMin?: number, edgesPerAreaMax?: number, boundsInset?: number }} [options]
+   * @param {{ areaCountMin?: number, areaCountMax?: number, edgesPerAreaMin?: number, edgesPerAreaMax?: number, boundsInset?: number, rng?: function(): number }} [options]
    * @returns {{ edgeKeys: string[] }}
    */
   function computeAutoMergePlan(faces, bounds, options) {
@@ -1732,6 +1735,7 @@
       typeof options.edgesPerAreaMax === "number" ? options.edgesPerAreaMax : 4;
     var boundsInset =
       typeof options.boundsInset === "number" ? options.boundsInset : 40;
+    var rng = typeof options.rng === "function" ? options.rng : Math.random;
 
     if (!faces.length) return { edgeKeys: [], clusters: [] };
     var clusters = [];
@@ -1743,7 +1747,7 @@
     var edgeToFaces = graph.edgeToFaces;
     var claimedGlobal = {};
     var allKeys = {};
-    var targetAreas = randomIntInRange(areaCountMin, areaCountMax);
+    var targetAreas = randomIntInRange(areaCountMin, areaCountMax, rng);
     var seedAttemptsPerArea =
       typeof AUTO_MERGE_SEED_ATTEMPTS_PER_AREA !== "undefined"
         ? AUTO_MERGE_SEED_ATTEMPTS_PER_AREA
@@ -1782,12 +1786,12 @@
     while (clusters.length < targetAreas && seedAttempts < maxSeedAttempts) {
       seedAttempts++;
       if (maxX <= minX || maxY <= minY) break;
-      sx = minX + Math.random() * (maxX - minX);
-      sy = minY + Math.random() * (maxY - minY);
+      sx = minX + rng() * (maxX - minX);
+      sy = minY + rng() * (maxY - minY);
       seedIdx = findNearestFaceIndex(faces, sx, sy, isSeedCandidate);
       if (seedIdx < 0) continue;
 
-      targetEdges = randomIntInRange(edgesPerAreaMin, edgesPerAreaMax);
+      targetEdges = randomIntInRange(edgesPerAreaMin, edgesPerAreaMax, rng);
       cluster = [];
 
       for (attempt = 0; attempt < growAttempts; attempt++) {
@@ -1801,10 +1805,11 @@
             edgesMin: edgesPerAreaMin,
             edgesMax: edgesPerAreaMax,
             targetEdges: targetEdges,
+            rng: rng,
           }
         );
         if (cluster.length) break;
-        targetEdges = randomIntInRange(edgesPerAreaMin, edgesPerAreaMax);
+        targetEdges = randomIntInRange(edgesPerAreaMin, edgesPerAreaMax, rng);
       }
 
       if (!cluster.length) continue;

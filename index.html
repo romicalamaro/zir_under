@@ -8,14 +8,18 @@
         history.scrollRestoration = "manual";
       }
     </script>
-    <title>Octagons Grid — 68×180cm @ 300 DPI</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260701-full-deploy" />
+    <title>zin.under</title>
+    <meta name="application-name" content="zin.under" />
+    <meta property="og:title" content="zin.under" />
+    <meta property="og:site_name" content="zin.under" />
+    <link rel="stylesheet" href="css/styles.css?v=20260701-grid-fa-align" />
     <!-- Header grid must exist before body paints — JS refines track widths later. -->
     <style id="page2-header-critical">
       #page2 {
         --page2-gutter: clamp(0.875rem, 1.157vw, 2.5rem);
         --page2-margin-inline: var(--page2-gutter);
         --page2-space-20: var(--page2-gutter);
+        --questionnaire-next-btn-size: clamp(2.45rem, 2.836vw, 3.0625rem); /* 49px @ 1728 (−30%) */
         --page2-header-top-offset: calc(var(--page2-space-20) * 0.85); /* 17px @ ref (−15% vs gutter) */
         --page2-space-4: clamp(0.125rem, 0.231vw, 0.3125rem);
         --page2-header-row-height: calc(var(--page2-space-20) * 1.3);
@@ -213,7 +217,7 @@
 
         <div class="page2-logo" aria-label="Site logo">
           <div class="page2-logo__slot">
-            <div class="page2-logo__image" role="img" aria-label="Under Cover">
+            <div class="page2-logo__image" role="img" aria-label="zin.under">
               <div
                 class="page2-logo__layer page2-logo__layer--white"
                 aria-hidden="true"
@@ -300,7 +304,7 @@
               <div class="page2-home-bg" aria-hidden="true"></div>
               <div class="page2-home-content">
                 <p class="page2-home-intro page2-home-intro--en">
-                  Modular fashion textiles expressing solidarity with Iranian
+                  Modular textiles expressing solidarity with Iranian
                   women&rsquo;s fight for bodily autonomy
                 </p>
                 <div
@@ -316,7 +320,7 @@
                   lang="fa"
                   dir="rtl"
                 >
-                  منسوجات مدولار مُد که همبستگی با مبارزهٔ زنان ایرانی برای
+                  منسوجات مدولار که همبستگی با مبارزهٔ زنان ایرانی برای
                   خودمختاری بر بدنشان ابراز می&zwnj;کند
                 </p>
               </div>
@@ -329,49 +333,61 @@
               <div class="page2-home-about">
                 <div class="page2-about-content">
                   <p class="page2-about-text">
-                    Under is a modular textile brand that creates adaptable
-                    scarves and wraps that express solidarity and support for
+                    Under is a modular textile system that creates adaptable
+                    scarves, wraps, and head coverings that express solidarity
+                    and support for
                     Iranian women. Its designs are based on a visual sign
                     language that translates emotional states into graphic
                     patterns, giving voice to women for whom Iran is part of
-                    their identity.<br />
-                    All designs on this website were created by Iranian women
-                    living outside Iran.
+                    their identity.
                   </p>
                   <p
                     class="page2-about-text page2-about-text--fa"
                     lang="fa"
                     dir="rtl"
                   >
-                    زیر یک برند منسوجات مدولار است که شال‌ها و پوشش‌هایی خلق
+                    زیر یک سامانهٔ منسوجات مدولار است که شال‌ها، پوشش‌ها و
+                    روسری‌هایی خلق
                     می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند.
                     طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات
                     عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران
-                    بخشی از هویتشان است، صدا می‌دهد.<br />
-                    همهٔ طراحی‌های این وب‌سایت توسط زنان ایرانی ساکن خارج از
-                    ایران خلق شده‌اند.
+                    بخشی از هویتشان است، صدا می‌دهد.
                   </p>
                 </div>
               </div>
               <div class="page2-home-signs" id="page2-home-signs">
                 <div class="page2-home-signs__inner">
-                  <p class="page2-home-signs__label">
-                    <span class="page2-home-signs__label-en">signs</span>
-                    <span
-                      class="page2-home-signs__label-sep"
-                      aria-hidden="true"
-                    ></span>
-                    <span
-                      class="page2-home-signs__label-fa"
-                      lang="fa"
-                      dir="rtl"
-                      >نشانه‌ها</span
-                    >
-                  </p>
+                  <div class="page2-home-signs__sticky-boundary">
+                    <div class="page2-home-signs__title-bar">
+                      <p class="page2-home-signs__label">
+                        <span class="page2-home-signs__label-en">signs</span>
+                        <span
+                          class="page2-home-signs__label-sep"
+                          aria-hidden="true"
+                        ></span>
+                        <span
+                          class="page2-home-signs__label-fa"
+                          lang="fa"
+                          dir="rtl"
+                          >نشانه‌ها</span
+                        >
+                      </p>
+                      <div
+                        class="page2-home-signs__title-rule"
+                        aria-hidden="true"
+                      ></div>
+                    </div>
+                    <div
+                      class="page2-home-signs__list page2-home-signs__list--prefix"
+                      id="page2-home-signs-list-prefix"
+                      role="list"
+                    ></div>
+                  </div>
                   <div
-                    class="page2-home-signs__list"
-                    id="page2-home-signs-list"
+                    class="page2-home-signs__list page2-home-signs__list--suffix"
+                    id="page2-home-signs-list-suffix"
                     role="list"
+                    aria-label="Signs — feelings"
                   ></div>
                 </div>
               </div>
@@ -380,30 +396,42 @@
                 id="page2-home-topkapi"
                 aria-labelledby="page2-home-topkapi-title"
               >
-                <div class="page2-home-topkapi__band">
-                  <img
-                    class="page2-home-topkapi__band-img"
-                    src="website/topkapi%20scrolls/4.webp?v=20260701-full-deploy"
-                    alt="Topkapı Scroll decorative band"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                <div class="page2-home-topkapi__rects" aria-hidden="true">
+                  <span class="page2-home-topkapi__slot">
+                    <span class="page2-home-topkapi__rect">
+                      <img
+                        class="page2-home-topkapi__rect-img"
+                        src="website/topkapi%20scrolls/3.jpg?v=20260701b"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </span>
+                  </span>
+                  <span class="page2-home-topkapi__slot">
+                    <span class="page2-home-topkapi__rect">
+                      <img
+                        class="page2-home-topkapi__rect-img"
+                        src="website/topkapi%20scrolls/2.jpeg?v=20260701"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </span>
+                  </span>
+                  <span class="page2-home-topkapi__slot">
+                    <span class="page2-home-topkapi__rect">
+                      <img
+                        class="page2-home-topkapi__rect-img"
+                        src="website/topkapi%20scrolls/1.jpeg?v=20260701"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </span>
+                  </span>
                 </div>
                 <div class="page2-home-topkapi__inner">
-                  <img
-                    class="page2-home-topkapi__img"
-                    src="website/topkapi%20scrolls/1.webp?v=20260701-full-deploy"
-                    alt="Topkapı Scroll, first detail of interlaced geometric girih patterns"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <img
-                    class="page2-home-topkapi__img"
-                    src="website/topkapi%20scrolls/2.webp?v=20260701-full-deploy"
-                    alt="Topkapı Scroll, second detail of interlaced geometric girih patterns"
-                    loading="lazy"
-                    decoding="async"
-                  />
                   <div class="page2-home-topkapi__text">
                     <h2
                       class="page2-home-topkapi__title"
@@ -567,7 +595,7 @@
                 <div
                   class="page2-footer__logo"
                   role="img"
-                  aria-label="Under Cover"
+                  aria-label="zin.under"
                 ></div>
                 <p class="page2-footer__copyright">&copy; Romi Calamaro 2026</p>
               </footer>
@@ -917,7 +945,7 @@
                   <div class="design-intro__panel-inner">
                     <p class="design-intro__text">
                       Design your own textile and join the protest for
-                      women&rsquo;s right to their own bodies.
+                      women&rsquo;s right to their own bodies
                     </p>
                     <p
                       class="design-intro__text design-intro__text--fa"
@@ -925,25 +953,24 @@
                       dir="rtl"
                     >
                       منسوجات خود را طراحی کنید و همین حالا به این اعتراض برای حق
-                      زنان بر بدن خود بپیوندید.
+                      زنان بر بدن خود بپیوندید
                     </p>
                   </div>
                   <div class="design-intro__scroll-hint">
                     <div class="design-intro__scroll-group">
-                      <p class="design-intro__scroll-text">
-                        scroll to start your design
-                      </p>
-                      <span class="design-intro__scroll-arrow" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path
-                            d="M12 4v14M6 13l6 6 6-6"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </span>
+                      <div class="design-intro__scroll-arrow-mask" aria-hidden="true">
+                        <span class="design-intro__scroll-arrow">
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                              d="M12 4v14M6 13l6 6 6-6"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="butt"
+                              stroke-linejoin="miter"
+                            />
+                          </svg>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -1127,7 +1154,7 @@
           >
             <div class="archive-section">
               <p class="archive-section__empty" id="archive-empty" hidden>
-                No saved handkerchiefs yet.
+                No saved textiles yet.
               </p>
               <div
                 class="archive-grid"
@@ -1257,6 +1284,7 @@
         --page2-margin-inline: var(--page2-gutter); /* horizontal grid margins = gutter */
         --page2-margin-block-end: clamp(2rem, 2.894vw, 4.5rem); /* 50px @ ref — bottom padding */
         --page2-space-20: var(--page2-gutter);
+        --questionnaire-next-btn-size: clamp(2.45rem, 2.836vw, 3.0625rem); /* 49px @ 1728 (−30%) */
         --page2-header-top-offset: calc(var(--page2-space-20) * 0.85); /* 17px @ ref (−15% vs gutter) */
         --page2-space-4: clamp(0.125rem, 0.231vw, 0.3125rem); /* 4px @ ref */
         --page2-footer-logo-lift: clamp(0.1875rem, 0.289vw, 0.4375rem); /* 5px @ ref — nudge the footer logo up */
@@ -1285,6 +1313,7 @@
         --page2-progress-dot-ring: clamp(1.125rem, 1.215vw, 1.5rem); /* 21px @ ref */
         --page2-progress-gap: calc(var(--page2-space-20) * 0.5); /* 10px @ ref */
         --page2-about-text-size: clamp(1.125rem, 1.273vw, 1.375rem); /* 22px @ ref — 3 grid cols */
+        --page2-about-text-size-en: clamp(1.0625rem, 1.215vw, 1.3125rem); /* 21px @ ref — English copy, slightly smaller than fa */
         --page2-logo-about-scale: 1.5;
         --page2-logo-bottom-gap: var(--page2-space-50); /* 50px @ ref — gap between logo bottom and viewport bottom on the about view */
         --page2-logo-brown-inset-top: 100%;
@@ -1313,7 +1342,7 @@
         --page2-topkapi-bg: var(--page2-bg); /* #fff — transition back to light */
         --page2-topkapi-fg: var(--color-brown);
         --page2-topkapi-padding-block: clamp(5.625rem, 8.681vw, 9.375rem); /* 150px @ 1728 */
-        --page2-topkapi-padding-bottom: clamp(5.625rem, 8.681vw, 9.375rem); /* 150px @ 1728 */
+        --page2-topkapi-padding-bottom: clamp(14.475rem, 22.34vw, 24.125rem); /* 386px @ 1728 — extends section to ~1.5x its natural height */
         --page2-topkapi-col-gap: var(--page2-gutter);
         --page2-topkapi-title-size: calc(
           (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5 *
@@ -1547,8 +1576,9 @@
         min-height: 100vh;
         padding-inline: var(--page2-margin-inline);
         padding-top: calc(
-          var(--page2-header-band-height) + var(--page2-about-top-offset)
-        );
+          var(--page2-header-band-height) + var(--page2-about-top-offset) -
+            var(--page2-space-20)
+        ); /* about paragraphs: +50px then −20px vs original */
         align-content: start;
         align-items: start;
         justify-items: start;
@@ -1590,7 +1620,7 @@
       }
 
       #page2 .page2-about-text {
-        grid-column: 2 / span 3;
+        grid-column: 2 / span 4;
         grid-row: 1;
         justify-self: start;
         text-align: left;
@@ -1599,17 +1629,18 @@
         max-width: 100%;
         font-family: "Suisse Intl", sans-serif;
         font-weight: 200;
-        font-size: var(--page2-about-text-size);
+        font-size: var(--page2-about-text-size-en);
         line-height: 1.1;
         color: var(--color-brown);
       }
 
       #page2 .page2-about-text--fa {
-        grid-column: 9 / span 3;
+        grid-column: 8 / span 4;
         grid-row: 1;
         justify-self: end;
         font-family: "Vazirmatn", sans-serif;
         font-weight: 400;
+        font-size: var(--page2-about-text-size);
         text-align: right;
       }
 
@@ -1909,7 +1940,7 @@
         fill: #fff;
       }
 
-      /* Copyright — sits on the logo row (row 2) to the right of the Under Cover
+      /* Copyright — sits on the logo row (row 2) to the right of the zin.under
          wordmark. grid-column 9 / -1 starts it flush at the left edge of the
          4th column from the right in the 12-col grid; align-self/margin pin its
          baseline to the bottom alongside the lifted logo. */
@@ -2019,7 +2050,6 @@
         z-index: 2;
         box-sizing: border-box;
         min-height: var(--page2-signs-section-min-height);
-        padding-top: var(--page2-signs-row-padding-block);
         padding-bottom: calc(var(--page2-signs-row-padding-block) * 1.5);
         padding-inline: var(--page2-margin-inline);
         background-color: var(--page2-signs-bg);
@@ -2037,7 +2067,7 @@
         position: relative;
         z-index: 2;
         box-sizing: border-box;
-        padding-top: 0;
+        padding-top: var(--page2-topkapi-padding-block);
         padding-bottom: var(--page2-topkapi-padding-bottom);
         padding-inline: var(--page2-margin-inline);
         background-color: var(--page2-topkapi-bg);
@@ -2052,7 +2082,110 @@
         align-items: center;
         box-sizing: border-box;
         width: 100%;
-        margin-top: var(--page2-topkapi-padding-block);
+      }
+
+      /* Three equal vertical rectangles filling the left 5 grid columns
+         (including the site's left margin), full section height.
+         Width math: left margin + 5 columns + 4 inner gaps = 5 × (100vw − gutter) / 12. */
+      #page2 #section-home .page2-home-topkapi__rects {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: calc(5 * (100vw - var(--page2-gutter)) / 12);
+        pointer-events: none;
+        /* White backing behind the three rectangles. As each rectangle slides in
+           from the screen's left edge, the slot it hasn't reached yet shows this
+           white backing (matching the light section). overflow:hidden clips the
+           rectangles to the container's left edge while they're still off-screen,
+           so they emerge cleanly from the edge and never create horizontal scroll. */
+        background-color: var(--page2-topkapi-bg);
+        overflow: hidden;
+      }
+
+      /* Each rectangle lives inside a fixed "slot" that clips it (overflow:
+         hidden). While a rectangle waits its turn it is translated fully out of
+         its slot to the left, so the slot clips it away completely — nothing of
+         it shows until its turn. This is what keeps the reveal strictly one at a
+         time (leftmost, then middle, then right) instead of all three showing at
+         once. The three slots are pinned at clean thirds. */
+      #page2 #section-home .page2-home-topkapi__slot {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: calc(100% / 3);
+        overflow: hidden;
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(1) {
+        left: 0;
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(2) {
+        left: calc(100% / 3);
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(3) {
+        left: calc(200% / 3);
+      }
+
+      /* The rectangle fills its slot and slides in horizontally ("drawer"
+         motion), driven by scroll from JS via a translateX CSS variable (a
+         percentage of the rectangle's own width). 0% = resting, filling the
+         slot; -100% = pushed one full width to the left, clipped away by the
+         slot. Because the slot clips it, each rectangle emerges from its slot's
+         left edge — which is the right edge of the rectangle to its left (and
+         the screen's left edge for the first one). Default 0% keeps the
+         rectangles in place if JS is absent or motion is reduced. */
+      #page2 #section-home .page2-home-topkapi__rect {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        box-sizing: border-box;
+        background-color: #fff;
+        overflow: hidden;
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(1) .page2-home-topkapi__rect {
+        transform: translateX(var(--page2-topkapi-drawer-1, 0%));
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(2) .page2-home-topkapi__rect {
+        transform: translateX(var(--page2-topkapi-drawer-2, 0%));
+      }
+
+      #page2 #section-home .page2-home-topkapi__slot:nth-child(3) .page2-home-topkapi__rect {
+        transform: translateX(var(--page2-topkapi-drawer-3, 0%));
+      }
+
+      /* Image is wider than the rectangle; the rectangle clips it via overflow
+         (object-position: left keeps the left portion visible). */
+      #page2 #section-home .page2-home-topkapi__rect-img {
+        display: block;
+        height: 100%;
+        width: calc(5 * (100vw - var(--page2-gutter)) / 24);
+        object-fit: cover;
+        object-position: left center;
+      }
+
+      /* Dark-brown divider lines: painted as a 2px overlay on each rectangle's OWN
+         right edge via ::after (instead of a border). An ::after sits ON TOP of the
+         image rather than insetting it (a border-box border would shrink the content
+         2px inward and expose a thin white gap between the image and the neighbour).
+         The image reaches the rectangle's right edge, flush against the line. This
+         draws three lines (at 1/3, 2/3 and the closing edge) with no line on the
+         far-left edge of the first rectangle. */
+      #page2 #section-home .page2-home-topkapi__rect::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 2px;
+        background-color: var(--page2-topkapi-fg);
+        pointer-events: none;
       }
 
       #page2 #section-home .page2-home-topkapi__band {
@@ -2139,13 +2272,14 @@
         margin: 0;
         font-family: "Suisse Intl", sans-serif;
         font-weight: 300;
-        font-size: var(--page2-topkapi-body-size);
+        font-size: var(--page2-about-text-size-en);
         line-height: 1.3;
         color: var(--page2-topkapi-fg);
       }
 
       #page2 #section-home .page2-home-topkapi__body--fa {
         font-family: "Vazirmatn", sans-serif;
+        font-size: var(--page2-about-text-size);
         text-align: right;
       }
 
@@ -2175,6 +2309,10 @@
         z-index: 5;
       }
 
+      #page2.page2--signs-covering .page2-home-signs__title-bar {
+        position: static;
+      }
+
       #page2 #section-home .page2-home-signs__inner {
         display: grid;
         grid-template-columns: repeat(12, 1fr);
@@ -2183,9 +2321,38 @@
         width: 100%;
       }
 
+      #page2 #section-home .page2-home-signs__sticky-boundary {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: subgrid;
+      }
+
+      #page2 #section-home .page2-home-signs__title-bar {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: subgrid;
+        box-sizing: border-box;
+        padding-top: var(--page2-signs-row-padding-block);
+        background-color: var(--page2-signs-bg);
+        position: sticky;
+        top: var(--page2-header-band-height);
+        z-index: 2;
+      }
+
+      #page2 #section-home .page2-home-signs__title-rule {
+        grid-column: 1 / -1;
+        box-sizing: border-box;
+        width: calc(
+          10 * (100% - 11 * var(--page2-gutter)) / 12 +
+            11 * var(--page2-gutter)
+        );
+        height: 1px;
+        margin-inline-start: calc((100% - 11 * var(--page2-gutter)) / 12);
+        background-color: var(--page2-signs-fg);
+      }
+
       #page2 #section-home .page2-home-signs__label {
         grid-column: 2 / 9;
-        grid-row: 1;
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
@@ -2239,12 +2406,18 @@
         display: grid;
         grid-template-columns: subgrid;
         grid-column: 1 / -1;
-        grid-row: 2;
         box-sizing: border-box;
         position: relative;
       }
 
-      #page2 #section-home .page2-home-signs__list::after {
+      #page2
+        #section-home
+        .page2-home-signs__list--prefix
+        .page2-home-signs__item:first-child::before {
+        display: none;
+      }
+
+      #page2 #section-home .page2-home-signs__list--suffix::after {
         content: "";
         position: absolute;
         bottom: 0;
@@ -2560,7 +2733,7 @@
         --frame-line-length: calc(
           (100vw - 13 * var(--page2-gutter)) / 6
         ); /* exactly 2 grid columns wide */
-        --frame-line-thickness: var(--page2-space-50); /* 50px @ ref */
+        --frame-line-thickness: calc(var(--page2-space-50) * 0.8); /* 50px @ ref, 20% shorter */
         grid-column: 10 / 12; /* right band, matches the other signs */
         display: flex;
         flex-direction: row;
@@ -2669,6 +2842,47 @@
 
       #page2
         #section-home
+        .page2-home-signs__sign-row[data-preview-id="sadness"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker,
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="sadness"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        circle {
+        fill: #fff !important;
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="hope"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        > polygon,
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="hope"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        > path {
+        fill: none !important;
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="hope"]
+        .page2-home-signs__sign-icon
+        .sign-card__hope-dots
+        circle {
+        fill: #fff !important;
+        stroke: none !important;
+      }
+
+      #page2
+        #section-home
         .page2-home-signs__sign-row[data-preview-id="pain"]
         .page2-home-signs__sign-icon
         .sign-card__single-marker,
@@ -2695,6 +2909,26 @@
         line {
         fill: none !important;
         stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="strength"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        rect {
+        fill: #fff !important;
+        stroke: #fff !important;
+      }
+
+      #page2
+        #section-home
+        .page2-home-signs__sign-row[data-preview-id="strength"]
+        .page2-home-signs__sign-icon
+        .sign-card__single-marker
+        circle {
+        fill: var(--page2-signs-bg) !important;
+        stroke: var(--page2-signs-bg) !important;
       }
 
       #page2 #section-home .page2-home-signs__sign-icon .grid-unit-icon {
@@ -2831,14 +3065,8 @@
         #section-home
         .page2-home-signs__panel-controls--compact
         .questionnaire-slider-wrap {
-        gap: 0;
-      }
-
-      #page2
-        #section-home
-        .page2-home-signs__panel-controls--compact
-        .questionnaire-slider-control {
-        gap: 0;
+        column-gap: 0;
+        row-gap: 0;
       }
 
       #page2 #section-home .page2-home-signs__control-heading {
@@ -3403,6 +3631,10 @@
       }
 
       #page2 #section-product .product-title {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        column-gap: 0.4em;
         margin: 0;
         padding-inline-start: calc(
           (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
@@ -3410,11 +3642,30 @@
         font-family: "DIN Condensed", sans-serif;
         font-size: calc(var(--page2-header-row-height) - var(--page2-space-4));
         font-weight: 700;
+        font-synthesis: none;
         line-height: 1.05;
         letter-spacing: 0.02em;
         text-transform: uppercase;
         color: var(--color-brown);
         text-align: left;
+      }
+
+      #page2 #section-product .product-title .shop-card__name-part {
+        flex: 0 0 auto;
+      }
+
+      #page2 #section-product .product-title .shop-card__name-sep {
+        flex: 0 0 auto;
+        width: 0.21em;
+        height: 0.21em;
+        background: currentColor;
+        transform: translateY(-0.06em);
+      }
+
+      #page2 #section-product .product-title .shop-card__num {
+        font-weight: 100;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
       }
 
       #page2 #section-product .product-spec {
@@ -3978,7 +4229,12 @@
         line-height: inherit;
         color: inherit;
         mix-blend-mode: inherit;
-        transform: translateY(-1px); /* optical nudge: lift only Persian up 1px to align with EN baseline */
+        /* Optical nudge: lift Persian 1px to align with EN baseline.
+           Uses position/top (not transform) so it does NOT create a containing
+           block that would break `background-attachment: fixed` on the knockout
+           photo — otherwise the Persian samples a zoomed, misaligned crop. */
+        position: relative;
+        top: -1px;
       }
 
       /* Home section: invert checkerboard — filled cells → white */
@@ -4113,7 +4369,7 @@
       }
 
       #page2 .page2-cart-trigger {
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         position: relative;
@@ -4125,6 +4381,10 @@
         background: transparent;
         color: #fff;
         cursor: pointer;
+      }
+
+      #page2.page2--section-shop .page2-cart-trigger {
+        display: flex;
       }
 
       #page2.page2--header-invert
@@ -4181,7 +4441,13 @@
         background: transparent;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: opacity var(--page2-panel-duration-in)
+          var(--page2-panel-ease-in);
+      }
+
+      #page2.page2--cart-closing .page2-cart-scrim:not([hidden]) {
+        transition-duration: var(--page2-panel-duration-out);
+        transition-timing-function: var(--page2-panel-ease-out);
       }
 
       #page2 .page2-cart-scrim[hidden] {
@@ -4206,7 +4472,8 @@
         background: var(--page2-bg);
         box-shadow: var(--page2-panel-layer-shadow-left);
         transform: translateX(100%);
-        transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: transform var(--page2-panel-duration-in)
+          var(--page2-panel-ease-in);
         overflow-y: auto;
       }
 
@@ -4216,6 +4483,11 @@
 
       #page2.page2--cart-open .page2-cart-drawer:not([hidden]) {
         transform: translateX(0);
+      }
+
+      #page2.page2--cart-closing .page2-cart-drawer:not([hidden]) {
+        transition-duration: var(--page2-panel-duration-out);
+        transition-timing-function: var(--page2-panel-ease-out);
       }
 
       #page2 .page2-cart-drawer__close {
@@ -4437,6 +4709,10 @@
           page2 && page2.querySelector(".page2-about-content");
         var homeSignsEl =
           page2 && page2.querySelector("#page2-home-signs");
+        var topkapiEl = page2 && page2.querySelector("#page2-home-topkapi");
+        var topkapiRects = topkapiEl
+          ? topkapiEl.querySelectorAll(".page2-home-topkapi__rect")
+          : [];
         var homeSignsPlaceholder = null;
         var homeSignsFlowHeightPx = 0;
         var homeSignsCoverAnchor = null;
@@ -4498,6 +4774,7 @@
           resetAboutTextReveal();
           resetAboutExitAnimation();
           resetAboutLayersSignsClip();
+          setTopkapiDrawersOpen();
           page2.classList.remove("page2--signs-passed");
           homeSignsCoverDone = false;
           homeSignsCoverReleaseScroll = 0;
@@ -4817,10 +5094,69 @@
           );
         }
 
+        function setTopkapiDrawersOpen() {
+          page2.style.setProperty("--page2-topkapi-drawer-1", "0%");
+          page2.style.setProperty("--page2-topkapi-drawer-2", "0%");
+          page2.style.setProperty("--page2-topkapi-drawer-3", "0%");
+        }
+
+        /* Slide the three Topkapı rectangles in like drawers as the section
+           scrolls into view: leftmost first, then middle, then right. Each whole
+           rectangle enters from the screen's left edge and glides right into its
+           slot. Scroll-linked (scrubbed) and reversible — scrolling back up
+           slides them back out in reverse. */
+        function updateTopkapiDrawers() {
+          if (!topkapiEl || !topkapiRects.length) return;
+          if (prefersReducedMotion || !isHomeScrollCol(scrollActiveIndex)) {
+            setTopkapiDrawersOpen();
+            return;
+          }
+
+          var pageRect = page2.getBoundingClientRect();
+          var vh = pageRect.height;
+          if (vh <= 0) {
+            setTopkapiDrawersOpen();
+            return;
+          }
+
+          var topkapiRect = topkapiEl.getBoundingClientRect();
+          var topRel = topkapiRect.top - pageRect.top;
+          /* Overall progress: 0 when the section top is a full viewport below
+             (just entering from the bottom), 1 when it has risen near the top. */
+          var span = vh * 0.85;
+          var p = (vh - topRel) / span;
+          if (p < 0) p = 0;
+          else if (p > 1) p = 1;
+
+          var i;
+          for (i = 0; i < topkapiRects.length && i < 3; i++) {
+            /* Sequential thirds: rect 0 slides in over [0, 1/3], rect 1 over
+               [1/3, 2/3], rect 2 over [2/3, 1]. */
+            var local = (p - i / 3) * 3;
+            if (local < 0) local = 0;
+            else if (local > 1) local = 1;
+            /* easeOutCubic for a softer drawer glide. */
+            var eased = 1 - Math.pow(1 - local, 3);
+            /* Closed offset (in the rectangle's own width): -100% pushes the
+               rectangle one full width to the left, entirely out of its slot, so
+               the slot's overflow:hidden clips it away until its turn. As its
+               stage runs the offset eases to 0 and it slides out from its slot's
+               left edge (the right edge of the rectangle to its left; the
+               screen's edge for the first one). */
+            var closedOffset = -100;
+            var translate = closedOffset * (1 - eased);
+            page2.style.setProperty(
+              "--page2-topkapi-drawer-" + (i + 1),
+              translate + "%"
+            );
+          }
+        }
+
         function updateHomeOverlayScrollPolish() {
           updateAboutExitAnimation();
           updateAboutTextReveal();
           updateHomeSignsScrollState();
+          updateTopkapiDrawers();
           if (!homeOverlay || prefersReducedMotion) return;
           var heroContent =
             homeSection && homeSection.querySelector(".page2-home-content");
@@ -5714,6 +6050,7 @@
           updateAboutMediaOpen();
           updateAboutTextReveal();
           updateAboutExitAnimation();
+          updateTopkapiDrawers();
         }
 
         function clampHomeProgress(value) {
@@ -6035,18 +6372,32 @@
         if (!page2 || !bgContainer) return;
 
         var HOME_BG_IMAGES = [
-          "1.jpeg",
+          "1.webp",
           "2.webp",
-          "3.jpeg",
-          "4.jpeg",
-          "5.jpeg",
+          "3.webp",
+          "4.webp",
+          "5.webp",
           "6.webp",
           "7.webp",
           "8.webp",
           "9.webp",
           "10.webp",
           "11.webp",
+          "12.webp",
+          "13.webp",
         ];
+
+        // Cache-buster: bump this when a home image is replaced but keeps its
+        // filename, so browsers fetch the new file instead of the cached one.
+        var HOME_BG_VERSION = "9";
+        function homeBgUrl(filename) {
+          return (
+            "website/home/" +
+            encodeURIComponent(filename) +
+            "?v=" +
+            HOME_BG_VERSION
+          );
+        }
 
         // Reveal the soft drop-shadow only once the first hero image is ready, so the
         // white logo/intro/markers never show orphaned shadows over the blank hero.
@@ -6057,8 +6408,7 @@
           var firstImage = new Image();
           firstImage.onload = markHomeBgReady;
           firstImage.onerror = markHomeBgReady; // fail open — never leave content hidden
-          firstImage.src =
-            "website/home/" + encodeURIComponent(HOME_BG_IMAGES[0]);
+          firstImage.src = homeBgUrl(HOME_BG_IMAGES[0]);
           if (firstImage.complete) markHomeBgReady(); // already cached
         })();
 
@@ -6067,7 +6417,7 @@
           slide.className =
             "page2-home-bg__slide" + (index === 0 ? " is-active" : "");
           slide.style.backgroundImage =
-            "url('website/home/" + encodeURIComponent(filename) + "')";
+            "url('" + homeBgUrl(filename) + "')";
           bgContainer.appendChild(slide);
         });
 
@@ -6083,6 +6433,13 @@
         }
 
         var HOME_BG_INTERVAL_MS = 5000;
+        // Must match the .page2-home-bg__slide transform transition in CSS (1.2s).
+        var HOME_BG_SLIDE_MS = 1200;
+        // Swap the header text this many ms before the slide fully settles. The
+        // slide eases out (slows down) at the very end, so the new photo already
+        // looks in place a fraction before transitionend fires — swapping a touch
+        // early makes the text feel simultaneous instead of lagging behind.
+        var HOME_BG_TEXT_LEAD_MS = 240;
         var currentIndex = 0;
         var timerId = null;
         var prefersReducedMotion = window.matchMedia(
@@ -6094,6 +6451,17 @@
           slide.style.transition = "none";
           void slide.offsetWidth;
           slide.style.transition = "";
+        }
+
+        // Push the active slide's image into --page2-home-bg. That variable
+        // fills the header title letterforms (and the cart icon) via
+        // background-clip: text, so this is what makes the text "swap" images.
+        function applyTextBg(activeSlide) {
+          if (!activeSlide) return;
+          var bgImage = activeSlide.style.backgroundImage;
+          if (bgImage) {
+            page2.style.setProperty("--page2-home-bg", bgImage);
+          }
         }
 
         function setActiveSlide(index, previousIndex) {
@@ -6116,10 +6484,41 @@
           });
           var activeSlide = slides[index];
           if (!activeSlide) return;
-          var bgImage = activeSlide.style.backgroundImage;
-          if (bgImage) {
-            page2.style.setProperty("--page2-home-bg", bgImage);
+
+          // No slide animation (reduced motion, or the very first paint):
+          // swap the text background immediately so it never lags.
+          var animating =
+            !prefersReducedMotion &&
+            previousIndex !== undefined &&
+            previousIndex !== index;
+          if (!animating) {
+            applyTextBg(activeSlide);
+            return;
           }
+
+          // While the big photo slides across (1.2s), keep the header text on the
+          // outgoing image and swap it right as the new photo settles, so the two
+          // stay in sync instead of the text jumping early. We fire a touch before
+          // the very end (a timer), with transitionend as a safety fallback, and a
+          // once-guard so it only swaps a single time.
+          var swapped = false;
+          var swapTimer = null;
+          var doSwap = function () {
+            if (swapped) return;
+            swapped = true;
+            window.clearTimeout(swapTimer);
+            activeSlide.removeEventListener("transitionend", onArrive);
+            applyTextBg(activeSlide);
+          };
+          var onArrive = function (event) {
+            if (event.propertyName !== "transform") return;
+            doSwap();
+          };
+          activeSlide.addEventListener("transitionend", onArrive);
+          swapTimer = window.setTimeout(
+            doSwap,
+            Math.max(0, HOME_BG_SLIDE_MS - HOME_BG_TEXT_LEAD_MS)
+          );
         }
 
         slides.forEach(function (slide) {
@@ -6177,11 +6576,11 @@
     <script defer src="js/sectionProgression.js?v=20260625-grid-unlock-fix"></script>
     <script defer src="js/feelingsSpiderChart.js"></script>
     <script defer src="js/questionnaireStrings.js?v=20260701-full-deploy"></script>
-    <script defer src="js/questionnaire.js?v=20260701-full-deploy"></script>
+    <script defer src="js/questionnaire.js?v=20260701-profile-underline-v3"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
-    <script defer src="js/productComboSpec.js?v=20260701-full-deploy"></script>
+    <script defer src="js/productComboSpec.js?v=20260701-product-spec-rows"></script>
     <script defer src="js/app.js?v=20260701-full-deploy"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
     <script defer src="js/signsPage.js?v=20260701-full-deploy"></script>

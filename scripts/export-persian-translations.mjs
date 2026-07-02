@@ -88,12 +88,12 @@ function collectSitePairs() {
     { en: "design", fa: "طراحی" },
     { en: "archive", fa: "بایگانی" },
     {
-      en: "Modular fashion textiles expressing solidarity with Iranian women's fight for bodily autonomy.",
-      fa: "منسوجات مدولار مُد که همبستگی با مبارزهٔ زنان ایرانی برای خودمختاری بر بدنشان ابراز می‌کند.",
+      en: "Modular textiles expressing solidarity with Iranian women's fight for bodily autonomy.",
+      fa: "منسوجات مدولار که همبستگی با مبارزهٔ زنان ایرانی برای خودمختاری بر بدنشان ابراز می‌کند.",
     },
     {
-      en: "Under is a modular textile brand that creates adaptable scarves and wraps that express solidarity and support for Iranian women. Its designs are based on a visual sign language that translates emotional states into graphic patterns, giving voice to women for whom Iran is part of their identity.\nAll designs on this website were created by Iranian women living outside Iran.",
-      fa: "زیر یک برند منسوجات مدولار است که شال‌ها و پوشش‌هایی خلق می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند. طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران بخشی از هویتشان است، صدا می‌دهد.\nهمهٔ طراحی‌های این وب‌سایت توسط زنان ایرانی ساکن خارج از ایران خلق شده‌اند.",
+      en: "Under is a modular textile system that creates adaptable scarves, wraps, and head coverings that express solidarity and support for Iranian women. Its designs are based on a visual sign language that translates emotional states into graphic patterns, giving voice to women for whom Iran is part of their identity.\nAll designs on this website were created by Iranian women living outside Iran.",
+      fa: "زیر یک سامانهٔ منسوجات مدولار است که شال‌ها، پوشش‌ها و روسری‌هایی خلق می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند. طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران بخشی از هویتشان است، صدا می‌دهد.\nهمهٔ طراحی‌های این وب‌سایت توسط زنان ایرانی ساکن خارج از ایران خلق شده‌اند.",
     },
     {
       en: "Design your own textile and join the protest for women's right to their own bodies.",

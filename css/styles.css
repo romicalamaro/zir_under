@@ -1198,6 +1198,9 @@ button.sidebar__grid-btn {
   --design-intro-scroll-peek: calc(
     var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)) * 1.5
   ); /* 75px @ ref — next intro panel peeks above fold */
+  --design-intro-panel-2-lift: calc(
+    var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)) * 2
+  ); /* 100px @ ref — panel 2 text block sits higher */
   position: absolute;
   top: var(
     --page2-header-band-height,
@@ -1243,6 +1246,13 @@ button.sidebar__grid-btn {
 
 .design-intro__panel:nth-child(2) {
   z-index: 2;
+  top: var(--design-intro-scroll-peek);
+  height: calc(
+    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
+  );
+  min-height: calc(
+    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
+  );
 }
 
 .design-intro__panel--light:not(.design-intro__panel--headscarf) {
@@ -1331,8 +1341,7 @@ button.sidebar__grid-btn {
   pointer-events: none;
 }
 
-/* Group text + arrow, shrunk to the text width and started at the 5th column
-   from the right, so the centered arrow lands under the middle of the sentence. */
+/* Group arrow in the right grid band (column 8 onward). */
 .design-intro__scroll-group {
   grid-column: 8 / -1;
   justify-self: start;
@@ -1343,31 +1352,41 @@ button.sidebar__grid-btn {
   align-items: center;
 }
 
-.design-intro__scroll-text {
-  margin: 0;
-  text-align: left;
-  font-family: "Suisse Intl", sans-serif;
-  font-weight: 200;
-  /* Half of --design-intro-text-size (defined on .design-intro__text), inlined
-     here because that token does not cascade onto this sibling element. */
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5 * 0.5
-  );
-  line-height: 1.15;
-  color: var(--page2-bg, #fff);
+.design-intro__scroll-arrow-mask {
+  --design-intro-scroll-arrow-size: calc(var(--page2-space-20, 1.25rem) * 3);
+  overflow: hidden;
+  /* Match rendered SVG height (viewBox 24×24, stem+chevron ≈ 75% of width) */
+  height: calc(var(--design-intro-scroll-arrow-size) * 0.75);
 }
 
-/* Small white arrow, centered under the middle of the sentence */
+/* White arrow — 3× base size */
 .design-intro__scroll-arrow {
   display: inline-flex;
-  margin-top: var(--page2-space-4);
   color: var(--page2-bg, #fff);
   pointer-events: none;
+  opacity: 1;
+  animation: design-intro-scroll-arrow-slide 1.6s ease-in-out infinite;
 }
 
 .design-intro__scroll-arrow svg {
-  width: var(--page2-space-20, 1.25rem);
+  width: var(--design-intro-scroll-arrow-size);
   height: auto;
+}
+
+@keyframes design-intro-scroll-arrow-slide {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-intro__scroll-arrow {
+    animation: none;
+    transform: none;
+  }
 }
 
 /* Large studio display (2048×1152 physical @ dpr2 = 1024×576 CSS px): a wide,
@@ -1432,6 +1451,10 @@ button.sidebar__grid-btn {
   .design-intro__text:not(.design-intro__text--secondary) {
   grid-column: 1 / -1;
   justify-self: center;
+}
+
+.design-intro__panel:nth-child(2) .design-intro__panel-inner {
+  transform: translateY(calc(-1 * var(--design-intro-panel-2-lift)));
 }
 
 .design-intro__panel--brown .design-intro__panel-inner {
@@ -1533,7 +1556,6 @@ button.sidebar__grid-btn {
   .questionnaire-slider-wrap,
   .questionnaire-feelings-spider,
   .questionnaire-palette-picker,
-  .questionnaire-options--grid-type,
   .questionnaire-feelings-hope-options
 ) {
   direction: ltr;
@@ -1544,6 +1566,19 @@ button.sidebar__grid-btn {
 #questionnaire-canvas-host,
 .questionnaire-panel__canvas .stage-wrap {
   direction: ltr;
+}
+
+/* Persian (fa) only: swap sides — questionnaire text on the right, handkerchief
+   canvas on the left. Position-only override of the default grid columns. */
+.questionnaire-panel--locale-fa .questionnaire-panel__scroll {
+  grid-column: 7 / -1;
+  /* Mirror the full-bleed to the right edge (default bleeds left) */
+  margin-left: 0;
+  margin-right: calc(-1 * var(--page2-margin-inline, 1.25rem));
+}
+
+.questionnaire-panel--locale-fa .questionnaire-panel__canvas {
+  grid-column: 1 / span 6;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1655,7 +1690,7 @@ button.sidebar__grid-btn {
 #section-design.section-design--intro-slide-active
   .design-intro__panel:nth-child(2)
   .design-intro__panel-inner {
-  transform: scale(0.94);
+  transform: translateY(calc(-1 * var(--design-intro-panel-2-lift))) scale(0.94);
   opacity: 0.75;
 }
 
@@ -1713,9 +1748,19 @@ button.sidebar__grid-btn {
   z-index: 2;
   pointer-events: none;
   --questionnaire-text-scale: 1.5;
+  /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20% */
+  --questionnaire-small-text-multiplier: 0.546;
+  --questionnaire-vertical-inset: var(--page2-space-20, 1.25rem); /* 20px @ ref */
   /* Set by syncQuestionnaireCardHeights() from longest header/body content */
   --questionnaire-card-header-height: auto;
+  --questionnaire-card-expanded-header-height: auto;
   --questionnaire-card-expanded-height: auto;
+  --questionnaire-card-border-width: 1px;
+  /* Widest collapsed section number; keeps open headers aligned when title scale grows */
+  --questionnaire-card-num-column-width: auto;
+  /* Duration of the folder drop-down open animation; matches the section
+     canvas transition (SCROLL_SNAP_ANIM_MS in js/questionnaire.js). */
+  --questionnaire-open-anim: 420ms;
 }
 
 .questionnaire-panel--measuring .questionnaire-card,
@@ -1728,6 +1773,11 @@ button.sidebar__grid-btn {
 .questionnaire-panel--measuring .questionnaire-card__header {
   height: auto !important;
   min-height: 0 !important;
+}
+
+.questionnaire-panel--measuring .questionnaire-card__num {
+  width: auto !important;
+  min-width: 0 !important;
 }
 
 .questionnaire-panel--measuring .questionnaire-card__body {
@@ -1768,7 +1818,11 @@ button.sidebar__grid-btn {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   pointer-events: auto;
-  padding-top: var(--page2-space-50, clamp(2rem, 2.894vw, 4.5rem)); /* 50px @ ref — below Design your own */
+  padding-top: var(--questionnaire-vertical-inset); /* 20px @ ref — top inset above stack */
+  padding-bottom: var(--questionnaire-vertical-inset); /* 20px @ ref — bottom inset below stack (outside border) */
+  /* Left full-bleed: extend scroll column to viewport edge without shifting content outside its box */
+  margin-left: calc(-1 * var(--page2-margin-inline, 1.25rem));
+  width: calc(100% + var(--page2-margin-inline, 1.25rem));
 }
 
 .questionnaire-panel__canvas {
@@ -1801,6 +1855,14 @@ button.sidebar__grid-btn {
 
 .questionnaire-family-dot-options {
   margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  column-gap: var(--page2-gutter, 1.25rem);
+  row-gap: 0.65rem;
+  /* Reclaim the card body's right gutter so the 6 tracks line up exactly
+     with page grid columns 1-6 (content box is otherwise 1 gutter short). */
+  width: calc(100% + var(--page2-gutter, 1.25rem));
+  max-width: none;
 }
 
 /* Family / friends in Iran page (questionnaire): left-align each answer so the
@@ -1808,16 +1870,27 @@ button.sidebar__grid-btn {
 .questionnaire-family-dot-options .family-dot-option {
   align-items: flex-start;
   text-align: left;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
+/* RTL: fill columns right-to-left so options pack from the right and align to
+   page columns 6-1 (mirrors .questionnaire-options--grid-type). */
+#questionnaire-scroll[lang="fa"] .questionnaire-family-dot-options {
+  direction: rtl;
+}
+
+/* RTL scroll: flex-start = inline-start = right edge (flex-end would align left). */
 #questionnaire-scroll[lang="fa"] .questionnaire-family-dot-options .family-dot-option {
-  align-items: flex-end;
+  align-items: flex-start;
   text-align: right;
 }
 
 #questionnaire-scroll[lang="fa"]
   .questionnaire-family-dot-options
   .family-dot-option__label {
+  width: 100%;
   text-align: right;
 }
 
@@ -1876,7 +1949,8 @@ button.sidebar__grid-btn {
   font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
 }
@@ -1898,23 +1972,28 @@ button.sidebar__grid-btn {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-block-end: var(--page2-space-20, 1.25rem);
+  /* No outer frame: the open section keeps only a single inner separator line
+     (see .questionnaire-card.is-expanded); closed red folders fill full-width. */
+  border: none;
 }
 
 .questionnaire-card {
   box-sizing: border-box;
   border: none;
-  border-bottom: 1px solid var(--color-brown);
   overflow: hidden;
-}
-
-.questionnaire-card:first-child {
-  border-top: 1px solid var(--color-brown);
 }
 
 .questionnaire-card:not(.is-expanded) {
   height: var(--questionnaire-card-header-height);
   min-height: var(--questionnaire-card-header-height);
+  /* Closed section folders use the same red as the site footer/header banner */
+  background: var(--page2-header-shop-banner-surface, #ec2f1e);
+  color: #fff;
+  border-bottom: 1px solid #fff;
+}
+
+.questionnaire-card:not(.is-expanded):last-child {
+  border-bottom: none;
 }
 
 .questionnaire-card.is-expanded {
@@ -1923,6 +2002,53 @@ button.sidebar__grid-btn {
   height: var(--questionnaire-card-expanded-height);
   min-height: var(--questionnaire-card-expanded-height);
   max-height: var(--questionnaire-card-expanded-height);
+  background: var(--page2-bg, #fff);
+  color: var(--color-brown);
+  /* Open section keeps only the inner separator line toward the canvas.
+     English (default): questionnaire is on the left, so the line sits on the right. */
+  border: none;
+  border-right: 1px solid var(--color-brown);
+}
+
+/* Persian: the questionnaire moves to the right and the canvas to the left,
+   so the separator line moves to the left edge of the open section. */
+.questionnaire-panel--locale-fa .questionnaire-card.is-expanded {
+  border-right: none;
+  border-left: 1px solid var(--color-brown);
+}
+
+/* Drop-down reveal when a section folder opens. `is-opening` is added by JS
+   only on a genuine closed -> open transition (and skipped under reduced
+   motion), so the animation plays on every folder open but never replays while
+   already inside a section. The card grows from its collapsed header height to
+   its expanded height; because the card clips its overflow, the body content is
+   progressively revealed as it slides down. */
+.questionnaire-card.is-opening {
+  animation: questionnaire-card-drop var(--questionnaire-open-anim, 420ms)
+    cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* While the card is still shorter than its content during the grow, keep the
+   body from briefly flashing its own scrollbar. */
+.questionnaire-card.is-opening .questionnaire-card__body {
+  overflow: hidden;
+}
+
+/* Only a `from` keyframe is given: the implicit `to` uses the card's live
+   expanded height, so the animation always lands on the correct per-section
+   height set by syncQuestionnaireCardHeights(). */
+@keyframes questionnaire-card-drop {
+  from {
+    height: var(--questionnaire-card-header-height);
+    min-height: var(--questionnaire-card-header-height);
+    max-height: var(--questionnaire-card-header-height);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .questionnaire-card.is-opening {
+    animation: none;
+  }
 }
 
 .questionnaire-card--light {
@@ -1944,9 +2070,8 @@ button.sidebar__grid-btn {
   min-height: var(--questionnaire-card-header-height);
   height: var(--questionnaire-card-header-height);
   padding-block: var(--page2-space-4, 0.25rem);
-  /* Left padding = 0 so the number + title sit flush against the left edge of
-     the leftmost grid column (was indented by one column + gutter). */
-  padding-inline: 0 var(--page2-gutter, 1.25rem);
+  /* Left inset matches grid margin so text stays aligned while brown folders bleed left */
+  padding-inline: var(--page2-margin-inline, 1.25rem) var(--page2-gutter, 1.25rem);
   border: none;
   background: transparent;
   color: inherit;
@@ -1959,6 +2084,15 @@ button.sidebar__grid-btn {
 
 .questionnaire-card.is-expanded .questionnaire-card__header {
   cursor: default;
+  min-height: var(--questionnaire-card-expanded-header-height);
+  height: var(--questionnaire-card-expanded-header-height);
+  /* Card border insets content; tuck padding so num/title match collapsed folders */
+  padding-inline-start: calc(
+    var(--page2-margin-inline, 1.25rem) - var(--questionnaire-card-border-width, 1px)
+  );
+  padding-inline-end: calc(
+    var(--page2-gutter, 1.25rem) - var(--questionnaire-card-border-width, 1px)
+  );
 }
 
 .questionnaire-card.is-locked .questionnaire-card__header {
@@ -1980,9 +2114,12 @@ button.sidebar__grid-btn {
 .questionnaire-card__title {
   font-family: "PP Monument Condensed", sans-serif;
   /* Section/folder title size: enlarged to 1.3, then reduced 30% -> 0.91
-     (base multiplier was 0.65). Controls PROFILE, GRID, etc. heading size. */
+     (base multiplier was 0.65). Controls PROFILE, GRID, etc. heading size.
+     --questionnaire-card-title-scale is 1 when collapsed, 1.5 when expanded. */
+  --questionnaire-card-title-scale: 1;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.91 *
+      var(--questionnaire-card-title-scale, 1) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -1991,8 +2128,35 @@ button.sidebar__grid-btn {
   text-transform: uppercase;
 }
 
+.questionnaire-card.is-expanded .questionnaire-card__num,
+.questionnaire-card.is-expanded .questionnaire-card__title {
+  --questionnaire-card-title-scale: 1.5;
+}
+
 .questionnaire-card__num {
   flex-shrink: 0;
+  width: var(--questionnaire-card-num-column-width, auto);
+  min-width: var(--questionnaire-card-num-column-width, auto);
+  text-align: start;
+}
+
+/* Small square marker between the number and the title. Sized in em so it grows
+   with the header text (and its expanded scale). `currentColor` makes it white
+   on closed red folders and brown when the section is open — matching the text. */
+.questionnaire-card__dot {
+  flex-shrink: 0;
+  width: 0.28em;
+  height: 0.28em;
+  background: currentColor;
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.91 *
+      var(--questionnaire-card-title-scale, 1) *
+      var(--questionnaire-text-scale, 1)
+  );
+}
+
+.questionnaire-card.is-expanded .questionnaire-card__dot {
+  --questionnaire-card-title-scale: 1.5;
 }
 
 .questionnaire-card__title {
@@ -2006,10 +2170,12 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-card__body {
-  /* Flush-left: questions + answers align to the leftmost column edge (matching
-     the section header). Right side keeps a gutter so text clears the canvas. */
-  padding-inline: 0 var(--page2-gutter, 1.25rem);
-  padding-block: 0 var(--page2-space-20, 1.25rem);
+  /* Right gutter clears canvas; left inset matches grid margin (scroll column bleeds left) */
+  padding-inline: var(--page2-margin-inline, 1.25rem) var(--page2-gutter, 1.25rem);
+  /* Symmetric 20px top/bottom inset so an open section has equal breathing room
+     above and below its content. Measured height must match the live padding,
+     so this base rule (used during measuring) mirrors the expanded rule below. */
+  padding-block: var(--page2-space-20, 1.25rem) var(--page2-space-20, 1.25rem);
   min-height: 0;
 }
 
@@ -2020,7 +2186,14 @@ button.sidebar__grid-btn {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding-block: 1.5rem var(--page2-space-20, 1.25rem);
+  /* Equal top/bottom inset (20px @ ref) around the section's content. */
+  padding-block: var(--page2-space-20, 1.25rem) var(--page2-space-20, 1.25rem);
+  padding-inline-start: calc(
+    var(--page2-margin-inline, 1.25rem) - var(--questionnaire-card-border-width, 1px)
+  );
+  padding-inline-end: calc(
+    var(--page2-gutter, 1.25rem) - var(--questionnaire-card-border-width, 1px)
+  );
 }
 
 /* The question content grows to fill the free space inside the body, which
@@ -2032,16 +2205,16 @@ button.sidebar__grid-btn {
   flex: 1 0 auto;
 }
 
-/* Fixed 30px (@ ref) gap between the "Next" button and the section's bottom
-   separator line. Applied to both the measured (base) and the live expanded
-   body so the JS height-fit logic stays in sync. */
+/* "Next"-button sections keep the same equal 20px bottom inset as every other
+   section (the next-footer's own margin-top provides the gap above the button),
+   so the open section has symmetric top/bottom spacing around its content. */
 .questionnaire-card__body:has(.questionnaire-card__next-footer) {
-  padding-bottom: var(--page2-space-30);
+  padding-bottom: var(--page2-space-20, 1.25rem);
 }
 
 .questionnaire-card.is-expanded
   .questionnaire-card__body:has(.questionnaire-card__next-footer) {
-  padding-bottom: var(--page2-space-30);
+  padding-bottom: var(--page2-space-20, 1.25rem);
 }
 
 #section-design.section-design--questionnaire-started > .app-shell > .main:empty {
@@ -2156,7 +2329,8 @@ button.sidebar__grid-btn {
 
 .questionnaire-options--multi .questionnaire-option {
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   padding: 0.45rem 0.4rem;
@@ -2164,19 +2338,45 @@ button.sidebar__grid-btn {
   hyphens: auto;
 }
 
+/* One page-grid column wide; row spans page columns 1–6.
+   EN (LTR grid): tracks 1–4. FA (RTL grid): same tracks, anchored right → cols 6–3. */
 .questionnaire-options--grid-type {
-  flex-wrap: nowrap;
-  /* Icons take 70% of the row (4 × 17.5%); space-between turns the remaining
-     30% into equal gaps, so they still span the full width. */
-  gap: 0;
-  justify-content: space-between;
+  --q-page-col: calc(
+    (100vw - 2 * var(--page2-margin-inline, 1.25rem) - 11 * var(--page2-gutter, 1.25rem)) /
+      12
+  );
+  display: grid;
+  grid-template-columns: repeat(6, var(--q-page-col));
+  column-gap: var(--page2-gutter, 1.25rem);
+  width: calc(6 * var(--q-page-col) + 5 * var(--page2-gutter, 1.25rem));
 }
 
-/* More specific than ".questionnaire-options--row .questionnaire-option" so the
-   fixed 17.5% width wins over the default flex: 1 1 auto. */
 .questionnaire-options--grid-type .questionnaire-option--grid-icon {
-  flex: 0 0 17.5%;
-  width: 17.5%;
+  flex: none;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.questionnaire-options--grid-type .questionnaire-option--grid-icon:nth-child(1) {
+  grid-column: 1;
+}
+
+.questionnaire-options--grid-type .questionnaire-option--grid-icon:nth-child(2) {
+  grid-column: 2;
+}
+
+.questionnaire-options--grid-type .questionnaire-option--grid-icon:nth-child(3) {
+  grid-column: 3;
+}
+
+.questionnaire-options--grid-type .questionnaire-option--grid-icon:nth-child(4) {
+  grid-column: 4;
+}
+
+/* FA questionnaire: RTL grid so tracks 1–4 map to page columns 6→3 (right-aligned with questions). */
+#questionnaire-scroll[lang="fa"] .questionnaire-options--grid-type {
+  direction: rtl;
 }
 
 .questionnaire-option--grid-icon {
@@ -2186,6 +2386,7 @@ button.sidebar__grid-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  direction: ltr; /* keep icon geometry upright inside RTL questionnaire rows */
   font-size: 0;
   white-space: normal;
   hyphens: auto;
@@ -2646,7 +2847,46 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__trigger {
+  justify-content: flex-start;
+  padding: 0 0.15em
+    calc(var(--madlibs-underline-gap) + var(--madlibs-underline-thickness))
+    0.15em;
+}
+
+/* Multi-choice (select) dropdown caret: push it to the trailing edge of the
+   underline (right in LTR, left/end in RTL) so it sits after the selected text
+   instead of overlapping it, and lift it a small distance above the line.
+   The name-mode field keeps its own caret layout, so it is excluded here.
+   margin-inline-start:auto absorbs the free space in the flex row, moving the
+   caret to the far end regardless of the trigger's flex-start alignment. */
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-dropdown:not(.questionnaire-madlibs-name-mode)
+  .questionnaire-madlibs-dropdown__caret {
+  margin-inline-start: auto;
+  margin-bottom: 0.35em;
+}
+
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-dropdown.is-profile-blank-empty
+  .questionnaire-madlibs-dropdown__trigger,
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-name-mode.is-profile-blank-empty
+  .questionnaire-madlibs-name-mode__surface {
+  width: 100%;
+}
+
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-dropdown:not(.is-profile-blank-empty)
+  .questionnaire-madlibs-dropdown__trigger,
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-name-mode:not(.is-profile-blank-empty)
+  .questionnaire-madlibs-name-mode__surface {
   width: auto;
+}
+
+.questionnaire-profile-madlibs input.questionnaire-madlibs-blank:not(.questionnaire-madlibs-dropdown),
+.questionnaire-profile-madlibs .questionnaire-madlibs-name-mode__input {
+  field-sizing: fixed;
 }
 
 .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__label {
@@ -2888,8 +3128,7 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
-/* "Next" button — sits at the bottom-right (column 6 area) of each section,
-   advancing to the next section. Styled to match .questionnaire-archive-btn. */
+/* "Next" button — circular outline with arrow, bottom-right of each section. */
 .questionnaire-card__next-footer {
   display: flex;
   justify-content: flex-end;
@@ -2897,24 +3136,53 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-card__next {
-  padding: clamp(0.35rem, 0.486vw, 0.525rem)
-    clamp(0.875rem, 1.215vw, 1.3125rem); /* match product-order-btn */
-  font-family: "Suisse Intl Light", sans-serif;
-  font-size: clamp(0.7rem, 0.81vw, 0.875rem);
-  font-weight: normal;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #fff;
-  background: var(--color-brown);
-  border: 1px solid var(--color-brown);
-  border-radius: 0;
+  box-sizing: border-box;
+  width: var(--questionnaire-next-btn-size, clamp(2.45rem, 2.836vw, 3.0625rem));
+  height: var(--questionnaire-next-btn-size, clamp(2.45rem, 2.836vw, 3.0625rem));
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--color-brown);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
+.questionnaire-card__next-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.questionnaire-card__next-icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.questionnaire-card__next-icon circle,
+.questionnaire-card__next-icon path {
+  stroke: currentColor;
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
 .questionnaire-card__next:hover {
-  background: #fff;
-  color: var(--color-brown);
+  background: var(--color-brown);
+  color: #fff;
+}
+
+/* On hover the filled circle already provides the shape, so drop the ring
+   outline and keep only the arrow visible. */
+.questionnaire-card__next:hover .questionnaire-card__next-icon circle {
+  stroke: none;
 }
 
 .questionnaire-card__next:focus-visible {
@@ -2922,17 +3190,19 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
-/* On brown-background cards the filled brown button would disappear, so invert
-   the palette to keep it visible. */
+/* On brown-background cards invert outline/arrow to white for contrast. */
 .questionnaire-card--brown .questionnaire-card__next {
-  color: var(--color-brown);
-  background: var(--page2-bg, #fff);
-  border-color: var(--page2-bg, #fff);
+  color: var(--page2-bg, #fff);
+  background: transparent;
 }
 
 .questionnaire-card--brown .questionnaire-card__next:hover {
-  background: var(--color-brown);
-  color: var(--page2-bg, #fff);
+  background: var(--page2-bg, #fff);
+  color: var(--color-brown);
+}
+
+#questionnaire-scroll[lang="fa"] .questionnaire-card__next-icon-wrap {
+  transform: scaleX(-1);
 }
 
 .questionnaire-step--complete .questionnaire-step__heading {
@@ -2968,14 +3238,16 @@ button.sidebar__grid-btn {
    so the bottom padding mirrors it. Only affects this section. */
 .questionnaire-card[data-section-key="submitOrder"].is-expanded {
   height: auto;
-  min-height: var(--questionnaire-card-header-height);
+  min-height: var(--questionnaire-card-expanded-header-height);
   max-height: none;
 }
 
 .questionnaire-card[data-section-key="submitOrder"].is-expanded
   .questionnaire-card__body {
   padding-block: 1.5rem
-    calc(var(--questionnaire-card-header-height) + 1.5rem + 0.75rem);
+    calc(
+      var(--questionnaire-card-expanded-header-height) + 1.5rem + 0.75rem
+    );
 }
 
 .questionnaire-archive-confirm {
@@ -3175,17 +3447,24 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-slider-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  width: 100%;
-  /* Limit to ~3 of the 6 question-area grid columns (half width) */
-  max-width: 50%;
+  --q-page-col: calc(
+    (100vw - 2 * var(--page2-margin-inline, 1.25rem) - 11 * var(--page2-gutter, 1.25rem)) /
+      12
+  );
+  --questionnaire-slider-track-span: calc(
+    3 * var(--q-page-col) + 2 * var(--page2-gutter, 1.25rem)
+  );
+  display: grid;
+  grid-template-columns: var(--questionnaire-slider-track-span) auto;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
 }
 
-/* Feelings sliders sit beside the spider chart — keep them full width */
-.questionnaire-step--feelings-all .questionnaire-slider-wrap {
-  max-width: none;
+.questionnaire-slider-wrap:not(:has(.questionnaire-slider-output)) {
+  grid-template-columns: var(--questionnaire-slider-track-span);
 }
 
 .questionnaire-slider-range-labels {
@@ -3193,22 +3472,30 @@ button.sidebar__grid-btn {
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
-  /* Sit below the slider track instead of above it */
-  order: 2;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
 }
 
 .questionnaire-slider-range-label {
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
   line-height: 1.3;
   color: var(--color-brown);
-  /* Cap each label at ~one grid column so long text wraps to two lines */
-  max-width: 33%;
+  /* Cap each end label at one page-grid column */
+  max-width: var(--q-page-col, 33%);
   overflow-wrap: break-word;
+}
+
+.questionnaire-slider-range-label:not(.questionnaire-slider-range-label--end) {
+  text-align: left;
 }
 
 .questionnaire-slider-range-label--end {
@@ -3216,16 +3503,14 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-slider-control {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  width: 100%;
+  display: contents;
 }
 
 .questionnaire-slider-track {
   --bar-fill: 0%;
   position: relative;
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -3332,6 +3617,8 @@ button.sidebar__grid-btn {
 }
 
 .questionnaire-slider-output {
+  grid-column: 2;
+  grid-row: 1;
   flex-shrink: 0;
   min-width: 1.5rem;
   font-family: "PP Monument Condensed", sans-serif;
@@ -3359,7 +3646,6 @@ button.sidebar__grid-btn {
   --palette-dot-gap-default: calc(
     var(--palette-dot-size) * var(--palette-dot-overlap) * -1
   );
-  --palette-dot-gap-dot-hover: 10px;
   display: flex;
   flex-wrap: nowrap;
   gap: 0;
@@ -3415,29 +3701,17 @@ button.sidebar__grid-btn {
 
 .questionnaire-palette-dot + .questionnaire-palette-dot {
   margin-inline-start: var(--palette-dot-gap-default);
-  transition: margin-inline-start 0.25s ease;
 }
 
-.questionnaire-palette-dot:not(:first-child):hover,
-.questionnaire-palette-dot:not(:first-child).is-spread-before {
-  margin-inline-start: var(--palette-dot-gap-dot-hover);
-}
-
-.questionnaire-palette-dot:hover + .questionnaire-palette-dot,
-.questionnaire-palette-dot.is-spread-after {
-  margin-inline-start: var(--palette-dot-gap-dot-hover);
-}
-
-.questionnaire-palette-dot:not(:first-child):focus-visible {
-  margin-inline-start: var(--palette-dot-gap-dot-hover);
-}
-
-.questionnaire-palette-dot:focus-visible + .questionnaire-palette-dot {
-  margin-inline-start: var(--palette-dot-gap-dot-hover);
+/* The hover "reveal" is driven by translateX in js/questionnaire.js so the row
+   keeps a fixed total width and the two end circles stay pinned. Transforms
+   don't reflow layout, so nothing gets pushed past the edges. */
+.questionnaire-palette-dot {
+  transition: transform 0.25s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .questionnaire-palette-dot + .questionnaire-palette-dot {
+  .questionnaire-palette-dot {
     transition: none;
   }
 }
@@ -3493,7 +3767,8 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-sublabel {
   font-family: "PP Monument Condensed", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.65 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -3589,7 +3864,8 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-spider__label {
   font-family: "Suisse Intl", sans-serif;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 400;
@@ -3631,12 +3907,6 @@ button.sidebar__grid-btn {
     );
   }
 
-  .questionnaire-feelings-spider__label {
-    font-size: calc(
-      (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.48 *
-        var(--questionnaire-text-scale, 1)
-    );
-  }
 }
 
 .questionnaire-feelings-hope-block {
@@ -3652,7 +3922,8 @@ button.sidebar__grid-btn {
    whole feelings card fits without scrolling. */
 .questionnaire-feelings-hope-block .questionnaire-section-question-heading {
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.55 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
 }
@@ -3663,7 +3934,8 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-hope-options .questionnaire-option {
   padding: 0.3rem 0.5rem;
   font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.6 *
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   letter-spacing: 0.04em;
@@ -3746,10 +4018,17 @@ button.sidebar__grid-btn {
   padding-right: 0.25rem;
 }
 
+/* Pixel-perfect grid alignment: remove the answers inset in the family section
+   so the dot-option grid's 100% equals the full card-body content width. This
+   makes each track exactly one page column wide (col 1 left → col 6 right). */
+.questionnaire-step--family-all .questionnaire-step__answers {
+  padding-inline: 0;
+}
+
 .questionnaire-section-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: calc(var(--page2-space-20, 1.25rem) * 2); /* 40px @ ref — 2× previous question spacing */
   width: 100%;
 }
 
@@ -3872,7 +4151,6 @@ button.sidebar__grid-btn {
 }
 
 #questionnaire-scroll[lang="fa"] :is(
-  .questionnaire-card__num,
   .questionnaire-card__title,
   .questionnaire-option,
   .questionnaire-feelings-sublabel,
@@ -3886,9 +4164,14 @@ button.sidebar__grid-btn {
   text-transform: none;
 }
 
+#questionnaire-scroll[lang="fa"] .questionnaire-card__num {
+  font-family: "DIN Condensed", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 #questionnaire-scroll[lang="fa"] :is(
   .questionnaire-archive-btn,
-  .questionnaire-card__next,
   .questionnaire-start-again,
   .questionnaire-feelings-shuffle-btn
 ) {

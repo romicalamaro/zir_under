@@ -13,6 +13,8 @@
 
   var dbPromise = null;
   var activeObjectUrls = [];
+  var ARCHIVE_SECTION_COL = 5;
+  var archiveVisibilityHooked = false;
 
   function openDb() {
     if (dbPromise) return dbPromise;
@@ -365,6 +367,104 @@
     return "";
   }
 
+  function isArchiveSectionVisible() {
+    var section = document.getElementById("section-archive");
+    return !!(section && section.classList.contains("is-active"));
+  }
+
+  function activateArchiveImages() {
+    var grid = document.getElementById("handkerchief-archive-grid");
+    if (!grid || !isArchiveSectionVisible()) return Promise.resolve();
+
+    var imgs = grid.querySelectorAll("img.archive-card__image");
+    if (!imgs.length) return Promise.resolve();
+
+    var promises = [];
+    Array.prototype.forEach.call(imgs, function (img) {
+      if (!img.getAttribute("src")) return;
+
+      promises.push(
+        new Promise(function (resolve) {
+          if (typeof img.decode === "function") {
+            img.decode().then(resolve).catch(resolve);
+            return;
+          }
+          if (img.complete) {
+            resolve();
+            return;
+          }
+          img.addEventListener("load", resolve, { once: true });
+          img.addEventListener("error", resolve, { once: true });
+        })
+      );
+    });
+
+    return Promise.all(promises);
+  }
+
+  function scheduleArchiveImageActivation() {
+    if (!isArchiveSectionVisible()) return;
+    requestAnimationFrame(function () {
+      activateArchiveImages();
+    });
+  }
+
+  function hookArchiveSectionVisibility() {
+    if (archiveVisibilityHooked) return;
+
+    var section = document.getElementById("section-archive");
+    if (!section) return;
+
+    archiveVisibilityHooked = true;
+
+    function onArchiveShown() {
+      scheduleArchiveImageActivation();
+    }
+
+    if (typeof MutationObserver !== "undefined") {
+      new MutationObserver(function () {
+        if (isArchiveSectionVisible()) {
+          onArchiveShown();
+        }
+      }).observe(section, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    function wrapShowSection() {
+      if (
+        !window.Page2Navigation ||
+        typeof window.Page2Navigation.showSection !== "function" ||
+        window.Page2Navigation.__archiveImageHooked
+      ) {
+        return false;
+      }
+
+      var originalShowSection = window.Page2Navigation.showSection;
+      window.Page2Navigation.showSection = function (colIndex, options) {
+        var result = originalShowSection.call(this, colIndex, options);
+        if (colIndex === ARCHIVE_SECTION_COL) {
+          onArchiveShown();
+        }
+        return result;
+      };
+      window.Page2Navigation.__archiveImageHooked = true;
+      return true;
+    }
+
+    if (!wrapShowSection()) {
+      var hookAttempts = 0;
+      var hookTimer = window.setInterval(function () {
+        hookAttempts += 1;
+        if (wrapShowSection() || hookAttempts >= 40) {
+          window.clearInterval(hookTimer);
+        }
+      }, 50);
+    }
+
+    if (isArchiveSectionVisible()) {
+      onArchiveShown();
+    }
+  }
+
   function renderArchiveGridWithEntries(entries) {
     var grid = document.getElementById("handkerchief-archive-grid");
     var emptyEl = document.getElementById("archive-empty");
@@ -398,9 +498,9 @@
         figure.className = "archive-card__figure";
         var img = document.createElement("img");
         img.className = "archive-card__image";
-        img.src = imageSrc;
         img.alt = getArchiveCardLineParts(entry).join(", ") || "Saved handkerchief";
         img.decoding = "async";
+        img.src = imageSrc;
         figure.appendChild(img);
         thumb.appendChild(figure);
 
@@ -422,6 +522,8 @@
         grid.appendChild(card);
       })(visibleEntries[i]);
     }
+
+    scheduleArchiveImageActivation();
 
     if (
       window.Page2Navigation &&
@@ -485,10 +587,12 @@
           section.classList.remove("is-active");
         }
       });
+      scheduleArchiveImageActivation();
     }
   }
 
   function init() {
+    hookArchiveSectionVisibility();
     openDb()
       .then(migrateLegacyLocalStorage)
       .then(function () {

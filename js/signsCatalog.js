@@ -98,29 +98,29 @@
     {
       id: "profile-home-inIran",
       section: "profile",
-      label: "At home in Iran",
-      labelFa: "در خانه در ایران",
+      label: "in Iran",
+      labelFa: "در ایران",
       visual: { type: "svgFile", file: "home/IN IRAN home.svg" },
     },
     {
       id: "profile-home-whereILive",
       section: "profile",
-      label: "At home where I live",
-      labelFa: "در خانه‌ای که زندگی می‌کنم",
+      label: "where I live",
+      labelFa: "جایی که زندگی می‌کنم",
       visual: { type: "svgFile", file: "home/WHERE I LIVE.svg" },
     },
     {
       id: "profile-home-nowhere",
       section: "profile",
-      label: "At home nowhere",
-      labelFa: "در هیچ‌جا خانه ندارم",
+      label: "nowhere",
+      labelFa: "هیچ‌جا",
       visual: { type: "svgFile", file: "home/NOWHERE.svg" },
     },
     {
       id: "profile-living-smallPart",
       section: "profile",
-      label: "Small part of life in Iran",
-      labelFa: "بخش کوچکی از زندگی در ایران",
+      label: "small part of my life",
+      labelFa: "بخش کوچکی از زندگی‌ام",
       visual: {
         type: "svgFile",
         file: "Did you ever live in Iran?/small part of my life.svg",
@@ -129,8 +129,8 @@
     {
       id: "profile-living-partOfLife",
       section: "profile",
-      label: "Part of life in Iran",
-      labelFa: "بخشی از زندگی در ایران",
+      label: "part of my life",
+      labelFa: "بخشی از زندگی‌ام",
       visual: {
         type: "svgFile",
         file: "Did you ever live in Iran?/part of my life.svg",
@@ -139,8 +139,8 @@
     {
       id: "profile-living-mostAll",
       section: "profile",
-      label: "Most or all of life in Iran",
-      labelFa: "بیشتر یا تمام زندگی در ایران",
+      label: "most of my life",
+      labelFa: "بیشتر زندگی‌ام",
       visual: {
         type: "svgFile",
         file: "Did you ever live in Iran?/Yes, most : all of my life.svg",
@@ -162,7 +162,7 @@
       section: "feelings",
       label: "Fear / Anxiety",
       labelFa: "ترس / اضطراب",
-      visual: { type: "canvasPreview", previewId: "anxiety" },
+      visual: { type: "canvasPreview", previewId: "fear" },
     },
     {
       id: "feelings-anger",

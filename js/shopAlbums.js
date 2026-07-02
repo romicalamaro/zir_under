@@ -131,6 +131,21 @@
     return nameEl.textContent.trim();
   }
 
+  function renderProductTitle(titleEl, nameEl) {
+    if (!titleEl) return;
+    titleEl.textContent = "";
+    if (!nameEl) return;
+
+    if (nameEl.querySelector(".shop-card__name-part")) {
+      nameEl.childNodes.forEach(function (node) {
+        titleEl.appendChild(node.cloneNode(true));
+      });
+      return;
+    }
+
+    titleEl.textContent = getShopCardLineText(nameEl);
+  }
+
   function setTrackTransform(track, physicalIndex, instant) {
     if (instant) {
       track.style.transition = "none";
@@ -651,7 +666,7 @@
     productSection.scrollTop = 0;
 
     if (productTitle) {
-      productTitle.textContent = getShopCardLineText(nameEl);
+      renderProductTitle(productTitle, nameEl);
     }
 
     if (window.ProductComboSpec && typeof window.ProductComboSpec.render === "function") {

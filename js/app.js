@@ -7157,10 +7157,16 @@
     var bounds = getGridContentBounds();
     var manualVisible = getVisibleSegmentsManualOnly(prideSegments);
     var baselineFaces = TopkapiGeometry.traceFaces(manualVisible);
+    var planOpts = getAutoMergePlanOptions();
+    if (signPreviewBypass) {
+      planOpts.rng = createSeededRandom(
+        hashFanMiddleBandSeed("signs-pride-hope-shape")
+      );
+    }
     var plan = TopkapiGeometry.computeAutoMergePlan(
       baselineFaces,
       bounds,
-      getAutoMergePlanOptions()
+      planOpts
     );
 
     var i;
@@ -24613,6 +24619,187 @@
       return wrapper.querySelector(selector) || wrapper.firstElementChild;
     }
 
+    var hopeSignClipIdCounter = 0;
+    var cachedSignsPrideHopeShape = null;
+
+    function parseHopeSignPolygonPoints(pointsAttr) {
+      var pts = [];
+      if (!pointsAttr) return pts;
+      var parts = pointsAttr.trim().split(/[\s,]+/);
+      var pi;
+      for (pi = 0; pi + 1 < parts.length; pi += 2) {
+        pts.push({ x: parseFloat(parts[pi]), y: parseFloat(parts[pi + 1]) });
+      }
+      return pts;
+    }
+
+    function hopeSignShapeContainsPoint(shapeEl, x, y, measureHost) {
+      if (!shapeEl) return false;
+      var tag = shapeEl.localName || shapeEl.tagName;
+      if (tag === "polygon") {
+        return hopePointInPolygon(
+          x,
+          y,
+          parseHopeSignPolygonPoints(shapeEl.getAttribute("points"))
+        );
+      }
+      if (tag === "path") {
+        var probe = shapeEl.cloneNode(true);
+        measureHost.appendChild(probe);
+        var inside = false;
+        try {
+          if (typeof probe.isPointInFill === "function") {
+            inside = probe.isPointInFill({ x: x, y: y });
+          }
+        } catch (pointErr) {
+          inside = false;
+        }
+        measureHost.removeChild(probe);
+        return inside;
+      }
+      return false;
+    }
+
+    function getHopeSignShapeBBox(shapeEl, measureHost) {
+      var probe = shapeEl.cloneNode(true);
+      measureHost.appendChild(probe);
+      var bbox = null;
+      try {
+        bbox = probe.getBBox();
+      } catch (bboxErr) {
+        bbox = null;
+      }
+      measureHost.removeChild(probe);
+      return bbox;
+    }
+
+    function buildHopeSignStippleDots(shapeEl, measureHost) {
+      var bbox = getHopeSignShapeBBox(shapeEl, measureHost);
+      if (!bbox || bbox.width <= 0 || bbox.height <= 0) return [];
+
+      var seed = hashFanMiddleBandSeed("hope-sign-preview");
+      var rng = createSeededRandom(seed);
+      var unit = Math.min(bbox.width, bbox.height);
+      var dotRadius = Math.max(0.8, unit * 0.015);
+      var minDistBase = dotRadius * 3.2;
+      var targetCount = Math.max(
+        6,
+        Math.min(
+          16,
+          Math.round(
+            (bbox.width * bbox.height) / (minDistBase * minDistBase * 1.6)
+          )
+        )
+      );
+      var dots = [];
+      var maxAttempts = targetCount * 60;
+      var attempts = 0;
+      var padding = dotRadius * 1.2;
+      var dx;
+      var dy;
+      var minDist;
+      var minDistSq;
+      var ok;
+      var di;
+      var ddx;
+      var ddy;
+
+      while (dots.length < targetCount && attempts < maxAttempts) {
+        attempts++;
+        dx = bbox.x - padding + rng() * (bbox.width + padding * 2);
+        dy = bbox.y - padding + rng() * (bbox.height + padding * 2);
+        minDist = minDistBase * (0.65 + rng() * 0.85);
+        minDistSq = minDist * minDist;
+        if (!hopeSignShapeContainsPoint(shapeEl, dx, dy, measureHost)) continue;
+        ok = true;
+        for (di = 0; di < dots.length; di++) {
+          ddx = dx - dots[di].x;
+          ddy = dy - dots[di].y;
+          if (ddx * ddx + ddy * ddy < minDistSq) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) {
+          dots.push({
+            x: dx,
+            y: dy,
+            r: dotRadius * (0.85 + rng() * 0.35),
+          });
+        }
+      }
+      return dots;
+    }
+
+    function findPridePreviewShape(wrapper) {
+      var layer = wrapper.querySelector("#pride-auto-merge-root") || wrapper;
+      var nodes = layer.querySelectorAll("polygon, path");
+      var i;
+      for (i = 0; i < nodes.length; i++) {
+        if (!nodes[i].getAttribute("filter")) return nodes[i];
+      }
+      return null;
+    }
+
+    function rememberSignsPrideHopeShape(wrapper) {
+      if (cachedSignsPrideHopeShape) return cachedSignsPrideHopeShape;
+      var shape = findPridePreviewShape(wrapper);
+      if (!shape) return null;
+      cachedSignsPrideHopeShape = shape.cloneNode(true);
+      return cachedSignsPrideHopeShape;
+    }
+
+    function buildHopeSignMarkerFromPrideShape(wrapper, markerG) {
+      var prideShape = rememberSignsPrideHopeShape(wrapper);
+      if (!prideShape) return markerG;
+
+      var measureHost = ensureSignsPreviewHostSvg();
+      var clipId = "hope-sign-clip-" + String(++hopeSignClipIdCounter);
+
+      var defs = elSvg("defs");
+      var clipPath = elSvg("clipPath");
+      clipPath.setAttribute("id", clipId);
+      var clipShape = prideShape.cloneNode(true);
+      clipShape.removeAttribute("filter");
+      clipShape.removeAttribute("stroke");
+      clipShape.setAttribute("fill", "#000");
+      clipPath.appendChild(clipShape);
+      defs.appendChild(clipPath);
+      markerG.appendChild(defs);
+
+      var dotsGroup = elSvg("g");
+      dotsGroup.setAttribute("class", "sign-card__hope-dots");
+      dotsGroup.setAttribute("clip-path", "url(#" + clipId + ")");
+      var dots = buildHopeSignStippleDots(prideShape, measureHost);
+      var di;
+      for (di = 0; di < dots.length; di++) {
+        var dot = elSvg("circle");
+        dot.setAttribute("cx", String(dots[di].x));
+        dot.setAttribute("cy", String(dots[di].y));
+        dot.setAttribute("r", String(dots[di].r));
+        dot.setAttribute(
+          "fill",
+          prideShape.getAttribute("fill") || getAutoMergeFillColor()
+        );
+        dotsGroup.appendChild(dot);
+      }
+      markerG.appendChild(dotsGroup);
+
+      var outline = prideShape.cloneNode(true);
+      outline.removeAttribute("filter");
+      outline.setAttribute("fill", "none");
+      if (!outline.getAttribute("stroke")) {
+        outline.setAttribute("stroke", getAutoMergeOutlineColor());
+      }
+      if (!outline.getAttribute("stroke-width")) {
+        outline.setAttribute("stroke-width", String(getAutoMergeOutlineWidth()));
+      }
+      outline.setAttribute("stroke-linejoin", "round");
+      outline.setAttribute("stroke-linecap", "round");
+      markerG.appendChild(outline);
+      return markerG;
+    }
+
     function extractSingleMarkerGroup(wrapper, previewId) {
       var markerG = elSvg("g");
       markerG.setAttribute("class", "sign-card__single-marker");
@@ -24674,39 +24861,99 @@
         }
         if (bestRect) {
           if (previewId === "anxiety") {
-            // Signs-page Fear/Anxiety only: render the vertical mark as a
-            // hairline that always displays at 1px on screen, matching the
-            // 1px square frame border around the sign at any responsive size.
+            // Signs-page Fear/Anxiety only: render three vertical hairlines
+            // (center + left + right) that always display at 2px on screen,
+            // staying crisp at any responsive size.
             var rectClone = bestRect.cloneNode(true);
             var rx = parseFloat(rectClone.getAttribute("x") || "0");
             var ry = parseFloat(rectClone.getAttribute("y") || "0");
             var rw = parseFloat(rectClone.getAttribute("width") || "0");
             var rh = parseFloat(rectClone.getAttribute("height") || "0");
             var rectFill = rectClone.getAttribute("fill");
+            var centerX = rx + rw / 2;
+            var strokeColor =
+              rectFill && rectFill !== "none" ? rectFill : "#685450";
+            var halfW = rw > 0 ? rw / 2 : 1;
+            var leftX = null;
+            var rightX = null;
+            var bestLeftDist = Infinity;
+            var bestRightDist = Infinity;
+            var neighborX;
+            var neighborDx;
+            var neighborDist;
+
+            for (i = 0; i < nodes.length; i++) {
+              if (nodes[i] === bestRect) continue;
+              neighborX =
+                parseFloat(nodes[i].getAttribute("x") || "0") +
+                parseFloat(nodes[i].getAttribute("width") || "0") / 2;
+              neighborDx = neighborX - centerX;
+              neighborDist = Math.abs(neighborDx);
+              if (neighborDx < -0.5 && neighborDist < bestLeftDist) {
+                bestLeftDist = neighborDist;
+                leftX = neighborX;
+              } else if (neighborDx > 0.5 && neighborDist < bestRightDist) {
+                bestRightDist = neighborDist;
+                rightX = neighborX;
+              }
+            }
+
+            var lineSpacing = getVerticalLineMinDistance();
+            if (leftX === null) leftX = centerX - lineSpacing;
+            if (rightX === null) rightX = centerX + lineSpacing;
+
+            var bboxMinX = Math.min(leftX, centerX, rightX) - halfW;
+            var bboxMaxX = Math.max(leftX, centerX, rightX) + halfW;
             // Keep the original rect, but make it invisible. It still defines
             // the marker's bounding box, which the icon uses to scale/position.
+            rectClone.setAttribute("x", String(bboxMinX));
+            rectClone.setAttribute("width", String(bboxMaxX - bboxMinX));
             rectClone.setAttribute("fill", "none");
             rectClone.setAttribute("stroke", "none");
             markerG.appendChild(rectClone);
-            // Visible hairline centered on the original rect. The
-            // non-scaling-stroke keeps it at a constant 1px regardless of how
-            // the icon SVG is scaled, so it matches the frame border exactly.
-            var centerX = rx + rw / 2;
-            var hairline = elSvg("line");
-            hairline.setAttribute("x1", String(centerX));
-            hairline.setAttribute("y1", String(ry));
-            hairline.setAttribute("x2", String(centerX));
-            hairline.setAttribute("y2", String(ry + rh));
-            hairline.setAttribute("fill", "none");
-            hairline.setAttribute(
-              "stroke",
-              rectFill && rectFill !== "none" ? rectFill : "#685450"
-            );
-            hairline.setAttribute("stroke-width", "1");
-            hairline.setAttribute("vector-effect", "non-scaling-stroke");
-            markerG.appendChild(hairline);
+
+            var lineXs = [leftX, centerX, rightX];
+            var li;
+            for (li = 0; li < lineXs.length; li++) {
+              var hairline = elSvg("line");
+              hairline.setAttribute("x1", String(lineXs[li]));
+              hairline.setAttribute("y1", String(ry));
+              hairline.setAttribute("x2", String(lineXs[li]));
+              hairline.setAttribute("y2", String(ry + rh));
+              hairline.setAttribute("fill", "none");
+              hairline.setAttribute("stroke", strokeColor);
+              hairline.setAttribute("stroke-width", "2");
+              hairline.setAttribute("vector-effect", "non-scaling-stroke");
+              markerG.appendChild(hairline);
+            }
           } else {
-            markerG.appendChild(bestRect.cloneNode(true));
+            // Signs-page Fear only: single vertical line at constant 5px on screen.
+            var fearRectClone = bestRect.cloneNode(true);
+            var fearRx = parseFloat(fearRectClone.getAttribute("x") || "0");
+            var fearRy = parseFloat(fearRectClone.getAttribute("y") || "0");
+            var fearRw = parseFloat(fearRectClone.getAttribute("width") || "0");
+            var fearRh = parseFloat(fearRectClone.getAttribute("height") || "0");
+            var fearRectFill = fearRectClone.getAttribute("fill");
+            var fearCenterX = fearRx + fearRw / 2;
+            var fearStrokeColor =
+              fearRectFill && fearRectFill !== "none"
+                ? fearRectFill
+                : "#685450";
+
+            fearRectClone.setAttribute("fill", "none");
+            fearRectClone.setAttribute("stroke", "none");
+            markerG.appendChild(fearRectClone);
+
+            var fearLine = elSvg("line");
+            fearLine.setAttribute("x1", String(fearCenterX));
+            fearLine.setAttribute("y1", String(fearRy));
+            fearLine.setAttribute("x2", String(fearCenterX));
+            fearLine.setAttribute("y2", String(fearRy + fearRh));
+            fearLine.setAttribute("fill", "none");
+            fearLine.setAttribute("stroke", fearStrokeColor);
+            fearLine.setAttribute("stroke-width", "5");
+            fearLine.setAttribute("vector-effect", "non-scaling-stroke");
+            markerG.appendChild(fearLine);
           }
         }
         return markerG;
@@ -24746,30 +24993,15 @@
       }
 
       if (previewId === "pride") {
-        layer = wrapper.querySelector("#pride-auto-merge-root") || wrapper;
-        nodes = layer.querySelectorAll("polygon, path");
-        // Each Pride region renders a black drop-shadow polygon (it carries a
-        // "filter" attribute) followed by the real shape. Skip the shadow so
-        // the sign preview shows the actual mark, not the blurred shadow blob.
-        for (i = 0; i < nodes.length; i++) {
-          if (nodes[i].getAttribute("filter")) continue;
-          markerG.appendChild(nodes[i].cloneNode(true));
-          break;
+        var prideShape = rememberSignsPrideHopeShape(wrapper);
+        if (prideShape) {
+          markerG.appendChild(prideShape.cloneNode(true));
         }
         return markerG;
       }
 
       if (previewId === "hope") {
-        layer = wrapper.querySelector("#color-divisions-blend-root") || wrapper;
-        nodes = layer.querySelectorAll("rect, polygon, path");
-        for (i = 0; i < nodes.length; i++) {
-          var nodeFill = nodes[i].getAttribute("fill");
-          if (nodeFill && nodeFill !== "none" && nodeFill !== "transparent") {
-            markerG.appendChild(nodes[i].cloneNode(true));
-            break;
-          }
-        }
-        return markerG;
+        return buildHopeSignMarkerFromPrideShape(wrapper, markerG);
       }
 
       if (previewId === "sadness") {
@@ -24865,7 +25097,8 @@
       var marker = extractSingleMarkerGroup(wrapper, previewId);
       // Pride's single diamond reads a touch small in the catalog grid, so give
       // it a slight size boost while every other feeling keeps the default fit.
-      var scaleBoost = previewId === "pride" ? 1.18 : 1;
+      var scaleBoost =
+        previewId === "pride" || previewId === "hope" ? 1.18 : 1;
       return fitMarkerGroupToIconViewBox(marker, undefined, scaleBoost);
     }
 
@@ -25069,6 +25302,7 @@
         grief: { griefCircleDensity: SIGN_PREVIEW_MID_DENSITY },
         strength: { strengthDensity: SIGN_PREVIEW_MID_DENSITY },
         pride: { autoMergeIntensity: 4 },
+        hope: { autoMergeIntensity: 4 },
         pain: { prideFillPercent: SIGN_PREVIEW_MID_DENSITY },
         guiltShame: { guiltShameFillPercent: SIGN_PREVIEW_MID_DENSITY },
         helplessness: { helplessnessPercent: SIGN_PREVIEW_MID_DENSITY },
@@ -25077,10 +25311,6 @@
       if (feelingsPresets[previewId]) {
         applyFeelingsPresetForPreview(feelingsPresets[previewId]);
         return;
-      }
-
-      if (previewId === "hope") {
-        setHopeInteractionMode("view");
       }
     }
 
@@ -25098,9 +25328,6 @@
         }
         return ["#layer-half-circle"];
       }
-      if (previewId === "hope") {
-        return ["#color-divisions-blend-root"];
-      }
       var layerMap = {
         fear: ["#layer-vertical-grid", "#layer-vertical-grid-overlay"],
         anxiety: ["#layer-vertical-grid", "#layer-vertical-grid-overlay"],
@@ -25110,6 +25337,7 @@
         grief: ["#layer-grief-circles"],
         strength: ["#layer-strength"],
         pride: ["#pride-auto-merge-root"],
+        hope: ["#pride-auto-merge-root"],
         pain: ["#layer-diamond-fills"],
         guiltShame: ["#layer-hollow-diamond-fills"],
         helplessness: ["#layer-helplessness"],

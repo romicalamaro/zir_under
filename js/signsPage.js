@@ -162,6 +162,19 @@
     markerG.setAttribute("stroke", "#fff");
   }
 
+  function applySadnessPreviewStyle(svg, previewId) {
+    if (previewId !== "sadness" || !svg) return;
+    var markerG = svg.querySelector(".sign-card__single-marker");
+    if (!markerG) return;
+    markerG.setAttribute("fill", "#fff");
+    markerG.setAttribute("stroke", "#fff");
+    var circle = markerG.querySelector("circle");
+    if (circle) {
+      circle.setAttribute("fill", "#fff");
+      circle.setAttribute("stroke", "#fff");
+    }
+  }
+
   function applyPainHelplessnessPreviewStyle(svg, previewId) {
     if (previewId !== "pain" && previewId !== "helplessness") return;
     var markerG = svg.querySelector(".sign-card__single-marker");
@@ -183,6 +196,48 @@
     var j;
     for (j = 0; j < lines.length; j++) {
       lines[j].setAttribute("stroke", "#fff");
+    }
+  }
+
+  /** Signs-page Strength / Power only: white square, circle matches brown card bg */
+  var SIGN_PAGE_BG_BROWN = "#442c28";
+
+  function applyStrengthPreviewStyle(svg, previewId) {
+    if (previewId !== "strength" || !svg) return;
+    var markerG = svg.querySelector(".sign-card__single-marker");
+    if (!markerG) return;
+    var rect = markerG.querySelector("rect");
+    var circle = markerG.querySelector("circle");
+    if (rect) {
+      rect.setAttribute("fill", "#fff");
+      rect.setAttribute("stroke", "#fff");
+    }
+    if (circle) {
+      circle.setAttribute("fill", SIGN_PAGE_BG_BROWN);
+      circle.setAttribute("stroke", SIGN_PAGE_BG_BROWN);
+    }
+  }
+
+  function applyHopePreviewStyle(svg, previewId) {
+    if (previewId !== "hope" || !svg) return;
+    var markerG = svg.querySelector(".sign-card__single-marker");
+    if (!markerG) return;
+    var outlines = markerG.querySelectorAll("polygon, path");
+    var i;
+    for (i = 0; i < outlines.length; i++) {
+      if (
+        outlines[i].parentNode &&
+        outlines[i].parentNode.localName === "clipPath"
+      ) {
+        continue;
+      }
+      outlines[i].setAttribute("fill", "none");
+      outlines[i].setAttribute("stroke", "#fff");
+    }
+    var dots = markerG.querySelectorAll(".sign-card__hope-dots circle");
+    for (i = 0; i < dots.length; i++) {
+      dots[i].setAttribute("fill", "#fff");
+      dots[i].setAttribute("stroke", "none");
     }
   }
 
@@ -243,7 +298,10 @@
     remapBrownToWhiteInSvg(svg);
     remapPurpleToGrayInSvg(svg);
     applyCircleOutlinePreviewStyle(svg, previewId);
+    applySadnessPreviewStyle(svg, previewId);
     applyPainHelplessnessPreviewStyle(svg, previewId);
+    applyStrengthPreviewStyle(svg, previewId);
+    applyHopePreviewStyle(svg, previewId);
     applyFanLeavesPreviewStyle(svg, previewId);
     applyFrameLinePreviewStyle(svg, previewId);
   }
@@ -706,14 +764,157 @@
   var FAMILY_DIVISIONS_STROKE_WIDTH = 2;
   var FAMILY_DIVISIONS_LINES_CLASS = "page2-home-signs__family-divisions-lines";
 
-  /* The rectangle is always split into this many segments; the animation now
-     toggles individual cells between filled (shape shown) and empty (shape
-     hidden) instead of changing the segment count. */
-  var FAMILY_DIVISIONS_COUNT = 5; /* always 5 segments now */
-  var FAMILY_DIVISIONS_STEP_MS = 800; /* time between fill/empty toggles */
-  var FAMILY_DIVISIONS_MAX_TOGGLE = 2; /* flip 1..N random cells per step */
+  /* Scripted animation: 3→4→5, then cell phase at 5 only, then 4→3. */
+  var FAMILY_DIVISIONS_MIN = 3;
+  var FAMILY_DIVISIONS_MAX = 5;
+  var FAMILY_DIVISIONS_STATIC = 4;
+  var FAMILY_ANIMATION_STEP_MS = 1000;
+  /* Cell empty/fill steps never change segment count — always at FAMILY_DIVISIONS_MAX. */
+  var FAMILY_ANIMATION_SEQUENCE = [
+    { action: "divisions", segments: 3 },
+    { action: "divisions", segments: 4 },
+    { action: "divisions", segments: 5 },
+    { action: "emptyCells", emptyCells: [2, 4] },
+    { action: "fillCells" },
+    { action: "divisions", segments: 4 },
+    /* Loop wraps to index 0 (3 divisions) — no duplicate 3 step at end. */
+  ];
+  /* Empty-cell stipple: same dot size/spacing as handkerchief border frame */
+  var FAMILY_EMPTY_CELL_DOT_SIZE = 2;
+  var FAMILY_EMPTY_CELL_DOT_SPACING = 2;
+  var FAMILY_EMPTY_CELL_STIPPLE_CLASS =
+    "page2-home-signs__family-empty-cell-stipple";
 
   var SVG_NS = "http://www.w3.org/2000/svg";
+
+  function familyEmptyCellHashSeed(str) {
+    var h = 2166136261;
+    var i;
+    for (i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function familyEmptyCellSeededRandom(seed) {
+    var state = seed >>> 0;
+    return function () {
+      state = (state + 0x6d2b79f5) >>> 0;
+      var t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function generateFamilyEmptyCellStippleDots(x, y, w, h, seed) {
+    var radius = FAMILY_EMPTY_CELL_DOT_SIZE / 2;
+    var minDist = FAMILY_EMPTY_CELL_DOT_SIZE + FAMILY_EMPTY_CELL_DOT_SPACING;
+    var minDistSq = minDist * minDist;
+    var padding = radius + 1;
+    var area = Math.max(1, w * h);
+    var targetCount = Math.max(2, Math.round(area / (minDist * minDist * 0.65)));
+    var rng = familyEmptyCellSeededRandom(seed);
+    var dots = [];
+    var maxAttempts = targetCount * 50;
+    var attempts = 0;
+    var dotX;
+    var dotY;
+    var ok;
+    var di;
+    var dx;
+    var dy;
+
+    while (dots.length < targetCount && attempts < maxAttempts) {
+      attempts++;
+      dotX = x - padding + rng() * (w + padding * 2);
+      dotY = y - padding + rng() * (h + padding * 2);
+      ok = true;
+      for (di = 0; di < dots.length; di++) {
+        dx = dotX - dots[di].x;
+        dy = dotY - dots[di].y;
+        if (dx * dx + dy * dy < minDistSq) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) dots.push({ x: dotX, y: dotY });
+    }
+
+    return { dots: dots, radius: radius };
+  }
+
+  function appendFamilyEmptyCellStipple(group, x, y, w, h, cellIndex) {
+    if (w <= 0 || h <= 0) return;
+
+    var clipId = "family-empty-stipple-clip-" + cellIndex;
+    var clip = document.createElementNS(SVG_NS, "clipPath");
+    clip.setAttribute("id", clipId);
+    var clipRect = document.createElementNS(SVG_NS, "rect");
+    clipRect.setAttribute("x", String(x));
+    clipRect.setAttribute("y", String(y));
+    clipRect.setAttribute("width", String(w));
+    clipRect.setAttribute("height", String(h));
+    clip.appendChild(clipRect);
+    group.appendChild(clip);
+
+    var seed = familyEmptyCellHashSeed("family-sign-empty-" + cellIndex);
+    var stipple = generateFamilyEmptyCellStippleDots(x, y, w, h, seed);
+    var dotGroup = document.createElementNS(SVG_NS, "g");
+    dotGroup.setAttribute("class", FAMILY_EMPTY_CELL_STIPPLE_CLASS);
+    dotGroup.setAttribute("clip-path", "url(#" + clipId + ")");
+    dotGroup.setAttribute("fill", FAMILY_DIVISIONS_STROKE);
+    dotGroup.setAttribute("stroke", "none");
+
+    var ci;
+    for (ci = 0; ci < stipple.dots.length; ci++) {
+      var circle = document.createElementNS(SVG_NS, "circle");
+      circle.setAttribute("cx", String(stipple.dots[ci].x));
+      circle.setAttribute("cy", String(stipple.dots[ci].y));
+      circle.setAttribute("r", String(stipple.radius));
+      dotGroup.appendChild(circle);
+    }
+    group.appendChild(dotGroup);
+  }
+
+  function createFamilyFilledArray(count) {
+    var filled = [];
+    var i;
+    for (i = 0; i < count; i++) filled.push(true);
+    return filled;
+  }
+
+  function resolveFamilyAnimationFrame(step) {
+    if (step.action === "emptyCells") {
+      return {
+        segments: FAMILY_DIVISIONS_MAX,
+        emptyCells: step.emptyCells || [],
+      };
+    }
+    if (step.action === "fillCells") {
+      return { segments: FAMILY_DIVISIONS_MAX };
+    }
+    return { segments: step.segments, emptyCells: null };
+  }
+
+  function familyFilledFromFrame(frame) {
+    var filled = createFamilyFilledArray(frame.segments);
+    if (!frame.emptyCells || frame.segments !== FAMILY_DIVISIONS_MAX) {
+      return filled;
+    }
+    var i;
+    for (i = 0; i < frame.emptyCells.length; i++) {
+      var n = frame.emptyCells[i];
+      if (n >= 1 && n <= frame.segments) filled[n - 1] = false;
+    }
+    return filled;
+  }
+
+  function renderFamilyAnimationStep(svg, step) {
+    var frame = resolveFamilyAnimationFrame(step);
+    renderFamilyDivisions(svg, frame.segments, familyFilledFromFrame(frame));
+  }
 
   function createFamilyDivisionsSvg() {
     var svg = document.createElementNS(SVG_NS, "svg");
@@ -793,8 +994,7 @@
     var bottom = FAMILY_DIVISIONS_VIEWBOX_H - FAMILY_DIVISIONS_INSET;
     var i;
 
-    // Internal divider lines (count - 1 evenly spaced verticals). These form
-    // the fixed structure and are always drawn, regardless of fill state.
+    // Internal divider lines (count - 1 evenly spaced verticals).
     for (i = 1; i < count; i++) {
       var x = step * i;
       appendFamilyLine(linesGroup, x, top, x, bottom);
@@ -804,17 +1004,28 @@
     //  - ODD segments (1st, 3rd, 5th ...) get a rhombus whose 4 corners touch
     //    the midpoints of the segment cell's edges.
     //  - EVEN segments (2nd, 4th ...) get an X.
-    // `filled` (optional boolean array) controls which cells actually draw their
-    // shape: an "empty" cell (filled[i - 1] === false) shows no X / rhombus.
-    // When `filled` is omitted, every cell is drawn (all filled).
+    // `filled` (optional boolean array) controls which cells draw their shape;
+    // empty cells show stipple dots instead. When omitted, every cell is drawn.
     var midY = (top + bottom) / 2;
     var innerLeftBound = FAMILY_DIVISIONS_INSET;
     var innerRightBound = FAMILY_DIVISIONS_VIEWBOX_W - FAMILY_DIVISIONS_INSET;
     for (i = 1; i <= count; i++) {
-      if (filled && !filled[i - 1]) continue; // empty cell: draw no shape
-
       var cellLeft = (i - 1) * step;
       var cellRight = i * step;
+
+      if (filled && !filled[i - 1]) {
+        var emptyLeft = Math.max(cellLeft, innerLeftBound);
+        var emptyRight = Math.min(cellRight, innerRightBound);
+        appendFamilyEmptyCellStipple(
+          linesGroup,
+          emptyLeft,
+          top,
+          emptyRight - emptyLeft,
+          bottom - top,
+          i
+        );
+        continue;
+      }
 
       if (i % 2 === 1) {
         // Rhombus: corners touch the cell edges. For the outer cells the cell
@@ -888,7 +1099,11 @@
       "page2-home-signs__sign-icon page2-home-signs__sign-icon--frame-line";
 
     var svg = createFamilyDivisionsSvg();
-    renderFamilyDivisions(svg, FAMILY_DIVISIONS_COUNT);
+    renderFamilyDivisions(
+      svg,
+      FAMILY_DIVISIONS_MIN,
+      createFamilyFilledArray(FAMILY_DIVISIONS_MIN)
+    );
     iconWrap.appendChild(svg);
     row.appendChild(iconWrap);
     return row;
@@ -1027,12 +1242,11 @@
    *
    * - grid (kind "grid"): driven CONTINUOUSLY — the inner scale flows through
    *   every in-between value, so it glides like a dragged slider.
-   * - bodyAutonomy (kind "fan") and family (kind "family"): the drawing engine
-   *   only has whole steps (fan ribs / 3 frames), so we round to the nearest
-   *   step and only redraw when it changes. The MOTION is smooth/eased, but the
-   *   shape still lands on whole states because that is how the art is built.
+   * - bodyAutonomy (kind "fan"): whole fan steps with smooth eased motion.
+   * - family (kind "family"): scripted sequence of division counts and fixed
+   *   empty cells (stipple dots), one frame every `stepMs`.
    *
-   * `sweepMs` = time for one min->max pass (a full open+close is ~2x that).
+   * `sweepMs` = time for one min->max pass (grid/fan). Family uses `stepMs`.
    * `staticValue` = the single frame shown when the user prefers reduced motion.
    */
   var SIGNS_AUTO_ANIMATIONS = {
@@ -1051,14 +1265,9 @@
       staticValue: 4,
     },
     family: {
-      // Standalone divided rectangle with a FIXED segment count. The animation
-      // toggles random cells between filled (shape) and empty (no shape) on a
-      // discrete timer. Handled by its own loop (startFamilyDivisionsLoop), not
-      // the generic sweep below.
-      kind: "familyDivisions",
-      count: FAMILY_DIVISIONS_COUNT,
-      stepMs: FAMILY_DIVISIONS_STEP_MS,
-      maxTogglePerStep: FAMILY_DIVISIONS_MAX_TOGGLE,
+      kind: "family",
+      stepMs: FAMILY_ANIMATION_STEP_MS,
+      staticValue: FAMILY_DIVISIONS_STATIC,
     },
   };
 
@@ -1220,8 +1429,8 @@
 
   /**
    * Draw one frame for a section. Grid flows continuously; fan reveals a
-   * continuous angular wedge over a single open frame. (The family sign toggles
-   * its cells' fill state in its own loop, so it never reaches here.)
+   * continuous angular wedge over a single open frame. (Family runs both
+   * division ping-pong and cell toggles in startFamilySignAnimationLoop.)
    */
   function renderSignsAnimationFrame(panel, cfg, valueFloat, loopState) {
     if (cfg.kind === "grid") {
@@ -1241,80 +1450,52 @@
       // right edge sweeps open.
       var span = FAN_CLOSED_SPAN + tNorm * (FAN_OPEN_SPAN - FAN_CLOSED_SPAN);
       applyFanWedge(loopState.fanBase, span);
-      return;
     }
   }
 
   /**
-   * Flip the filled/empty state of `k` random distinct cells in place, where
-   * `k` is a random number between 1 and maxToggle. A "filled" cell shows its
-   * shape (X / rhombus); an "empty" cell shows nothing.
+   * Family sign: 3→4→5, then empty/fill cells 2+4 (only at 5 divisions), then 4→3.
    */
-  function toggleRandomFamilyCells(filled, maxToggle) {
-    var count = filled.length;
-    if (!count) return;
-
-    var maxK = Math.max(1, Math.min(maxToggle || 1, count));
-    var k = 1 + Math.floor(Math.random() * maxK);
-
-    // Pick k distinct indices to flip.
-    var indices = [];
-    var i;
-    for (i = 0; i < count; i++) indices.push(i);
-    // Partial Fisher-Yates: shuffle just the first k slots.
-    for (i = 0; i < k; i++) {
-      var j = i + Math.floor(Math.random() * (count - i));
-      var tmp = indices[i];
-      indices[i] = indices[j];
-      indices[j] = tmp;
-    }
-    for (i = 0; i < k; i++) {
-      var idx = indices[i];
-      filled[idx] = !filled[idx];
-    }
-  }
-
-  /**
-   * Family divisions loop: the rectangle keeps a fixed number of segments, and
-   * on each step a random handful of cells flip between filled (shape shown) and
-   * empty (shape hidden), looping forever. Stored in signsAnimationLoops so the
-   * shared pause/resume/stop helpers (which cancel loop.raf) clean it up too.
-   * When the user prefers reduced motion we draw every cell filled and stop.
-   */
-  function startFamilyDivisionsLoop(sectionId, cfg, panel) {
+  function startFamilySignAnimationLoop(sectionId, cfg, panel) {
     if (!cfg || !panel) return;
     stopSignsAnimationLoop(sectionId);
 
     var svg = getFamilyDivisionsSvg(panel);
     if (!svg) return;
 
-    var count = cfg.count || FAMILY_DIVISIONS_COUNT;
-
-    // Start with every cell filled.
-    var filled = [];
-    var i;
-    for (i = 0; i < count; i++) filled.push(true);
-    renderFamilyDivisions(svg, count, filled);
+    var sequence = FAMILY_ANIMATION_SEQUENCE;
+    var staticValue = cfg.staticValue != null ? cfg.staticValue : FAMILY_DIVISIONS_STATIC;
 
     if (prefersReducedMotionSigns()) {
-      return; // stays all-filled, no animation
+      renderFamilyDivisions(
+        svg,
+        staticValue,
+        createFamilyFilledArray(staticValue)
+      );
+      return;
     }
 
-    var stepMs = cfg.stepMs || FAMILY_DIVISIONS_STEP_MS;
-    var maxToggle = cfg.maxTogglePerStep || FAMILY_DIVISIONS_MAX_TOGGLE;
-    // Start at index 0 so the first toggle happens after one full step, letting
-    // the all-filled starting state show for a beat.
-    var loopState = { raf: 0, startTime: null, lastIndex: 0, filled: filled };
+    var stepMs = cfg.stepMs || FAMILY_ANIMATION_STEP_MS;
+
+    renderFamilyAnimationStep(svg, sequence[0]);
+
+    var loopState = {
+      raf: 0,
+      startTime: null,
+      lastFrameIndex: 0,
+    };
 
     function frame(now) {
       if (loopState.startTime === null) loopState.startTime = now;
       var elapsed = now - loopState.startTime;
-      var index = Math.floor(elapsed / stepMs);
-      if (index !== loopState.lastIndex) {
-        loopState.lastIndex = index;
-        toggleRandomFamilyCells(loopState.filled, maxToggle);
-        renderFamilyDivisions(svg, count, loopState.filled);
+      var frameIndex =
+        Math.floor(elapsed / stepMs) % sequence.length;
+
+      if (frameIndex !== loopState.lastFrameIndex) {
+        loopState.lastFrameIndex = frameIndex;
+        renderFamilyAnimationStep(svg, sequence[frameIndex]);
       }
+
       loopState.raf = window.requestAnimationFrame(frame);
     }
 
@@ -1350,8 +1531,8 @@
   function startSignsAnimationLoop(sectionId, cfg, panel) {
     if (!cfg || !panel) return;
 
-    if (cfg.kind === "familyDivisions") {
-      startFamilyDivisionsLoop(sectionId, cfg, panel);
+    if (cfg.kind === "family") {
+      startFamilySignAnimationLoop(sectionId, cfg, panel);
       return;
     }
 
@@ -1544,8 +1725,9 @@
   function buildHomeSignsAccordion() {
     if (built) return;
 
-    var listEl = document.getElementById("page2-home-signs-list");
-    if (!listEl) return;
+    var listPrefixEl = document.getElementById("page2-home-signs-list-prefix");
+    var listSuffixEl = document.getElementById("page2-home-signs-list-suffix");
+    if (!listPrefixEl || !listSuffixEl) return;
 
     var catalog = getCatalog();
     if (
@@ -1560,22 +1742,27 @@
 
     indexEntriesBySection(catalog);
 
-    var fragment = document.createDocumentFragment();
+    var prefixFragment = document.createDocumentFragment();
+    var suffixFragment = document.createDocumentFragment();
     accordionItems = [];
 
     var i;
     var sectionMeta;
     var item;
+    var targetFragment;
     for (i = 0; i < catalog.sections.length; i++) {
       sectionMeta = catalog.sections[i];
       if (!entriesBySection[sectionMeta.id]) continue;
 
       item = createAccordionItem(sectionMeta, accordionItems.length);
       accordionItems.push(item);
-      fragment.appendChild(item);
+      targetFragment =
+        sectionMeta.id === "feelings" ? suffixFragment : prefixFragment;
+      targetFragment.appendChild(item);
     }
 
-    listEl.appendChild(fragment);
+    listPrefixEl.appendChild(prefixFragment);
+    listSuffixEl.appendChild(suffixFragment);
     built = true;
     openAllSections();
   }
@@ -1707,16 +1894,15 @@
     }
 
     if (sectionId === "family") {
-      // The family sign is a standalone, locally-drawn rectangle (not a canvas
-      // preview of the product engine). Draw its initial all-filled state; the
-      // fill/empty toggle loop then animates individual cells.
+      // Standalone locally-drawn rectangle; initial state matches loop start (min).
       var familyPanel = document.getElementById(
         "page2-home-signs-panel-family"
       );
       if (familyPanel && familyPanel.getAttribute("data-populated") === "true") {
         renderFamilyDivisions(
           getFamilyDivisionsSvg(familyPanel),
-          FAMILY_DIVISIONS_COUNT
+          FAMILY_DIVISIONS_MIN,
+          createFamilyFilledArray(FAMILY_DIVISIONS_MIN)
         );
       }
       return;

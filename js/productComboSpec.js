@@ -24,7 +24,15 @@
     {
       id: "profile",
       title: "",
-      keys: ["livingDuration", "leavingYear", "from", "nowIn", "homeAt"],
+      keys: [
+        "livingDuration",
+        "leavingYear",
+        "from",
+        "homeAt",
+        "octagonsN",
+        "innerScale",
+        "fanLeaves",
+      ],
     },
   ];
 
@@ -37,12 +45,13 @@
     name: "Name",
     nameDisplayMode: "How name appears on the label",
     age: "Age",
-    homeAt: 'Where do you feel most "at home" today?',
+    homeAt: "I feel most at home",
+    octagonsN: "Part of the community",
+    innerScale: "Iranian identity",
+    fanLeaves: "Body autonomy",
     labelBarTagIndex: "Side sign (0–5)",
     borderFrameDivisions: "Frame divisions",
     borderSideWhiteFill: "Margin empty cells",
-    fanLeaves:
-      "When you lived in Iran, how free did you feel to choose how to dress in public spaces?",
   };
 
   var ENUM_LABELS = {
@@ -67,8 +76,42 @@
 
   var SLIDER_MAX = {
     borderFrameDivisions: 3,
-    fanLeaves: 10,
   };
+
+  var SCORE_OF_TEN_KEYS = {
+    octagonsN: true,
+    innerScale: true,
+    fanLeaves: true,
+  };
+
+  function toScoreOfTen(key, raw) {
+    var num = parseInt(String(raw).trim(), 10);
+    if (!isFinite(num)) return null;
+
+    if (key === "octagonsN") {
+      var octSteps =
+        typeof OCTAGONS_N_STEPS !== "undefined" ? OCTAGONS_N_STEPS : 10;
+      if (num > octSteps && typeof octagonsNStepFromValue === "function") {
+        num = octagonsNStepFromValue(num);
+      } else {
+        num = Math.max(1, Math.min(octSteps, num));
+      }
+    } else if (key === "innerScale") {
+      var innerSteps =
+        typeof INNER_SCALE_STEPS !== "undefined" ? INNER_SCALE_STEPS : 10;
+      if (num >= 1 && num <= innerSteps) {
+        // already a UI step
+      } else if (typeof innerScaleStepFromValue === "function") {
+        num = innerScaleStepFromValue(num);
+      } else {
+        num = Math.max(1, Math.min(innerSteps, num));
+      }
+    } else if (key === "fanLeaves") {
+      num = Math.max(0, Math.min(10, num));
+    }
+
+    return String(num) + "/10";
+  }
 
   var specEl = document.getElementById("product-spec");
   var priceEl = document.getElementById("product-price");
@@ -98,10 +141,17 @@
       return isFinite(pct) ? String(pct) + "%" : str;
     }
 
-    if (key === "borderFrameDivisions" || key === "fanLeaves") {
-      var num = parseInt(str, 10);
-      var max = SLIDER_MAX[key];
-      if (isFinite(num) && max) return String(num) + " / " + String(max);
+    if (SCORE_OF_TEN_KEYS[key]) {
+      var score = toScoreOfTen(key, str);
+      return score !== null ? score : str;
+    }
+
+    if (key === "borderFrameDivisions") {
+      var frameNum = parseInt(str, 10);
+      var frameMax = SLIDER_MAX[key];
+      if (isFinite(frameNum) && frameMax) {
+        return String(frameNum) + " / " + String(frameMax);
+      }
       return str;
     }
 

@@ -1978,6 +1978,22 @@
           : remaining + " steps remaining";
   }
 
+  // Drives the folder "drop-down" open animation. Adds a transient `is-opening`
+  // class (see .questionnaire-card.is-opening in the CSS) and removes it once
+  // the animation has finished, so it can play again next time the folder is
+  // opened. Any previous timer for the same card is cleared first.
+  function markCardOpening(card) {
+    if (!card) return;
+    card.classList.add("is-opening");
+    if (card._openingTimer) {
+      window.clearTimeout(card._openingTimer);
+    }
+    card._openingTimer = window.setTimeout(function () {
+      card.classList.remove("is-opening");
+      card._openingTimer = null;
+    }, SCROLL_SNAP_ANIM_MS + 60);
+  }
+
   function updateCardAccessibility(stepId) {
     if (!stackEl) return;
 
@@ -1988,9 +2004,13 @@
       var card = cards[i];
       var header = card.querySelector(".questionnaire-card__header");
       var isExpanded = i === currentIndex;
+      var wasExpanded = card.classList.contains("is-expanded");
 
       card.classList.toggle("is-expanded", isExpanded);
       card.classList.remove("is-locked");
+      if (isExpanded && !wasExpanded && !prefersReducedMotion()) {
+        markCardOpening(card);
+      }
 
       var body = card.querySelector(".questionnaire-card__body");
       if (body) {
@@ -2009,7 +2029,11 @@
     for (var i = 0; i < cards.length; i++) {
       var card = cards[i];
       var isExpanded = i === activeIndex;
+      var wasExpanded = card.classList.contains("is-expanded");
       card.classList.toggle("is-expanded", isExpanded);
+      if (isExpanded && !wasExpanded && !prefersReducedMotion()) {
+        markCardOpening(card);
+      }
       var header = card.querySelector(".questionnaire-card__header");
       var body = card.querySelector(".questionnaire-card__body");
       if (header) {
@@ -2349,6 +2373,10 @@
   function handleQuestionnaireResize() {
     syncQuestionnaireCardHeights();
     syncQuestionnaireCanvasZoomFromScroll();
+    var profileMadlibs = document.querySelector(".questionnaire-profile-madlibs");
+    if (profileMadlibs) {
+      syncAllProfileMadlibsBlankWidths(profileMadlibs);
+    }
   }
 
   function getQuestionnaireCardMeasureWidth() {
@@ -2388,6 +2416,8 @@
   // Headroom (px) kept below the available height so rounding / sub-pixel slack
   // never re-introduces a 1-2px inner scrollbar.
   var QUESTIONNAIRE_FIT_SAFETY_PX = 12;
+  // Open-section header title/number scale relative to collapsed folders.
+  var QUESTIONNAIRE_EXPANDED_TITLE_SCALE = 1.5;
 
   // Measure a single card body's natural height at the current panel scale.
   // The body is moved offscreen so measuring never flashes on screen.
@@ -2431,17 +2461,53 @@
     // --- Pass 1: measure headers + each body height at BASE scale. ---
     panelEl.style.setProperty("--questionnaire-text-scale", String(base));
 
-    var maxHeaderPx = 0;
+    var maxCollapsedHeaderPx = 0;
+    var maxExpandedHeaderPx = 0;
+    var maxNumWidthPx = 0;
     var bodies = [];
+    // Card element paired with each measured body, so the per-section height
+    // below can be written back onto the correct card (some cards could lack a
+    // body and be skipped, which would break a plain index match).
+    var bodyCards = [];
     var hBase = [];
 
     for (i = 0; i < cards.length; i++) {
       var header = cards[i].querySelector(".questionnaire-card__header");
       if (header) {
-        maxHeaderPx = Math.max(
-          maxHeaderPx,
+        var num = header.querySelector(".questionnaire-card__num");
+        var title = header.querySelector(".questionnaire-card__title");
+        // Force scale 1 so an open card (.is-expanded) does not inflate the
+        // collapsed header baseline.
+        if (num) num.style.setProperty("--questionnaire-card-title-scale", "1");
+        if (title) title.style.setProperty("--questionnaire-card-title-scale", "1");
+        if (num) {
+          maxNumWidthPx = Math.max(
+            maxNumWidthPx,
+            Math.ceil(num.getBoundingClientRect().width)
+          );
+        }
+        maxCollapsedHeaderPx = Math.max(
+          maxCollapsedHeaderPx,
           Math.ceil(header.getBoundingClientRect().height)
         );
+        if (num) {
+          num.style.setProperty(
+            "--questionnaire-card-title-scale",
+            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+          );
+        }
+        if (title) {
+          title.style.setProperty(
+            "--questionnaire-card-title-scale",
+            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+          );
+        }
+        maxExpandedHeaderPx = Math.max(
+          maxExpandedHeaderPx,
+          Math.ceil(header.getBoundingClientRect().height)
+        );
+        if (num) num.style.removeProperty("--questionnaire-card-title-scale");
+        if (title) title.style.removeProperty("--questionnaire-card-title-scale");
       }
       // The spider chart / palette / grid-type used to be excluded from this
       // measurement. They are now included so a section's TRUE height drives
@@ -2449,6 +2515,7 @@
       var body = cards[i].querySelector(".questionnaire-card__body");
       if (!body) continue;
       bodies.push(body);
+      bodyCards.push(cards[i]);
       hBase.push(measureQuestionnaireBodyHeight(body, measureWidth));
     }
 
@@ -2479,18 +2546,21 @@
     var fitScale = base;
     var availableBodyPx = 0;
 
-    if (scrollEl && maxHeaderPx > 0 && maxBodyPx > 0) {
+    if (scrollEl && maxCollapsedHeaderPx > 0 && maxBodyPx > 0) {
       var scrollStyles = window.getComputedStyle(scrollEl);
       var scrollPadTop = parseFloat(scrollStyles.paddingTop) || 0;
       var scrollPadBottom = parseFloat(scrollStyles.paddingBottom) || 0;
       var stackPadBottom =
         parseFloat(window.getComputedStyle(stackEl).paddingBottom) || 0;
+      var expandedHeaderPx =
+        maxExpandedHeaderPx > 0 ? maxExpandedHeaderPx : maxCollapsedHeaderPx;
 
       availableBodyPx =
         scrollEl.clientHeight -
         scrollPadTop -
         scrollPadBottom -
-        cards.length * maxHeaderPx -
+        (cards.length - 1) * maxCollapsedHeaderPx -
+        expandedHeaderPx -
         stackPadBottom;
 
       var target = availableBodyPx - QUESTIONNAIRE_FIT_SAFETY_PX;
@@ -2521,27 +2591,58 @@
 
     panelEl.style.setProperty("--questionnaire-text-scale", String(fitScale));
 
-    // Uniform expanded-card height. When we had to shrink, fill the available
-    // space; otherwise use the tallest natural body (cards stay as compact as
-    // their content allows while remaining uniform).
-    var finalBodyPx;
-    if (fitScale < base && availableBodyPx > 0) {
-      finalBodyPx = availableBodyPx;
-    } else {
-      finalBodyPx = maxBodyPx;
-    }
-
-    if (maxHeaderPx > 0) {
+    // Header metrics stay uniform across all folders so the section number /
+    // title line up whether a folder is open or closed.
+    if (maxCollapsedHeaderPx > 0) {
       panelEl.style.setProperty(
         "--questionnaire-card-header-height",
-        maxHeaderPx + "px"
+        maxCollapsedHeaderPx + "px"
       );
     }
-    if (finalBodyPx > 0) {
+    if (maxNumWidthPx > 0) {
       panelEl.style.setProperty(
-        "--questionnaire-card-expanded-height",
-        maxHeaderPx + finalBodyPx + "px"
+        "--questionnaire-card-num-column-width",
+        maxNumWidthPx + "px"
       );
+    }
+    if (maxExpandedHeaderPx > 0) {
+      panelEl.style.setProperty(
+        "--questionnaire-card-expanded-header-height",
+        maxExpandedHeaderPx + "px"
+      );
+    }
+
+    // Per-section height: each open card is sized to ITS OWN content instead of
+    // the tallest section, so short sections stay compact. We predict each
+    // body's height at the chosen fitScale from the two already-measured sample
+    // points — height(scale) = A*scale + B — then add the shared expanded
+    // header height. The variable is written on each card element (only one is
+    // open at a time), overriding the panel-level fallback.
+    var expandedHeaderForCard =
+      maxExpandedHeaderPx > 0 ? maxExpandedHeaderPx : maxCollapsedHeaderPx;
+    for (i = 0; i < bodyCards.length; i++) {
+      var A = (hBase[i] - hProbe[i]) / (base - probe);
+      var bodyFitPx;
+      if (A > 0.0001) {
+        var B = hBase[i] - A * base;
+        bodyFitPx = A * fitScale + B;
+      } else {
+        // Section height barely responds to scale; use its base measurement.
+        bodyFitPx = hBase[i];
+      }
+      bodyFitPx = Math.ceil(bodyFitPx);
+      // Never taller than the space available for a body (keeps a shrunk tall
+      // section on-screen), and never negative.
+      if (availableBodyPx > 0 && bodyFitPx > availableBodyPx) {
+        bodyFitPx = availableBodyPx;
+      }
+      if (bodyFitPx < 0) bodyFitPx = 0;
+      if (expandedHeaderForCard > 0 && bodyFitPx > 0) {
+        bodyCards[i].style.setProperty(
+          "--questionnaire-card-expanded-height",
+          expandedHeaderForCard + bodyFitPx + "px"
+        );
+      }
     }
   }
 
@@ -2569,7 +2670,6 @@
       var sectionMeta = getSectionLabels()[section.key];
       var card = document.createElement("article");
       card.className = "questionnaire-card";
-      card.classList.add("questionnaire-card--light");
       card.setAttribute("data-section-key", section.key);
       if (section.key === "feelings") {
         card.classList.add("questionnaire-card--feelings");
@@ -2595,11 +2695,20 @@
       num.className = "questionnaire-card__num";
       num.textContent = String(sectionMeta.num);
 
+      // Small square that sits between the number and the title. It inherits the
+      // header text color (white on closed red folders, brown when the section
+      // is open), so no per-state color rule is needed. Decorative only, so it
+      // is hidden from assistive tech.
+      var dot = document.createElement("span");
+      dot.className = "questionnaire-card__dot";
+      dot.setAttribute("aria-hidden", "true");
+
       var title = document.createElement("span");
       title.className = "questionnaire-card__title";
       title.textContent = sectionMeta.name;
 
       header.appendChild(num);
+      header.appendChild(dot);
       header.appendChild(title);
       header.addEventListener("click", onQuestionnaireCardHeaderClick);
       header.addEventListener("keydown", onQuestionnaireCardHeaderKeydown);
@@ -2624,8 +2733,13 @@
         var nextBtn = document.createElement("button");
         nextBtn.type = "button";
         nextBtn.className = "questionnaire-card__next";
-        nextBtn.textContent = getUiString("next");
         nextBtn.setAttribute("aria-label", getUiString("next"));
+        nextBtn.innerHTML =
+          '<span class="questionnaire-card__next-icon-wrap" aria-hidden="true">' +
+          '<svg class="questionnaire-card__next-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+          '<circle class="questionnaire-card__next-icon__ring" cx="12" cy="12" r="11.65"/>' +
+          '<path class="questionnaire-card__next-icon__arrow" d="M5 12H18M12 6L19 12L12 18"/>' +
+          "</svg></span>";
         nextBtn.addEventListener("click", function () {
           advance();
         });
@@ -2637,6 +2751,11 @@
       card.appendChild(header);
       card.appendChild(body);
       stackEl.appendChild(card);
+    }
+
+    var profileMadlibs = document.querySelector(".questionnaire-profile-madlibs");
+    if (profileMadlibs) {
+      syncAllProfileMadlibsBlankWidths(profileMadlibs);
     }
 
     mountCanvasToQuestionnaireHost();
@@ -3394,16 +3513,100 @@
     );
   }
 
+  function getProfileMadlibsGridColMinWidthPx() {
+    if (
+      typeof window.Page2Units !== "undefined" &&
+      typeof window.Page2Units.readPage2CssLengthPx === "function"
+    ) {
+      return window.Page2Units.readPage2CssLengthPx("--page2-grid-col");
+    }
+    return 0;
+  }
+
+  function setProfileMadlibsBlankEmptyState(el, isEmpty) {
+    if (!el || !el.closest(".questionnaire-profile-madlibs")) return;
+    el.classList.toggle("is-profile-blank-empty", isEmpty);
+  }
+
+  function measureProfileMadlibsNaturalWidthPx(el) {
+    if (!el) return 0;
+    // Text <input> fields in the profile use `field-sizing: fixed` (see
+    // styles.css), so setting `width: auto` does NOT collapse them to the
+    // content width — the browser falls back to the default input box width
+    // (~20 chars). That made every answer underline stay long and roughly
+    // the same length. Instead, measure the real glyph width of the typed
+    // text with the off-screen sizer and add the field's horizontal padding.
+    if (el.tagName === "INPUT") {
+      var inputStyle = window.getComputedStyle(el);
+      var inputPadX =
+        parseFloat(inputStyle.paddingLeft) +
+        parseFloat(inputStyle.paddingRight);
+      var inputBorderX =
+        parseFloat(inputStyle.borderLeftWidth) +
+        parseFloat(inputStyle.borderRightWidth);
+      var text = el.value || "";
+      var textWidth = text ? measureMadlibsTextPx(text, el) : 0;
+      // +2px guards against clipping the final glyph due to sub-pixel rounding.
+      return textWidth + inputPadX + inputBorderX + 2;
+    }
+    var prevWidth = el.style.width;
+    var prevMinWidth = el.style.minWidth;
+    el.style.width = "auto";
+    el.style.minWidth = "0";
+    var width = el.getBoundingClientRect().width;
+    el.style.width = prevWidth;
+    el.style.minWidth = prevMinWidth;
+    return width;
+  }
+
+  function applyProfileMadlibsBlankWidth(el, isEmpty, naturalMeasureEl) {
+    var gridColPx = getProfileMadlibsGridColMinWidthPx();
+    setProfileMadlibsBlankEmptyState(el, isEmpty);
+    if (isEmpty) {
+      el.style.minWidth = "";
+      el.style.width =
+        Math.ceil(gridColPx > 0 ? gridColPx : 0) + "px";
+      return;
+    }
+    el.style.minWidth = "";
+    el.style.width = "";
+    var naturalPx = measureProfileMadlibsNaturalWidthPx(
+      naturalMeasureEl || el
+    );
+    if (naturalPx > 0) {
+      el.style.width = Math.ceil(naturalPx) + "px";
+    }
+  }
+
+  function getMadlibsBlankMinWidthPx(el, isEmpty) {
+    if (!el) return 0;
+    var isProfileBlank = el.closest(".questionnaire-profile-madlibs");
+    if (isProfileBlank) {
+      if (isEmpty) {
+        var gridColPx = getProfileMadlibsGridColMinWidthPx();
+        if (gridColPx > 0) return gridColPx;
+      }
+      return 0;
+    }
+    var style = window.getComputedStyle(el);
+    return parseFloat(style.minWidth) || 0;
+  }
+
   function syncMadlibsTextInputWidth(input) {
     if (!input || input.tagName !== "INPUT") return;
-    var style = window.getComputedStyle(input);
-    var minWidth = parseFloat(style.minWidth) || 0;
-    var padX =
-      parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
     var text = input.value || "";
+    var isProfileBlank = input.closest(".questionnaire-profile-madlibs");
+    if (isProfileBlank) {
+      applyProfileMadlibsBlankWidth(input, !text, input);
+      return;
+    }
+    var style = window.getComputedStyle(input);
+    var minWidth = getMadlibsBlankMinWidthPx(input, !text);
     if (!text && input.placeholder) {
       text = input.placeholder;
     }
+    var padX =
+      parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
     var textWidth = text ? measureMadlibsTextPx(text, input) : 0;
     var target = Math.max(minWidth, textWidth + padX + 2);
     if (supportsFieldSizingContent()) {
@@ -3418,6 +3621,42 @@
     if (!wrap || !wrap.classList.contains("questionnaire-madlibs-dropdown")) {
       return;
     }
+    if (!wrap.closest(".questionnaire-profile-madlibs")) {
+      syncMadlibsDropdownWidthGeneric(wrap);
+      return;
+    }
+    if (wrap.classList.contains("questionnaire-madlibs-name-mode")) {
+      var nameModeInput = wrap.querySelector(
+        ".questionnaire-madlibs-name-mode__input"
+      );
+      var nameModeSurface = wrap.querySelector(
+        ".questionnaire-madlibs-name-mode__surface"
+      );
+      var nameIsEmpty =
+        !nameModeInput ||
+        (!nameModeInput.value && !nameModeInput.readOnly);
+      if (nameModeInput) {
+        syncMadlibsTextInputWidth(/** @type {HTMLInputElement} */ (nameModeInput));
+      }
+      applyProfileMadlibsBlankWidth(
+        wrap,
+        nameIsEmpty,
+        nameModeSurface || wrap
+      );
+      return;
+    }
+    var trigger = wrap.querySelector(".questionnaire-madlibs-dropdown__trigger");
+    var labelEl = wrap.querySelector(".questionnaire-madlibs-dropdown__label");
+    if (!trigger || !labelEl) return;
+    var labelText =
+      labelEl.classList.contains("is-placeholder") || !labelEl.textContent
+        ? ""
+        : labelEl.textContent;
+    var isEmpty = !labelText || !String(labelText).trim();
+    applyProfileMadlibsBlankWidth(wrap, isEmpty, trigger);
+  }
+
+  function syncMadlibsDropdownWidthGeneric(wrap) {
     if (wrap.classList.contains("questionnaire-madlibs-name-mode")) {
       var nameModeInput = wrap.querySelector(
         ".questionnaire-madlibs-name-mode__input"
@@ -3565,6 +3804,20 @@
     return { width: 1, height: 1 };
   }
 
+  // Profile madlibs "signs": give every field icon the SAME width, enlarged.
+  // Height is derived from each sign's aspect ratio so the artwork keeps its
+  // proportions (no stretching). Bump this single number to resize them all.
+  // NOTE: only affects the questionnaire profile, not the label bar ("system").
+  var PROFILE_MADLIBS_ICON_WIDTH_EM = 1.6;
+
+  function applyProfileMadlibsIconSize(el, dims) {
+    if (!el || !dims || !dims.width || !dims.height) return;
+    var w = PROFILE_MADLIBS_ICON_WIDTH_EM;
+    var ratio = dims.width / dims.height;
+    el.style.width = w + "em";
+    el.style.height = "calc(" + w + "em / " + ratio + ")";
+  }
+
   function createMadlibsFieldIcon(stepId) {
     var file = getProfileMadlibsIconFile(stepId);
     if (!file) return null;
@@ -3585,11 +3838,7 @@
     svg.innerHTML = innerMarkup;
     icon.appendChild(svg);
 
-    if (dims.width && dims.height) {
-      var ratio = dims.width / dims.height;
-      icon.style.height = "1.15em";
-      icon.style.width = "calc(1.15em * " + ratio + ")";
-    }
+    applyProfileMadlibsIconSize(icon, dims);
     return icon;
   }
 
@@ -3614,11 +3863,7 @@
       "0 0 " + String(dims.width) + " " + String(dims.height)
     );
     svg.innerHTML = innerMarkup;
-    if (dims.width && dims.height) {
-      var ratio = dims.width / dims.height;
-      iconWrap.style.height = "1.15em";
-      iconWrap.style.width = "calc(1.15em * " + ratio + ")";
-    }
+    applyProfileMadlibsIconSize(iconWrap, dims);
   }
 
   function wrapMadlibsFieldWithIcon(stepId, blankEl) {
@@ -4696,6 +4941,10 @@
 
     var gridTypeBlock = document.createElement("div");
     gridTypeBlock.className = "questionnaire-section-question";
+    appendQuestionnaireSectionQuestionHeading(
+      gridTypeBlock,
+      getStepConfig("gridType").label
+    );
     appendQuestionnaireGridTypeChoice(gridTypeBlock, syncSectionChange);
     list.appendChild(gridTypeBlock);
 
@@ -5019,35 +5268,63 @@
     }
 
     (function attachPaletteSpreadPersistence() {
+      // The hover "reveal" is done with translateX (not margins) so the row keeps
+      // a fixed total width and the first/last circles stay pinned. For the hovered
+      // circle at index i, we shift each other circle away from it by an amount that
+      // tapers to zero at both ends of the row.
+      var dots = Array.prototype.slice.call(
+        group.querySelectorAll(".questionnaire-palette-dot")
+      );
+
+      function getMaxShiftPx() {
+        // Scale the reveal to the current circle size so it feels consistent at any
+        // screen width: enough to undo the 25% overlap plus a little breathing room.
+        var first = dots[0];
+        var width = first ? first.getBoundingClientRect().width : 0;
+        if (!width) return 10;
+        return width * 0.25 + 8;
+      }
+
       function clearPaletteSpread() {
-        group.querySelectorAll(".questionnaire-palette-dot").forEach(function (dot) {
-          dot.classList.remove("is-spread-before", "is-spread-after");
+        dots.forEach(function (dot) {
+          dot.style.transform = "";
         });
       }
 
-      function applyPaletteSpread(dot) {
-        clearPaletteSpread();
-        if (!dot) return;
-        var paletteNum = Number(dot.getAttribute("data-palette-num"));
-        if (paletteNum > 1) {
-          dot.classList.add("is-spread-before");
-        }
-        if (dot.nextElementSibling) {
-          dot.nextElementSibling.classList.add("is-spread-after");
-        }
+      function applyPaletteSpread(hoveredIndex) {
+        if (hoveredIndex < 0) return;
+        var n = dots.length;
+        var g = getMaxShiftPx();
+        dots.forEach(function (dot, j) {
+          var shift = 0;
+          if (j < hoveredIndex && hoveredIndex > 0) {
+            // Circles to the left: move left, zero at the leftmost (j === 0).
+            shift = -g * (j / hoveredIndex);
+          } else if (j > hoveredIndex && hoveredIndex < n - 1) {
+            // Circles to the right: move right, zero at the rightmost (j === n - 1).
+            shift = g * ((n - 1 - j) / (n - 1 - hoveredIndex));
+          }
+          dot.style.transform = shift ? "translateX(" + shift + "px)" : "";
+        });
       }
 
-      group.querySelectorAll(".questionnaire-palette-dot").forEach(function (dot) {
+      dots.forEach(function (dot, index) {
         dot.addEventListener("mouseenter", function () {
-          applyPaletteSpread(dot);
+          applyPaletteSpread(index);
+        });
+        dot.addEventListener("focusin", function () {
+          applyPaletteSpread(index);
         });
       });
 
-      group.addEventListener("mouseleave", function (e) {
+      function leaveIfOutside(e) {
         var related = e.relatedTarget;
         if (related && group.contains(related)) return;
         clearPaletteSpread();
-      });
+      }
+
+      group.addEventListener("mouseleave", leaveIfOutside);
+      group.addEventListener("focusout", leaveIfOutside);
     })();
 
     activePalettePickerGroup = group;
@@ -5932,10 +6209,13 @@
     if (designStart) {
       designStart.hidden = false;
       designStart.style.transform = "";
-      var stepHeight = designStart.clientHeight;
       var contentPanels = getDesignIntroContentPanels(designStart);
-      if (stepHeight && contentPanels.length) {
-        designStart.scrollTop = (contentPanels.length - 1) * stepHeight;
+      if (contentPanels.length > 1) {
+        var scrollTo = 0;
+        for (var pi = 0; pi < contentPanels.length - 1; pi++) {
+          scrollTo += contentPanels[pi].offsetHeight;
+        }
+        designStart.scrollTop = scrollTo;
       }
       window.requestAnimationFrame(function () {
         updateDesignIntroScrollPolish();
