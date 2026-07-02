@@ -38,7 +38,10 @@
     },
     {
       id: "bodyAutonomy",
-      label: "Body autonomy",
+      /* The newline forces the English title to break after "Body" so
+         "autonomy" drops to the line below on the Signs page. The Signs title
+         renders newlines via `white-space: pre-line`. */
+      label: "Body\nautonomy",
       labelFa: "خودمختاری بدن",
       description:
         "This layer reflects how much autonomy and ownership she felt over her own body while living in Iran. It captures her experience of control, restriction, or freedom in relation to her physical self.",
@@ -60,16 +63,16 @@
     label:
       "How much do you feel that Iranian identity is a central part of your life today?",
     labelFa:
-      "تا چه حد احساس می‌کنید هویت ایرانی بخش مرکزی زندگی‌تان امروز است؟",
+      "تا چه حد هویت ایرانی امروز بخش مرکزی زندگی‌تان است؟",
     ariaLabel:
-      "How much do you feel that Iranian identity is a central part of your life today? Very much in the background to at the center of my life.",
+      "How much do you feel that Iranian identity is a central part of your life today? in the background to very central.",
     ariaLabelFa:
-      "تا چه حد احساس می‌کنید هویت ایرانی بخش مرکزی زندگی‌تان امروز است؟ از بسیار در پس‌زمینه تا در مرکز زندگی من.",
+      "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان است؟ از پس‌زمینه تا بسیار مرکزی.",
     min: 1,
     max: 10,
     step: 1,
-    rangeLabels: ["Very much in the background", "At the center of my life"],
-    rangeLabelsFa: ["بسیار در پس‌زمینه", "در مرکز زندگی من"],
+    rangeLabels: ["in the background", "very central"],
+    rangeLabelsFa: ["در پس‌زمینه", "بسیار مرکزی"],
   };
 
   var SIGNS_CATALOG = [

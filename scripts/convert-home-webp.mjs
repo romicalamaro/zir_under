@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 
 const dir = "website/home";
-const targets = ["10.png"];
+const targets = ["14.png"];
 const MAX_WIDTH = 2048;
 const QUALITY = 80;
 

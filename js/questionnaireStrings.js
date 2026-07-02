@@ -17,11 +17,13 @@
       bodyAutonomy: { num: 4, name: "Body autonomy" },
       feelings: { num: 5, name: "Feelings" },
       colors: { num: 6, name: "Colors" },
-      submitOrder: { num: 7, name: "submit&order" },
+      submitOrder: { num: 7, name: "submit & order" },
     },
     feelings: {
       intro:
         "How much do you feel these emotions when you think about Iran?",
+      hopeIntro:
+        "Hope is something you make.\nDraw across the canvas to connect the grid and reveal it.",
       hopeHeading: "Hope",
       tableRows: [
         { label: "Fear", stepId: "angerVerticalLength" },
@@ -52,7 +54,7 @@
       shuffleLayout: "Shuffle layout",
       shuffleLayoutAria:
         "Randomize emotion placement on the canvas without changing intensity values",
-      submitOrder: "submit & order",
+      submitOrder: "order",
       savedToArchive: "Saved to archive",
       archiveFull:
         "Archive is full — delete older handkerchiefs to save new ones.",
@@ -85,7 +87,7 @@
         ],
         [
           { t: "text", v: "I'm " },
-          { t: "blank", id: "age", size: "short" },
+          { t: "blank", id: "age", size: "short", placeholder: "age" },
           { t: "text", v: " years old." },
         ],
         [
@@ -94,14 +96,14 @@
         ],
         [
           { t: "text", v: "until " },
-          { t: "blank", id: "leavingYear", size: "short" },
+          { t: "blank", id: "leavingYear", size: "short", placeholder: "year" },
           { t: "text", v: "." },
         ],
         [
-          { t: "text", v: "I came from (city / state) " },
-          { t: "blank", id: "from", size: "medium" },
-          { t: "text", v: " to (city / state) " },
-          { t: "blank", id: "nowIn", size: "medium" },
+          { t: "text", v: "I came from " },
+          { t: "blank", id: "from", size: "medium", placeholder: "city / state" },
+          { t: "text", v: " to " },
+          { t: "blank", id: "nowIn", size: "medium", placeholder: "city / state" },
           { t: "text", v: "." },
         ],
         [
@@ -122,7 +124,7 @@
         options: {
           smallPart: "Small part of my life",
           partOfLife: "Part of my life",
-          mostAll: "Most / all of my life",
+          mostAll: "Most of my life",
         },
       },
       leavingYear: {
@@ -249,6 +251,8 @@
       hopeMode: {
         label: "Hope",
         ariaLabel: "Hope interaction mode",
+        penAriaLabel: "Drawing pen — draw across the canvas to reveal hope",
+        resetAriaLabel: "Undo the drawing — restore the canvas",
         options: {
           view: "View",
           merge: "Merge",
@@ -302,6 +306,8 @@
     feelings: {
       intro:
         "وقتی به ایران فکر می‌کنید، این احساسات را تا چه حد تجربه می‌کنید؟",
+      hopeIntro:
+        "امید چیزی است که می‌سازید. روی بوم بکشید تا خط‌ها را ادغام کنید و آن را آشکار کنید.",
       hopeHeading: "امید",
       tableRows: [
         { label: "ترس", stepId: "angerVerticalLength" },
@@ -313,7 +319,7 @@
         { label: "قدرت / نیرو", stepId: "strengthDensity" },
         { label: "افتخار", stepId: "autoMergeIntensity" },
         { label: "درد", stepId: "prideFillPercent" },
-        { label: "گناه / شرم", stepId: "guiltShameFillPercent" },
+        { label: "احساس گناه / شرم", stepId: "guiltShameFillPercent" },
         { label: "درماندگی", stepId: "helplessnessPercent" },
       ],
       scaleLabels: [
@@ -332,7 +338,7 @@
       shuffleLayout: "چیدمان تصادفی",
       shuffleLayoutAria:
         "جای احساسات روی بوم را بدون تغییر شدت، تصادفی کنید",
-      submitOrder: "ثبت و سفارش",
+      submitOrder: "سفارش",
       savedToArchive: "در آرشیو ذخیره شد",
       archiveFull:
         "آرشیو پر است — برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",
@@ -365,21 +371,21 @@
         ],
         [
           { t: "text", v: "من " },
-          { t: "blank", id: "age", size: "short" },
+          { t: "blank", id: "age", size: "short", placeholder: "سن" },
           { t: "text", v: " سال دارم." },
         ],
         [
           { t: "text", v: "من در ایران " },
           { t: "blank", id: "livingDuration", size: "medium", kind: "select" },
-          { t: "text", v: " زندگی کردم تا " },
-          { t: "blank", id: "leavingYear", size: "short" },
-          { t: "text", v: "." },
+          { t: "text", v: " تا " },
+          { t: "blank", id: "leavingYear", size: "short", placeholder: "سال" },
+          { t: "text", v: " زندگی کردم." },
         ],
         [
           { t: "text", v: "من از " },
-          { t: "blank", id: "from", size: "medium" },
+          { t: "blank", id: "from", size: "medium", placeholder: "شهر / استان" },
           { t: "text", v: " به " },
-          { t: "blank", id: "nowIn", size: "medium" },
+          { t: "blank", id: "nowIn", size: "medium", placeholder: "شهر / استان" },
           { t: "text", v: " آمدم." },
         ],
         [
@@ -434,12 +440,12 @@
         ariaLabel: "سن",
       },
       homeAt: {
-        label: "امروز بیشتر کجا احساس «خانه بودن» دارید؟",
-        ariaLabel: "امروز بیشتر کجا احساس خانه بودن دارید؟",
+        label: "امروز کجا بیشتر در خانه احساس می‌کنید؟",
+        ariaLabel: "امروز کجا بیشتر در خانه احساس می‌کنید؟",
         options: {
           inIran: "در ایران",
-          whereILive: "خارج از ایران / جایی که اکنون زندگی می‌کنم",
-          nowhere: "هیچ‌جا / بین دو جهان",
+          whereILive: "خارج از ایران / جایی که حالا زندگی می‌کنم",
+          nowhere: "هیچ‌جا / بینابین",
         },
       },
       gridType: {
@@ -449,19 +455,19 @@
           octagon: "هشت‌ضلعی‌ها",
           star: "ستاره‌ها",
           circles: "دایره‌ها",
-          diamonds: "لوزی‌ها",
+          diamonds: "الماس‌ها",
         },
       },
       octagonsN: {
         label:
           "تا چه حد خود را بخشی از یک جامعه ایرانی (حضوری یا آنلاین) می‌دانید؟",
         ariaLabel:
-          "تا چه حد خود را بخشی از یک جامعه ایرانی می‌دانید؟ از تقریباً بی‌ارتباط تا بسیار مرتبط.",
-        rangeLabels: ["تقریباً بی‌ارتباط", "بسیار مرتبط"],
+          "تا چه حد خود را بخشی از یک جامعه ایرانی می‌دانید؟ از خیلی کم تا کاملاً، خیلی زیاد.",
+        rangeLabels: ["خیلی کم", "کاملاً، خیلی زیاد"],
       },
       innerScale: {
         label:
-          "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان امروز است؟",
+          "تا چه حد هویت ایرانی امروز بخش مرکزی زندگی‌تان است؟",
         ariaLabel:
           "تا چه حد هویت ایرانی بخش مرکزی زندگی‌تان است؟ از پس‌زمینه تا بسیار مرکزی.",
         rangeLabels: ["در پس‌زمینه", "بسیار مرکزی"],
@@ -489,9 +495,9 @@
       },
       iranLossTypes: {
         label:
-          "چه نوع از دست دادن / قطع ارتباطی را نسبت به ایران احساس می‌کنید؟ (همه موارد مرتبط را انتخاب کنید)",
+          "چه نوع از دست دادن / قطع ارتباطی را نسبت به ایران احساس می‌کنید؟ (همه گزینه‌های مرتبط را انتخاب کنید)",
         ariaLabel:
-          "چه نوع از دست دادن یا قطع ارتباطی را نسبت به ایران احساس می‌کنید؟ همه موارد مرتبط را انتخاب کنید.",
+          "چه نوع از دست دادن یا قطع ارتباطی را نسبت به ایران احساس می‌کنید؟ همه گزینه‌های مرتبط را انتخاب کنید.",
         options: {
           lovedOne: "از دست دادن عزیزی",
           place: "از دست دادن مکان (خانه، محله، شهر)",
@@ -527,8 +533,10 @@
       hopeMode: {
         label: "امید",
         ariaLabel: "حالت تعامل امید",
+        penAriaLabel: "قلم طراحی — روی بوم بکشید تا امید آشکار شود",
+        resetAriaLabel: "بازگرداندن — بوم را به حالت قبل برگردانید",
         options: {
-          view: "مشاهده",
+          view: "نمایش",
           merge: "ادغام",
         },
       },
@@ -557,7 +565,7 @@
         ariaLabel: "میزان پر شدن لوزی درد",
       },
       guiltShameFillPercent: {
-        label: "گناه / شرم",
+        label: "احساس گناه / شرم",
         ariaLabel: "میزان پر شدن لوزی توخالی گناه / شرم",
       },
       helplessnessPercent: {

@@ -12,7 +12,7 @@
     <meta name="application-name" content="zin.under" />
     <meta property="og:title" content="zin.under" />
     <meta property="og:site_name" content="zin.under" />
-    <link rel="stylesheet" href="css/styles.css?v=20260701-grid-fa-align" />
+    <link rel="stylesheet" href="css/styles.css?v=20260702-fa-placeholder-align" />
     <!-- Header grid must exist before body paints — JS refines track widths later. -->
     <style id="page2-header-critical">
       #page2 {
@@ -544,10 +544,10 @@
                     </div>
                     <div class="page2-footer__credit-group">
                       <span class="page2-footer__subheading"
-                        >Textile Designers</span
+                        >Special Thanks</span
                       >
                       <span class="page2-footer__note"
-                        >Orly Noy, Sana, Kiyana, Atoosa,<br />Yael&nbsp;Izakson</span
+                        >Orly Noy, Sana, Kiyana, Atoosa,<br />Yael&nbsp;Izakson, Arina, Mo&nbsp;(Mohamad)</span
                       >
                     </div>
                     <div class="page2-footer__credit-group">
@@ -562,12 +562,10 @@
                       <span class="page2-footer__note">Yuval Urbach</span>
                     </div>
                     <div class="page2-footer__credit-group">
-                      <span class="page2-footer__subheading">Printing</span>
-                      <span class="page2-footer__note">Cadena</span>
-                    </div>
-                    <div class="page2-footer__credit-group">
-                      <span class="page2-footer__subheading">Design</span>
-                      <span class="page2-footer__note">Romi Calamaro</span>
+                      <span class="page2-footer__subheading"
+                        >Translate to Persian</span
+                      >
+                      <span class="page2-footer__note">Liraz Ten</span>
                     </div>
                   </div>
                   <div class="page2-footer__col">
@@ -597,7 +595,7 @@
                   role="img"
                   aria-label="zin.under"
                 ></div>
-                <p class="page2-footer__copyright">&copy; Romi Calamaro 2026</p>
+                <p class="page2-footer__copyright">&copy; Designed by Romi Calamaro 2026</p>
               </footer>
             </div>
           </section>
@@ -952,12 +950,15 @@
                       lang="fa"
                       dir="rtl"
                     >
-                      منسوجات خود را طراحی کنید و همین حالا به این اعتراض برای حق
-                      زنان بر بدن خود بپیوندید
+                      پارچهٔ مدولار خود را طراحی کنید و به این اعتراض برای حق زنان
+                      بر بدن خود بپیوندید
                     </p>
                   </div>
                   <div class="design-intro__scroll-hint">
                     <div class="design-intro__scroll-group">
+                      <span class="design-intro__scroll-label" lang="en"
+                        >scroll to start</span
+                      >
                       <div class="design-intro__scroll-arrow-mask" aria-hidden="true">
                         <span class="design-intro__scroll-arrow">
                           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1870,6 +1871,14 @@
         align-items: flex-start;
       }
 
+      /* Add a little breathing room between consecutive credit groups
+         (e.g. Mentors → Special Thanks) without affecting the tight spacing
+         between the "Credits" heading and the first group. ~8px @ ref adds to
+         the column's 4px flex gap for ~12px total between groups. */
+      #page2 .page2-footer__credit-group + .page2-footer__credit-group {
+        margin-top: calc(var(--page2-space-4) * 2);
+      }
+
       /* Bold sub-label inside Credits (lighter weight than the column heading,
          distinguished from the light name list by font-weight 500). */
       #page2 .page2-footer__subheading {
@@ -1941,12 +1950,17 @@
       }
 
       /* Copyright — sits on the logo row (row 2) to the right of the zin.under
-         wordmark. grid-column 9 / -1 starts it flush at the left edge of the
-         4th column from the right in the 12-col grid; align-self/margin pin its
-         baseline to the bottom alongside the lifted logo. */
+         wordmark. grid-column 10 / -1 starts it AFTER the wordmark (which fills
+         cols 1–9), so the text clears the logo instead of sitting on its right
+         edge, while spanning to the grid's right edge gives the line enough
+         width to stay on ONE row (© + year included). The text is left-aligned,
+         so it still visually begins under the Bezalel logo (second column block
+         from the right). align-self/margin pin its baseline to the bottom
+         alongside the lifted logo. */
       #page2 .page2-footer__copyright {
-        grid-column: 9 / -1;
+        grid-column: 10 / -1;
         grid-row: 2;
+        white-space: nowrap;
         align-self: end;
         /* Bottom margin = the logo's own lift + a measured "extra lift" set by
            JS (alignFooterCopyright) so the text's bottom edge lands on the
@@ -2351,8 +2365,12 @@
         background-color: var(--page2-signs-fg);
       }
 
+      /* The bilingual page title spans exactly grid columns 2–4, so the Persian
+         word right-aligns to the right edge of the 4th column while English stays
+         pinned to the left edge of column 2. It stays a flex row; the separator
+         square below uses auto margins to self-centre in the gap between them. */
       #page2 #section-home .page2-home-signs__label {
-        grid-column: 2 / 9;
+        grid-column: 2 / 5;
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
@@ -2397,7 +2415,10 @@
         flex-shrink: 0;
         width: var(--page2-signs-title-sep-size);
         height: var(--page2-signs-title-sep-size);
-        margin-inline: calc(var(--page2-signs-title-inline-gap) / 2);
+        /* auto side-margins soak up the free space equally on both sides, so the
+           square lands at the exact mid-point between the English and Persian
+           words regardless of their individual widths. */
+        margin-inline: auto;
         background-color: var(--page2-signs-fg);
         transform: translateY(calc(var(--page2-space-4) * -0.75)); /* optical nudge up ~3px @ ref */
       }
@@ -2441,6 +2462,24 @@
         align-items: center;
         position: relative;
         box-sizing: border-box;
+        /* Clipping "slot" for the scroll-linked drawer reveal: the item's content
+           (trigger + panel) slides down into place from behind the top divider
+           line via translateY, and this overflow:hidden clips whatever is still
+           above the item's top edge (the vertical analogue of the Topkapi
+           rectangles' horizontal slot). */
+        overflow: hidden;
+      }
+
+      /* Drawer reveal: the top divider line (::before) stays put as a fixed rail
+         at the item's top edge, and only the trigger (text) and panel (sign)
+         slide down behind it by a pixel offset. Because the line never moves it is
+         always visible first, so the text can never appear before its line. JS
+         (updateSignsSectionReveal) sets --signs-reveal-offset per item from
+         -sectionHeight (hidden, clipped above) up to 0px (at rest). The 0px
+         default keeps everything visible with no JS / reduced motion. */
+      #page2 #section-home .page2-home-signs__trigger,
+      #page2 #section-home .page2-home-signs__panel {
+        transform: translateY(var(--signs-reveal-offset, 0px));
       }
 
       #page2 #section-home .page2-home-signs__item::before {
@@ -2486,8 +2525,21 @@
         outline-offset: 2px;
       }
 
-      #page2 #section-home .page2-home-signs__num {
-        /* Match section titles: DIN Condensed, bold (only shipped weight). */
+      /* The section title band spans grid columns 2 and 3 (the space freed by
+         removing the number). It is a 2-track subgrid so its two children line
+         up EXACTLY with the page's column grid:
+           - English title  -> column 2, left-aligned
+           - Persian title   -> column 3, right-aligned
+         DIN Condensed typography is shared here; Persian keeps its Vazirmatn
+         override below. */
+      #page2 #section-home .page2-home-signs__title {
+        grid-column: 2 / 4;
+        grid-row: 1;
+        display: grid;
+        grid-template-columns: subgrid;
+        align-items: start;
+        /* Positioning context for the small square separator below. */
+        position: relative;
         font-family: "DIN Condensed", sans-serif;
         font-size: var(--page2-about-text-size);
         font-weight: 700;
@@ -2496,46 +2548,41 @@
         color: var(--page2-signs-fg);
       }
 
-      #page2 #section-home .page2-home-signs__num {
-        grid-column: 2;
-        /* Keep number, title, description and sign on the SAME row (num col 2,
-           title cols 3-6, desc cols 5-9, sign cols 10-12). Without an explicit
-           row the grid auto-places each on its own row and they stack
-           vertically — which is why align-items had no visible effect. */
-        grid-row: 1;
-        /* Center the number within its grid column instead of hugging its left
-           edge. */
-        justify-self: center;
-        text-align: center;
+      /* Small square exactly in the middle between the English title (column 2)
+         and the Persian title (column 3). Because the title band is stretched
+         evenly across both columns + the gutter, its horizontal centre (50%)
+         lands precisely on the middle of that gutter — i.e. the mid-point
+         between the two titles, with no width-dependent maths needed.
+         Vertically it is centred on the first text line (line-height 1.1). */
+      #page2 #section-home .page2-home-signs__title-sep {
+        position: absolute;
+        left: 50%;
+        top: calc(var(--page2-about-text-size) * 0.55);
+        transform: translate(-50%, -50%);
+        width: var(--page2-signs-title-sep-size);
+        height: var(--page2-signs-title-sep-size);
+        background-color: var(--page2-signs-fg);
+        pointer-events: none;
       }
 
-      #page2 #section-home .page2-home-signs__title {
-        /* Titles sit on the LEFT, left-aligned. Persian (last DOM child) stacks
-           ABOVE the English title via column-reverse. */
-        grid-column: 3 / 6;
-        grid-row: 1;
-        display: flex;
-        flex-direction: column-reverse;
-        align-items: flex-start;
-        gap: var(--page2-signs-bilingual-gap);
+      /* English title: 1st subgrid track (grid column 2), left-aligned and
+         uppercased. */
+      #page2 #section-home .page2-home-signs__title-en {
+        grid-column: 1;
         justify-self: start;
         text-align: left;
-        width: fit-content;
-        /* Match the header column titles (.page2-col-title): DIN Condensed,
-           bold (the only shipped weight), with the same 0.02em letter-spacing.
-           Persian keeps its Vazirmatn override below. */
-        font-family: "DIN Condensed", sans-serif;
-        font-size: var(--page2-about-text-size);
-        font-weight: 700;
-        line-height: 1.1;
-        letter-spacing: 0.02em;
-        color: var(--page2-signs-fg);
+        text-transform: uppercase;
+        /* Honour manual line breaks (\n) in the label — e.g. "Body\nautonomy"
+           drops "autonomy" to the line below — while still collapsing normal
+           spacing. */
+        white-space: pre-line;
       }
 
-      /* Only the English title is uppercased; Persian script is unaffected by
-         text-transform but we scope it to the EN span to keep intent clear. */
-      #page2 #section-home .page2-home-signs__title-en {
-        text-transform: uppercase;
+      /* Persian title: 2nd subgrid track (grid column 3), right-aligned. */
+      #page2 #section-home .page2-home-signs__title-fa {
+        grid-column: 2;
+        justify-self: end;
+        text-align: right;
       }
 
       #page2 #section-home .page2-home-signs__desc {
@@ -3152,13 +3199,42 @@
           row-gap: clamp(0.75rem, 2vw, 1rem);
         }
 
+        /* On narrow screens columns 2–4 are far too tight for the wide bilingual
+           title, so keep the previous packed-left layout: the band spans more
+           columns and the separator uses a small fixed gap instead of centring. */
+        #page2 #section-home .page2-home-signs__label {
+          grid-column: 2 / 9;
+        }
+
+        #page2 #section-home .page2-home-signs__label-sep {
+          margin-inline: calc(var(--page2-signs-title-inline-gap) / 2);
+        }
+
         #page2 #section-home .page2-home-signs__title {
-          /* On narrow screens the side-by-side swap is off (signs stack below
-             the text), so the title returns to a normal left-aligned heading. */
+          /* On narrow screens the two title columns are too tight, so the title
+             returns to a single stacked, left-aligned heading (Persian above
+             English via column-reverse) instead of the wide side-by-side band. */
           grid-column: 3 / -1;
-          justify-self: start;
+          grid-template-columns: none;
+          display: flex;
+          flex-direction: column-reverse;
           align-items: flex-start;
+          justify-self: start;
           text-align: left;
+          gap: var(--page2-signs-bilingual-gap);
+        }
+
+        #page2 #section-home .page2-home-signs__title-en,
+        #page2 #section-home .page2-home-signs__title-fa {
+          grid-column: auto;
+          justify-self: auto;
+          text-align: left;
+        }
+
+        /* Titles stack vertically on narrow screens, so the horizontal middle
+           square no longer has a meaningful "between" position — hide it. */
+        #page2 #section-home .page2-home-signs__title-sep {
+          display: none;
         }
 
         #page2 #section-home .page2-home-signs__desc {
@@ -3678,7 +3754,8 @@
       }
 
       #page2 #section-product .product-price {
-        margin: 0;
+        /* 60px @ ref = 40px lower + 20px closer to the button below */
+        margin: calc(var(--page2-gutter) * 3) 0 0;
         padding-inline-start: calc(
           (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
         );
@@ -3703,14 +3780,18 @@
       #page2 #section-product .product-order-btn {
         align-self: flex-start;
         box-sizing: border-box;
-        width: var(--page2-grid-col);
+        /* Span site columns 7-8-9: start one column in, then cover 3 grid
+           columns + 2 gutters within the 5-column .product-details container. */
+        width: calc(3 * (100% - 4 * var(--page2-gutter)) / 5 + 2 * var(--page2-gutter));
         margin-inline-start: calc(
           (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
         );
-        margin-top: var(--page2-gutter);
+        /* Extra top margin removed so the price sits closer to the button
+           (gap is now just the flex column gap of 20px @ ref). */
+        margin-top: 0;
         padding: clamp(0.35rem, 0.486vw, 0.525rem);
-        border: 1px solid var(--color-brown);
-        background: var(--color-brown);
+        border: 1px solid var(--page2-header-shop-banner-surface);
+        background: var(--page2-header-shop-banner-surface);
         color: #fff;
         font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(0.7rem, 0.81vw, 0.875rem); /* 11.2px @ ref (−30%) */
@@ -3725,17 +3806,17 @@
 
       #page2 #section-product .product-order-btn:hover {
         background: #fff;
-        color: var(--color-brown);
+        color: var(--page2-header-shop-banner-surface);
       }
 
       #page2 #section-product .product-order-btn:focus-visible {
-        outline: 2px solid var(--color-brown);
+        outline: 2px solid var(--page2-header-shop-banner-surface);
         outline-offset: 2px;
       }
 
       #page2 #section-product .product-order-btn--added {
         background: #fff;
-        color: var(--color-brown);
+        color: var(--page2-header-shop-banner-surface);
       }
 
       #page2 #section-product .product-spec__section + .product-spec__section {
@@ -3757,12 +3838,23 @@
       }
 
       #page2 #section-product .product-spec__list {
-        display: grid;
-        /* Matches site cols 6–10 inside .product-details */
-        grid-template-columns: repeat(5, 1fr);
-        column-gap: var(--page2-gutter);
-        row-gap: var(--page2-product-spec-row-gap);
+        display: flex;
+        flex-direction: column;
+        /* Doubled vertical spacing between question/answer rows (was 8px @ ref) */
+        row-gap: calc(var(--page2-product-spec-row-gap) * 2);
         margin: 0;
+      }
+
+      #page2 #section-product .product-spec__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        /* Symmetric indent keeps question at col 2 and answer end at col 4,
+           matching the price/heading alignment below. */
+        padding-inline: calc(
+          (100% - 4 * var(--page2-gutter)) / 5 + var(--page2-gutter)
+        );
+        gap: var(--page2-product-spec-icon-gap);
       }
 
       #page2 #section-product .product-spec__label,
@@ -3774,20 +3866,29 @@
       }
 
       #page2 #section-product .product-spec__label {
-        grid-column: 2 / 4;
+        flex: 0 1 auto;
         font-weight: 400;
         color: var(--color-brown);
         text-align: left;
       }
 
       #page2 #section-product .product-spec__value {
-        grid-column: 4;
+        flex: 0 1 auto;
         font-weight: normal;
         color: var(--color-brown);
         text-align: right;
         display: flex;
         justify-content: flex-end;
         align-items: center;
+      }
+
+      /* Small square in text color, centered in the gap between question
+         and answer (space-between keeps equal space on both sides). */
+      #page2 #section-product .product-spec__square {
+        flex: 0 0 auto;
+        width: 0.21em;
+        height: 0.21em;
+        background: var(--color-brown);
       }
 
       #page2 #section-product .product-spec__value-row {
@@ -4383,7 +4484,8 @@
         cursor: pointer;
       }
 
-      #page2.page2--section-shop .page2-cart-trigger {
+      #page2.page2--section-shop .page2-cart-trigger,
+      #page2.page2--section-archive .page2-cart-trigger {
         display: flex;
       }
 
@@ -4559,17 +4661,52 @@
         background-repeat: no-repeat;
       }
 
+      /* Questionnaire-designed scarves are tall, so "cover" would crop them.
+         Fit the whole design inside the rectangle (contain) on a white
+         background instead of cropping it. */
+      #page2 .page2-cart-drawer__item-thumb--contain {
+        background-color: #ffffff;
+        background-size: contain;
+      }
+
       #page2 .page2-cart-drawer__item-info {
         min-width: 0;
       }
 
+      /* Match the shop gallery title: DIN Condensed, uppercase, with small
+         square dividers between name / age / city instead of commas. */
       #page2 .page2-cart-drawer__item-name {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        column-gap: 0.4em;
         margin: 0;
-        font-family: "Suisse Intl Light", sans-serif;
-        font-size: clamp(1rem, 1.157vw, 1.25rem);
-        font-weight: normal;
-        line-height: 1.1;
+        font-family: "DIN Condensed", sans-serif;
+        font-size: var(--page2-product-spec-body-size);
+        font-weight: 700;
+        font-synthesis: none;
+        line-height: 1.25;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
         color: var(--page2-header-cell-fill);
+      }
+
+      #page2 .page2-cart-drawer__item-name .shop-card__name-part {
+        flex: 0 0 auto;
+      }
+
+      #page2 .page2-cart-drawer__item-name .shop-card__name-sep {
+        flex: 0 0 auto;
+        width: 0.21em;
+        height: 0.21em;
+        background: currentColor;
+        transform: translateY(-0.06em);
+      }
+
+      #page2 .page2-cart-drawer__item-name .shop-card__num {
+        font-weight: 100;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
       }
 
       #page2 .page2-cart-drawer__item-variant {
@@ -4578,6 +4715,22 @@
         font-size: clamp(0.875rem, 0.926vw, 1rem);
         line-height: 1.2;
         color: var(--color-brown);
+      }
+
+      /* Flat product price under the name/age/city title. Matches the site's
+         price look (Suisse Intl Light, brown) with thin digits. */
+      #page2 .page2-cart-drawer__item-price {
+        margin: clamp(0.125rem, 0.231vw, 0.25rem) 0 0;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.875rem, 0.926vw, 1rem);
+        line-height: 1.2;
+        color: var(--color-brown);
+      }
+
+      #page2 .page2-cart-drawer__item-price .shop-card__num {
+        font-weight: 100;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
       }
 
       #page2 .page2-cart-drawer__item-remove {
@@ -4609,15 +4762,13 @@
       #page2 .page2-cart-drawer__buy {
         display: block;
         box-sizing: border-box;
-        /* Site grid col — 100vw so width isn't re-resolved to the narrow drawer body */
-        width: calc(
-          (100vw - 2 * var(--page2-margin-inline) - 11 * var(--page2-gutter)) / 12
-        );
-        margin-inline: auto;
+        /* Span the cart's 3-column content area (flush with the item rows). */
+        width: 100%;
+        margin-inline: 0;
         margin-top: calc(var(--page2-gutter) * 1.5);
         padding: clamp(0.35rem, 0.486vw, 0.525rem);
-        border: 1px solid var(--color-brown);
-        background: var(--color-brown);
+        border: 1px solid var(--page2-header-shop-banner-surface);
+        background: var(--page2-header-shop-banner-surface);
         color: #fff;
         font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(0.7rem, 0.81vw, 0.875rem); /* match product-order-btn */
@@ -4636,11 +4787,11 @@
 
       #page2 .page2-cart-drawer__buy:hover {
         background: #fff;
-        color: var(--color-brown);
+        color: var(--page2-header-shop-banner-surface);
       }
 
       #page2 .page2-cart-drawer__buy:focus-visible {
-        outline: 2px solid var(--color-brown);
+        outline: 2px solid var(--page2-header-shop-banner-surface);
         outline-offset: 2px;
       }
 
@@ -4738,6 +4889,12 @@
           "(prefers-reduced-motion: reduce)"
         ).matches;
         var HEADER_TRANSITION_MS = 550;
+        /* A short, deliberate pause inserted AFTER the cart has fully slid
+           closed and BEFORE the section swaps. Without it the page transition
+           starts on the same frame the cart finishes, so the two motions blur
+           into one and read as "happening together". This gap makes the order
+           obvious: the cart closes, a beat passes, then the page changes. */
+        var CART_CLOSE_SETTLE_MS = 160;
         var suppressHeaderRefreshOnce = false;
         var postHeaderAnimRefreshTimer = null;
         var headerAnimLockUntil = 0;
@@ -5152,11 +5309,114 @@
           }
         }
 
+        /* Reveal timeline: the whole Signs page reveals as its brown TOP edge
+           rises toward the "pin" line (the header's bottom edge). Progress starts
+           once the section top is ~90% down the screen (just entering from below)
+           and reaches 1 exactly when the top edge meets the header bottom. */
+        var SIGNS_REVEAL_START = 0.9;
+        /* Two independent dials for the cascade (see updateSignsSectionReveal):
+           - WINDOW  = how long EACH section takes to slide in (bigger = slower /
+             more gradual, so the motion is easier to see).
+           - STAGGER = how spread out the sections' start times are (bigger = more
+             clearly one-after-another).
+           They are decoupled so we can have a strong cascade AND a slow slide at
+           once (the per-section windows simply overlap). The last section always
+           finishes exactly at the pin (progress = 1), so every section is fully
+           open the moment the brown top edge locks under the header. */
+        var SIGNS_REVEAL_WINDOW = 0.6;
+        var SIGNS_REVEAL_STAGGER = 0.5;
+
+        function setSignsSectionsRevealed(items) {
+          var i;
+          for (i = 0; i < items.length; i++) {
+            items[i].style.setProperty("--signs-reveal-offset", "0px");
+          }
+        }
+
+        /* Vertical analogue of updateTopkapiDrawers: each Signs section slides
+           down into place from behind the divider line above it. Unlike before,
+           the whole cascade is driven by the SECTION's own top edge relative to
+           the header bottom (the sticky "pin"), NOT by each item's individual
+           screen position. That way every section — including the lower ones that
+           are still off-screen — is fully open (offset 0) the moment the brown
+           top edge locks under the header. Scroll-linked, reversible, and works
+           in both curtain phases (fixed cover rise and normal list scroll)
+           because it reads getBoundingClientRect each frame. */
+        function updateSignsSectionReveal() {
+          if (!homeSignsEl) return;
+          var items = homeSignsEl.querySelectorAll(
+            ".page2-home-signs__item"
+          );
+          if (!items.length) return;
+
+          if (prefersReducedMotion || !isHomeScrollCol(scrollActiveIndex)) {
+            setSignsSectionsRevealed(items);
+            return;
+          }
+
+          var pageRect = page2.getBoundingClientRect();
+          var vh = pageRect.height;
+          if (vh <= 0 || !header) {
+            setSignsSectionsRevealed(items);
+            return;
+          }
+
+          /* Pin line = header bottom edge, in page-relative pixels. When the
+             Signs section top reaches here, the page is fully "open". */
+          var pinRel = header.getBoundingClientRect().bottom - pageRect.top;
+          /* Start line = ~90% of the viewport height (section just entering). */
+          var startRel = vh * SIGNS_REVEAL_START;
+          var spanPx = startRel - pinRel;
+          if (spanPx <= 0) {
+            setSignsSectionsRevealed(items);
+            return;
+          }
+
+          var sectionTopRel =
+            homeSignsEl.getBoundingClientRect().top - pageRect.top;
+          /* Global 0..1 progress of the whole Signs page toward the pin. */
+          var p = (startRel - sectionTopRel) / spanPx;
+          if (p < 0) p = 0;
+          else if (p > 1) p = 1;
+
+          var n = items.length;
+          /* Every item shares the same window length (WINDOW); only the start is
+             staggered by STAGGER. The last item starts latest and finishes
+             exactly at p = 1 (the pin); top items start earlier so they slide in
+             first. Windows overlap, giving a slow slide AND a clear cascade. */
+          var win = SIGNS_REVEAL_WINDOW;
+          var startLast = 1 - win;
+          var i;
+          for (i = 0; i < n; i++) {
+            var start =
+              n > 1
+                ? startLast - SIGNS_REVEAL_STAGGER * ((n - 1 - i) / (n - 1))
+                : startLast;
+            var local = win > 0 ? (p - start) / win : (p >= start ? 1 : 0);
+            if (local < 0) local = 0;
+            else if (local > 1) local = 1;
+            /* easeInOutCubic — slow-in, fast-middle, slow-out, so the motion is
+               visible through the middle of each slide (not front-loaded like the
+               old easeOutCubic, which made each section settle almost instantly). */
+            var eased =
+              local < 0.5
+                ? 4 * local * local * local
+                : 1 - Math.pow(-2 * local + 2, 3) / 2;
+            var itemRect = items[i].getBoundingClientRect();
+            var offset = -itemRect.height * (1 - eased);
+            items[i].style.setProperty(
+              "--signs-reveal-offset",
+              offset + "px"
+            );
+          }
+        }
+
         function updateHomeOverlayScrollPolish() {
           updateAboutExitAnimation();
           updateAboutTextReveal();
           updateHomeSignsScrollState();
           updateTopkapiDrawers();
+          updateSignsSectionReveal();
           if (!homeOverlay || prefersReducedMotion) return;
           var heroContent =
             homeSection && homeSection.querySelector(".page2-home-content");
@@ -5240,6 +5500,96 @@
           if (!isPage2Visible()) return;
           if (isLockedColumn(colIndex)) return;
 
+          /* If the cart is open, fully close it FIRST and only switch sections
+             once the drawer has finished sliding out (plus a short settle
+             beat). The cart itself tells us when it is done via the callback
+             passed to close(); we then re-call showSection tagged with
+             __afterCartClose so this block is skipped the second time. With
+             reduced motion the cart closes instantly and the callback fires
+             synchronously, so there is no artificial wait. */
+          /* Note: we check isActive(), not isOpen(). The cart's own
+             outside-click handler runs first and may already have started the
+             close, flipping isOpen to false before we get here. isActive()
+             stays true while the drawer is still sliding out, so we correctly
+             wait for it either way. */
+          var cart = window.Page2Cart;
+          if (
+            !options.__afterCartClose &&
+            cart &&
+            typeof cart.isActive === "function" &&
+            cart.isActive() &&
+            typeof cart.close === "function"
+          ) {
+            var deferredOptions = {};
+            for (var optKey in options) {
+              if (Object.prototype.hasOwnProperty.call(options, optKey)) {
+                deferredOptions[optKey] = options[optKey];
+              }
+            }
+            deferredOptions.__afterCartClose = true;
+            var resumeSection = function () {
+              showSection(colIndex, deferredOptions);
+            };
+            cart.close(function () {
+              if (prefersReducedMotion) {
+                resumeSection();
+              } else {
+                window.setTimeout(resumeSection, CART_CLOSE_SETTLE_MS);
+              }
+            });
+            return;
+          }
+
+          /* Same idea for the purchase (product) page: if it is open, slide it
+             fully closed FIRST and only switch sections once it is gone. The
+             product module tells us when it has finished via the callback
+             passed to close(); we then re-call showSection tagged with
+             __afterCartClose (a shared "overlay already handled" flag — the
+             cart and product page are mutually exclusive, so one guard is
+             enough) so this block is skipped the second time. */
+          var product = window.Page2Product;
+          if (
+            !options.__afterCartClose &&
+            product &&
+            typeof product.isActive === "function" &&
+            product.isActive() &&
+            typeof product.close === "function"
+          ) {
+            var deferredProductOptions = {};
+            for (var prodOptKey in options) {
+              if (Object.prototype.hasOwnProperty.call(options, prodOptKey)) {
+                deferredProductOptions[prodOptKey] = options[prodOptKey];
+              }
+            }
+            deferredProductOptions.__afterCartClose = true;
+            var resumeAfterProduct = function () {
+              showSection(colIndex, deferredProductOptions);
+            };
+            product.close(function () {
+              if (prefersReducedMotion) {
+                resumeAfterProduct();
+              } else {
+                window.setTimeout(resumeAfterProduct, CART_CLOSE_SETTLE_MS);
+              }
+            });
+            return;
+          }
+
+          /* Leaving the design page while the questionnaire is running should
+             wipe it clean: reset every filled-in answer and return to the
+             intro screen, so re-entering design starts from scratch. The
+             design content is display:none once we leave (see
+             .page2--design-active CSS), so this reset is not visible mid-swap. */
+          if (
+            colIndex !== DESIGN_COL_INDEX &&
+            window.Questionnaire &&
+            typeof window.Questionnaire.isStarted === "function" &&
+            window.Questionnaire.isStarted() &&
+            typeof window.Questionnaire.resetToIntro === "function"
+          ) {
+            window.Questionnaire.resetToIntro();
+          }
+
           var scrollToSigns = colIndex === SIGNS_COL_INDEX;
           var section = scrollToSigns
             ? sectionForColumn(HOME_COL_INDEX)
@@ -5251,6 +5601,17 @@
             typeof window.Page2Cart.close === "function"
           ) {
             window.Page2Cart.close();
+          }
+
+          /* Belt-and-suspenders: by now the purchase page has already finished
+             closing (the deferral block above waited for it), so this is a
+             harmless no-op in the normal case — it just guarantees no stray
+             product panel lingers when we land on the new section. */
+          if (
+            window.Page2Product &&
+            typeof window.Page2Product.close === "function"
+          ) {
+            window.Page2Product.close();
           }
 
           var animate = options.animate !== false;
@@ -6051,6 +6412,7 @@
           updateAboutTextReveal();
           updateAboutExitAnimation();
           updateTopkapiDrawers();
+          updateSignsSectionReveal();
         }
 
         function clampHomeProgress(value) {
@@ -6385,11 +6747,12 @@
           "11.webp",
           "12.webp",
           "13.webp",
+          "14.webp",
         ];
 
         // Cache-buster: bump this when a home image is replaced but keeps its
         // filename, so browsers fetch the new file instead of the cached one.
-        var HOME_BG_VERSION = "9";
+        var HOME_BG_VERSION = "10";
         function homeBgUrl(filename) {
           return (
             "website/home/" +

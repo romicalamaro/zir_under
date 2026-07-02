@@ -3363,6 +3363,26 @@
     } else {
       result = freshRegions;
     }
+    // #region agent log
+    try {
+      var _cMids = [];
+      var _cSegs = getSegmentsForMergeRegionDetection();
+      for (var _csi = 0; _csi < _cSegs.length; _csi++) {
+        var _cs = _cSegs[_csi];
+        if (removedEdges.has(TopkapiGeometry.segmentKey(_cs.x1, _cs.y1, _cs.x2, _cs.y2))) {
+          _cMids.push({ x: (_cs.x1 + _cs.x2) * 0.5, y: (_cs.y1 + _cs.y2) * 0.5 });
+        }
+      }
+      var _cInside = result.map(function (r) {
+        var _n = 0;
+        for (var _m = 0; _m < _cMids.length; _m++) {
+          if (hopePointInPolygon(_cMids[_m].x, _cMids[_m].y, r.points)) _n++;
+        }
+        return _n;
+      });
+      fetch('http://127.0.0.1:7404/ingest/96f8185a-70ab-4bae-981f-1951228b7feb',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'000036'},body:JSON.stringify({sessionId:'000036',runId:'run2',hypothesisId:'FINAL',location:'app.js:3366',message:'getMergedRegionsForMask final (paints dots)',data:{gridStar:isStarGrid(),removedEdges:removedEdges.size,freshCount:freshRegions.length,stickyCount:stickyMergedCutoutFaces?stickyMergedCutoutFaces.length:null,resultCount:result.length,resultAreas:result.map(function(r){return Math.round(polygonAreaAbs(r.points));}),resultRemovedInside:_cInside},timestamp:Date.now()})}).catch(function(){});
+    } catch (e) {}
+    // #endregion
     mergedRegionsForMaskCache = result;
     return result;
   }
@@ -6855,14 +6875,69 @@
     var maxHoleArea = getHopeMergeMaxRegionAreaPx();
     if (isStarGrid()) {
       var minArea = getStarGridHopeMergeMinAreaPx();
+      // Concave star faces geometrically enclose >=2 baseline cells even when no
+      // wall between them was removed (false merges). A genuine merge of k cells
+      // removes at least k-1 interior walls, so a real region contains many
+      // removed-edge midpoints in its interior; false ones contain ~none.
+      var starRemovedMids = [];
+      var starSegs = getSegmentsForMergeRegionDetection();
+      var _ssi;
+      for (_ssi = 0; _ssi < starSegs.length; _ssi++) {
+        var _sseg = starSegs[_ssi];
+        if (
+          removedEdges.has(
+            TopkapiGeometry.segmentKey(_sseg.x1, _sseg.y1, _sseg.x2, _sseg.y2)
+          )
+        ) {
+          starRemovedMids.push({
+            x: (_sseg.x1 + _sseg.x2) * 0.5,
+            y: (_sseg.y1 + _sseg.y2) * 0.5,
+          });
+        }
+      }
       var out = [];
       var i;
+      // #region agent log
+      var _starDbg = [];
+      // #endregion
       for (i = 0; i < regions.length; i++) {
-        if (polygonAreaAbs(regions[i].points) < minArea) continue;
-        if (polygonAreaAbs(regions[i].points) > maxHoleArea) continue;
-        if (countStarFillsInsideMergeRegion(regions[i]) < 2) continue;
-        out.push(regions[i]);
+        var starArea = polygonAreaAbs(regions[i].points);
+        var _passArea = starArea >= minArea && starArea <= maxHoleArea;
+        var starFills = countStarFillsInsideMergeRegion(regions[i]);
+        var rmInside = 0;
+        var _rm;
+        for (_rm = 0; _rm < starRemovedMids.length; _rm++) {
+          if (
+            hopePointInPolygon(
+              starRemovedMids[_rm].x,
+              starRemovedMids[_rm].y,
+              regions[i].points
+            )
+          ) {
+            rmInside++;
+          }
+        }
+        // Real merge: interior removed walls >= half the enclosed star fills.
+        var _keep = _passArea && starFills >= 2 && rmInside * 2 >= starFills;
+        // #region agent log
+        var _bx0 = 1e9, _by0 = 1e9, _bx1 = -1e9, _by1 = -1e9, _bp;
+        for (_bp = 0; _bp < regions[i].points.length; _bp++) {
+          var _pp = regions[i].points[_bp];
+          if (_pp.x < _bx0) _bx0 = _pp.x;
+          if (_pp.y < _by0) _by0 = _pp.y;
+          if (_pp.x > _bx1) _bx1 = _pp.x;
+          if (_pp.y > _by1) _by1 = _pp.y;
+        }
+        var _bbArea = (_bx1 - _bx0) * (_by1 - _by0);
+        _starDbg.push({ a: Math.round(starArea), verts: regions[i].points.length, fills: starFills, rmIn: rmInside, keep: _keep, fillPct: _bbArea > 0 ? Math.round((100 * starArea) / _bbArea) : 0, bbW: Math.round(_bx1 - _bx0), bbH: Math.round(_by1 - _by0) });
+        // #endregion
+        if (_keep) out.push(regions[i]);
       }
+      // #region agent log
+      try {
+        fetch('http://127.0.0.1:7404/ingest/96f8185a-70ab-4bae-981f-1951228b7feb',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'000036'},body:JSON.stringify({sessionId:'000036',runId:'run3',hypothesisId:'STAR',location:'app.js:6900',message:'star filter decisions',data:{canvasW:CANVAS_W,canvasH:CANVAS_H,removedEdges:removedEdges.size,removedMids:starRemovedMids.length,minArea:Math.round(minArea),maxHoleArea:Math.round(maxHoleArea),rawCount:regions.length,outCount:out.length,regions:_starDbg},timestamp:Date.now()})}).catch(function(){});
+      } catch (e) {}
+      // #endregion
       return out;
     }
 
@@ -25422,6 +25497,12 @@
       resetHopeMergeState: function () {
         removedEdges.clear();
         updateHopeInteractionModeUi();
+      },
+      /* Full undo of the hope drawing: clears the manual + auto merge edits and
+         re-renders, restoring the grid to its pre-drawing state. Mirrors the
+         sidebar "reset grid" button so the questionnaire can trigger it too. */
+      resetHopeDrawing: function () {
+        onHopeResetGrid();
       },
       getFeelingsSliderBounds: getFeelingsSliderBoundsForCombo,
       applyFeelingsFromQuestionnaire: applyFeelingsFromQuestionnaire,

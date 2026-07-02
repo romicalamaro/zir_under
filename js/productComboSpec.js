@@ -38,7 +38,7 @@
 
   var LABELS = {
     livingInIran: "Did you ever live in Iran?",
-    livingDuration: "I lived in Iran",
+    livingDuration: "I lived in Iran for",
     leavingYear: "Year of leaving",
     from: "From",
     nowIn: "Now in",
@@ -59,7 +59,7 @@
     livingDuration: {
       smallPart: "a small part of my life",
       partOfLife: "part of my life",
-      mostAll: "most / all of my life",
+      mostAll: "most of my life",
     },
     nameDisplayMode: {
       anonymous: "Anonymous",
@@ -234,8 +234,17 @@
         dd.className = "product-spec__value";
         dd.textContent = formatValue(key, row[key]);
 
-        dl.appendChild(dt);
-        dl.appendChild(dd);
+        var rowEl = document.createElement("div");
+        rowEl.className = "product-spec__row";
+
+        var square = document.createElement("span");
+        square.className = "product-spec__square";
+        square.setAttribute("aria-hidden", "true");
+
+        rowEl.appendChild(dt);
+        rowEl.appendChild(square);
+        rowEl.appendChild(dd);
+        dl.appendChild(rowEl);
       }
 
       sectionEl.appendChild(dl);
@@ -437,6 +446,10 @@
     populateShopGalleryCards: populateShopGalleryCards,
     getShopCardLineParts: getShopCardLineParts,
     renderShopCardName: renderShopCardName,
+    // Reused by the cart so item prices render with the same thin-digit style
+    // (shop-card__num) as the rest of the site.
+    renderPriceText: renderShopCardPriceText,
+    CART_PRICE: PRODUCT_PAGE_PRICE,
     SHOP_FOLDER_TO_COMBO: SHOP_FOLDER_TO_COMBO,
   };
 

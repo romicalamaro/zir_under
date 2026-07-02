@@ -145,6 +145,8 @@
       if (str.label !== undefined) cfg.label = str.label;
       if (str.placeholder !== undefined) cfg.placeholder = str.placeholder;
       if (str.ariaLabel !== undefined) cfg.ariaLabel = str.ariaLabel;
+      if (str.penAriaLabel !== undefined) cfg.penAriaLabel = str.penAriaLabel;
+      if (str.resetAriaLabel !== undefined) cfg.resetAriaLabel = str.resetAriaLabel;
       if (str.modeAriaLabel !== undefined) cfg.modeAriaLabel = str.modeAriaLabel;
       if (str.rangeLabels) cfg.rangeLabels = str.rangeLabels.slice();
       if (str.options && meta.options) {
@@ -409,6 +411,54 @@
     ) {
       window.Page2Navigation.showSection(5);
     }
+  }
+
+  // Milliseconds to wait after navigating to the archive before sliding the
+  // cart open, so the cart appears just AFTER the page transition settles.
+  var CART_OPEN_AFTER_ARCHIVE_MS = 450;
+
+  // Turn the freshly-saved archive entry into a cart item and open the cart on
+  // the archive page. We build the snapshot from the entry's own `profile`
+  // (name/age/city), which is unaffected by the questionnaire reset, and reuse
+  // ProductComboSpec so the cart item looks identical to a shop gallery item.
+  function addSavedDesignToCart(entry) {
+    if (!entry) return;
+    if (!window.Page2Cart || typeof window.Page2Cart.add !== "function") return;
+
+    var profile = entry.profile || {};
+    var name = String(profile.name || entry.title || "").trim();
+
+    var nameParts = name ? [name] : [];
+    if (
+      window.ProductComboSpec &&
+      typeof window.ProductComboSpec.getShopCardLineParts === "function"
+    ) {
+      nameParts = window.ProductComboSpec.getShopCardLineParts(name, {
+        age: profile.age,
+        nowIn: profile.nowIn,
+      });
+    }
+
+    var imageUrl = "";
+    if (entry.image instanceof Blob) {
+      imageUrl = URL.createObjectURL(entry.image);
+    } else if (entry.imagePng) {
+      imageUrl = entry.imagePng;
+    }
+
+    var snapshot = {
+      id: "archive:" + entry.id,
+      folder: "",
+      name: name,
+      nameParts: nameParts,
+      imageIndex: 0,
+      imageUrl: imageUrl,
+      color: "",
+    };
+
+    window.setTimeout(function () {
+      window.Page2Cart.add(snapshot, { open: true });
+    }, CART_OPEN_AFTER_ARCHIVE_MS);
   }
 
   var PROFILE_STEP_ORDER = [
@@ -2418,6 +2468,10 @@
   var QUESTIONNAIRE_FIT_SAFETY_PX = 12;
   // Open-section header title/number scale relative to collapsed folders.
   var QUESTIONNAIRE_EXPANDED_TITLE_SCALE = 1.5;
+  // Extra vertical breathing room for the closed folder (section header)
+  // rectangles: the measured content height is grown by this factor, split
+  // evenly above/below the centered text. 1.2 = 20% taller folders.
+  var QUESTIONNAIRE_COLLAPSED_HEADER_SCALE = 1.2;
 
   // Measure a single card body's natural height at the current panel scale.
   // The body is moved offscreen so measuring never flashes on screen.
@@ -2476,10 +2530,22 @@
       if (header) {
         var num = header.querySelector(".questionnaire-card__num");
         var title = header.querySelector(".questionnaire-card__title");
-        // Force scale 1 so an open card (.is-expanded) does not inflate the
-        // collapsed header baseline.
-        if (num) num.style.setProperty("--questionnaire-card-title-scale", "1");
-        if (title) title.style.setProperty("--questionnaire-card-title-scale", "1");
+        // Closed folders now show their title at the SAME size as an open
+        // section (see the CSS below), so the collapsed baseline is measured at
+        // that same expanded scale — otherwise the rectangle would be sized for
+        // smaller text and clip the larger title.
+        if (num) {
+          num.style.setProperty(
+            "--questionnaire-card-title-scale",
+            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+          );
+        }
+        if (title) {
+          title.style.setProperty(
+            "--questionnaire-card-title-scale",
+            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+          );
+        }
         if (num) {
           maxNumWidthPx = Math.max(
             maxNumWidthPx,
@@ -2518,6 +2584,13 @@
       bodyCards.push(cards[i]);
       hBase.push(measureQuestionnaireBodyHeight(body, measureWidth));
     }
+
+    // Grow the closed folder (section header) rectangles taller than their raw
+    // content. The extra height is split evenly around the centered text and is
+    // applied here so it also flows into the available-space math below.
+    maxCollapsedHeaderPx = Math.ceil(
+      maxCollapsedHeaderPx * QUESTIONNAIRE_COLLAPSED_HEADER_SCALE
+    );
 
     // --- Pass 2: measure each body height at the PROBE scale. ---
     // Two sample points let us model height(scale) = A*scale + B per section,
@@ -2671,6 +2744,12 @@
       var card = document.createElement("article");
       card.className = "questionnaire-card";
       card.setAttribute("data-section-key", section.key);
+      // Stack order for the closed-folder overlap: the top folder sits in front
+      // of the one below it, so earlier sections get a higher z-index.
+      card.style.setProperty(
+        "--card-z",
+        String(QUESTIONNAIRE_SECTION_ORDER.length - i)
+      );
       if (section.key === "feelings") {
         card.classList.add("questionnaire-card--feelings");
       }
@@ -3382,8 +3461,26 @@
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "questionnaire-feelings-shuffle-btn";
-    btn.textContent = getUiString("shuffleLayout");
+    // Shuffle icon: two thick rounded strands crossing in an X, each ending in a
+    // solid arrowhead with softly rounded corners. Uses currentColor so it
+    // inverts together with the button's text color on hover/focus. Decorative
+    // markup is hidden from assistive tech; the accessible name comes from
+    // aria-label.
+    btn.innerHTML =
+      '<svg class="questionnaire-feelings-shuffle-btn__icon" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="1.3"' +
+      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
+      ' focusable="false">' +
+      // Top-left → bottom-right strand
+      '<path d="M3.5 8 H6.5 Q11 8 12 12 Q13 16 16.5 16"></path>' +
+      // Bottom-left → top-right strand
+      '<path d="M3.5 16 H6.5 Q11 16 12 12 Q13 8 16.5 8"></path>' +
+      // Filled arrowheads (rounded corners via matching round stroke join)
+      '<path fill="currentColor" stroke-width="0.7" d="M16.2 6 L20.5 8 L16.2 10 Z"></path>' +
+      '<path fill="currentColor" stroke-width="0.7" d="M16.2 14 L20.5 16 L16.2 18 Z"></path>' +
+      "</svg>";
     btn.setAttribute("aria-label", getUiString("shuffleLayoutAria"));
+    btn.setAttribute("title", getUiString("shuffleLayoutAria"));
     btn.addEventListener("click", function () {
       if (
         window.UnderCoverComboBridge &&
@@ -3428,35 +3525,88 @@
     });
   }
 
-  function appendQuestionnaireHopeChoice(parent, stepConfig, stepId, onChange) {
+  /**
+   * Hope interaction is a single "pen" toggle instead of two View/Merge
+   * buttons. Under the hood the answer stays "view" / "merge" so all the
+   * canvas-sync, save/restore and completion logic keep working unchanged:
+   *   pen OFF -> "view"  (default, cursor normal)
+   *   pen ON  -> "merge" (drawing mode, canvas cursor becomes a pen)
+   */
+  function appendQuestionnaireHopePenToggle(parent, stepConfig, stepId, onChange) {
     var group = document.createElement("div");
     group.className =
       "questionnaire-options questionnaire-options--row questionnaire-feelings-hope-options";
-    group.setAttribute("role", "radiogroup");
     group.setAttribute("aria-label", stepConfig.ariaLabel);
 
-    stepConfig.options.forEach(function (opt) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "questionnaire-option";
-      btn.textContent = opt.label;
-      btn.setAttribute("data-value", opt.value);
-      if (answers[stepId] === opt.value) {
-        btn.classList.add("is-selected");
-      }
-      btn.addEventListener("click", function () {
-        answers[stepId] = opt.value;
-        group.querySelectorAll(".questionnaire-option").forEach(function (el) {
-          el.classList.remove("is-selected");
-        });
-        btn.classList.add("is-selected");
-        syncHopeModeToPanel(opt.value);
-        triggerCanvasUpdateAfterSync(stepId);
-        if (onChange) onChange();
-      });
-      group.appendChild(btn);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "questionnaire-option questionnaire-feelings-hope-pen";
+    btn.setAttribute("role", "switch");
+    btn.setAttribute(
+      "aria-label",
+      stepConfig.penAriaLabel || stepConfig.ariaLabel || "Drawing pen"
+    );
+    // Inline pen glyph; strokes use currentColor so it inverts with the button
+    // (brown pen on white when off, white pen on brown when on).
+    btn.innerHTML =
+      '<svg class="questionnaire-feelings-hope-pen__icon" viewBox="0 0 24 24" ' +
+      'aria-hidden="true" focusable="false">' +
+      '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linejoin="round" ' +
+      'stroke-linecap="round"/>' +
+      '<path d="M15 5l4 4" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round"/>' +
+      "</svg>";
+
+    function applyPenState() {
+      var on = answers[stepId] === "merge";
+      btn.classList.toggle("is-selected", on);
+      btn.setAttribute("aria-checked", String(on));
+    }
+
+    applyPenState();
+
+    btn.addEventListener("click", function () {
+      var next = answers[stepId] === "merge" ? "view" : "merge";
+      answers[stepId] = next;
+      applyPenState();
+      syncHopeModeToPanel(next);
+      triggerCanvasUpdateAfterSync(stepId);
+      if (onChange) onChange();
     });
 
+    group.appendChild(btn);
+
+    // Undo button: restores the canvas to its state before the hope drawing
+    // (clears the merged/erased edges) without touching any other layer.
+    var resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className =
+      "questionnaire-option questionnaire-feelings-hope-reset";
+    resetBtn.setAttribute(
+      "aria-label",
+      stepConfig.resetAriaLabel || "Undo the drawing"
+    );
+    resetBtn.innerHTML =
+      '<svg class="questionnaire-feelings-hope-pen__icon" viewBox="0 0 24 24" ' +
+      'aria-hidden="true" focusable="false">' +
+      '<path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M4 9h11a5 5 0 0 1 0 10H9" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      "</svg>";
+
+    resetBtn.addEventListener("click", function () {
+      if (
+        window.UnderCoverComboBridge &&
+        typeof window.UnderCoverComboBridge.resetHopeDrawing === "function"
+      ) {
+        window.UnderCoverComboBridge.resetHopeDrawing();
+      }
+      if (onChange) onChange();
+    });
+
+    group.appendChild(resetBtn);
     parent.appendChild(group);
   }
 
@@ -3564,8 +3714,18 @@
     setProfileMadlibsBlankEmptyState(el, isEmpty);
     if (isEmpty) {
       el.style.minWidth = "";
-      el.style.width =
-        Math.ceil(gridColPx > 0 ? gridColPx : 0) + "px";
+      var emptyWidth = gridColPx > 0 ? gridColPx : 0;
+      // When the field is empty but has a placeholder hint (e.g. "city / state"),
+      // grow the underline so the full hint is visible instead of being clipped
+      // by the fixed grid-column width.
+      if (el.tagName === "INPUT" && el.placeholder) {
+        var phStyle = window.getComputedStyle(el);
+        var phPadX =
+          parseFloat(phStyle.paddingLeft) + parseFloat(phStyle.paddingRight);
+        var phWidth = measureMadlibsTextPx(el.placeholder, el) + phPadX + 2;
+        if (phWidth > emptyWidth) emptyWidth = phWidth;
+      }
+      el.style.width = Math.ceil(emptyWidth) + "px";
       return;
     }
     el.style.minWidth = "";
@@ -3935,7 +4095,7 @@
     return normalized;
   }
 
-  function createMadlibsTextBlank(stepId, sizeClass) {
+  function createMadlibsTextBlank(stepId, sizeClass, placeholder) {
     var stepConfig = getStepConfig(stepId);
     var input = document.createElement("input");
     input.type = "text";
@@ -3943,6 +4103,9 @@
       "questionnaire-madlibs-blank questionnaire-madlibs-blank--" + sizeClass;
     input.setAttribute("data-step-id", stepId);
     input.setAttribute("aria-label", stepConfig.ariaLabel);
+    if (placeholder) {
+      input.placeholder = placeholder;
+    }
     input.value = String(answers[stepId] || "").toUpperCase();
     answers[stepId] = input.value;
     input.autocomplete = "off";
@@ -4822,7 +4985,11 @@
       var blankEl =
         part.kind === "select"
           ? createMadlibsSelectBlank(part.id, part.size || "medium")
-          : createMadlibsTextBlank(part.id, part.size || "medium");
+          : createMadlibsTextBlank(
+              part.id,
+              part.size || "medium",
+              part.placeholder
+            );
       lineEl.appendChild(wrapMadlibsFieldWithIcon(part.id, blankEl));
     }
   }
@@ -4898,14 +5065,14 @@
     hopeBlock.className =
       "questionnaire-feelings-hope-block questionnaire-section-question";
 
-    appendQuestionnaireSectionQuestionHeading(
-      hopeBlock,
-      getStrings().feelings.hopeHeading
-    );
+    var hopeIntro = document.createElement("p");
+    hopeIntro.className = "questionnaire-feelings-hope-intro";
+    hopeIntro.textContent = getStrings().feelings.hopeIntro;
+    hopeBlock.appendChild(hopeIntro);
 
     var hopeStepConfig = getStepConfig("hopeMode");
     if (hopeStepConfig) {
-      appendQuestionnaireHopeChoice(
+      appendQuestionnaireHopePenToggle(
         hopeBlock,
         hopeStepConfig,
         "hopeMode",
@@ -5342,8 +5509,15 @@
 
     var saveBtn = document.createElement("button");
     saveBtn.type = "button";
-    saveBtn.className = "questionnaire-archive-btn";
-    saveBtn.textContent = getUiString("submitOrder");
+    saveBtn.className = "questionnaire-archive-btn questionnaire-archive-btn--circle";
+    // Icon-only circular button: the checkmark replaces the former "ORDER"
+    // text. The order label is kept as an accessible name for screen readers.
+    saveBtn.setAttribute("aria-label", getUiString("submitOrder"));
+    saveBtn.innerHTML =
+      '<span class="questionnaire-archive-btn__icon-wrap" aria-hidden="true">' +
+      '<svg class="questionnaire-archive-btn__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="questionnaire-archive-btn__check" d="M6 12.5L10.5 17L18 7.5"/>' +
+      "</svg></span>";
 
     var confirmEl = document.createElement("p");
     confirmEl.className = "questionnaire-archive-confirm";
@@ -5373,11 +5547,12 @@
       window.requestAnimationFrame(function () {
         window.requestAnimationFrame(function () {
           window.HandkerchiefArchive.saveCurrentDesign()
-            .then(function () {
+            .then(function (savedEntry) {
               confirmEl.textContent = getUiString("savedToArchive");
               confirmEl.hidden = false;
               resetQuestionnaireAfterSubmit();
               navigateToArchiveAfterSubmit();
+              addSavedDesignToCart(savedEntry);
             })
             .catch(function (err) {
               console.warn("[Questionnaire] Save failed:", err);
@@ -6365,6 +6540,9 @@
     },
     isStarted: function () {
       return questionnaireStarted;
+    },
+    resetToIntro: function () {
+      resetQuestionnaireAfterSubmit();
     },
     getAnswers: function () {
       return Object.assign({}, answers);

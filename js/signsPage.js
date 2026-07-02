@@ -1684,15 +1684,20 @@
     );
     trigger.id = "page2-home-signs-trigger-" + sectionMeta.id;
 
-    var num = document.createElement("span");
-    num.className = "page2-home-signs__num";
-    num.textContent = String(index + 1);
-
     var title = createBilingualBlock(
       sectionMeta.label || sectionMeta.id,
       sectionMeta.labelFa || "",
       "page2-home-signs__title"
     );
+
+    // Small decorative square that sits exactly in the middle between the
+    // English title (grid column 2) and the Persian title (grid column 3).
+    // It reuses the same square token as the page header separator so the
+    // visual language stays consistent, and is hidden from assistive tech.
+    var titleSep = document.createElement("span");
+    titleSep.className = "page2-home-signs__title-sep";
+    titleSep.setAttribute("aria-hidden", "true");
+    title.appendChild(titleSep);
 
     var desc = createBilingualBlock(
       sectionMeta.description || "",
@@ -1703,7 +1708,6 @@
       desc.classList.add("page2-home-signs__desc--empty");
     }
 
-    trigger.appendChild(num);
     trigger.appendChild(title);
     trigger.appendChild(desc);
 

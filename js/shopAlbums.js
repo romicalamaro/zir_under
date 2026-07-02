@@ -66,6 +66,11 @@
   var page2 = document.getElementById("page2");
   var productCloseTimer = null;
   var PRODUCT_CLOSE_MS = 400;
+  // Callbacks queued by callers who asked to be told when the product page has
+  // FULLY finished sliding closed. Page navigation uses this so the section
+  // swap only happens after the purchase page is completely gone — the same
+  // "close first, then navigate" behaviour the cart drawer already has.
+  var productCloseDoneCallbacks = [];
 
   if (!albums.length) return;
 
@@ -73,6 +78,22 @@
     if (productCloseTimer) {
       window.clearTimeout(productCloseTimer);
       productCloseTimer = null;
+    }
+  }
+
+  // Run (and empty) every queued "close finished" callback. Called at the single
+  // moment the product page is truly hidden, so listeners can safely act knowing
+  // the purchase page is no longer on screen.
+  function flushProductCloseDoneCallbacks() {
+    if (!productCloseDoneCallbacks.length) return;
+    var pending = productCloseDoneCallbacks;
+    productCloseDoneCallbacks = [];
+    for (var i = 0; i < pending.length; i++) {
+      try {
+        pending[i]();
+      } catch (err) {
+        /* A broken callback must not stop the others from running. */
+      }
     }
   }
 
@@ -129,6 +150,24 @@
     if (!nameEl) return "";
     if (nameEl.dataset.shopLineText) return nameEl.dataset.shopLineText.trim();
     return nameEl.textContent.trim();
+  }
+
+  // Return the name/age/city as separate strings (e.g. ["Firozeh", "56",
+  // "Be'er sheva"]) so the cart can rebuild the styled title with square
+  // dividers, instead of a single comma-joined string.
+  function getShopCardLineParts(nameEl) {
+    if (!nameEl) return [];
+    var partEls = nameEl.querySelectorAll(".shop-card__name-part");
+    if (partEls.length) {
+      return Array.prototype.map.call(partEls, function (el) {
+        return el.textContent.trim();
+      });
+    }
+    var text = getShopCardLineText(nameEl);
+    if (!text) return [];
+    return text.split(",").map(function (piece) {
+      return piece.trim();
+    });
   }
 
   function renderProductTitle(titleEl, nameEl) {
@@ -608,6 +647,8 @@
     }
     resetOrderButton();
     productSection.hidden = true;
+    // The panel is now truly gone — release anyone waiting to navigate.
+    flushProductCloseDoneCallbacks();
   }
 
   function revealProductPanel(options) {
@@ -656,6 +697,11 @@
   // Show the currently visible image of an album large on the product page.
   function openProduct(album) {
     if (!productSection || !productHero || !productGallery) return;
+    // The product page and the cart must never be open at the same time.
+    // Close the cart (if open) before revealing the product page.
+    if (window.Page2Cart && typeof window.Page2Cart.close === "function") {
+      window.Page2Cart.close();
+    }
     stopHoverAutoplay(album);
     var needsBuild = productGallery._album !== album;
     var card = album.closest(".shop-card");
@@ -685,13 +731,34 @@
   }
 
   // Close the internal page; the shop is still where the user left it underneath.
-  function closeProduct() {
-    if (!productSection || productSection.hidden) return;
-    if (
-      page2 &&
-      !page2.classList.contains("page2--product-open") &&
-      !productCloseTimer
-    ) {
+  // An optional onClosed callback fires the moment the panel has fully finished
+  // sliding out (used by page navigation to wait before switching sections).
+  function closeProduct(onClosed) {
+    // Queue the "finished closing" callback (if any) up front, so callers still
+    // get notified even in the early-return branches below.
+    if (typeof onClosed === "function") {
+      productCloseDoneCallbacks.push(onClosed);
+    }
+
+    // Already fully closed and idle → nothing to animate; release waiters now.
+    if (!productSection || productSection.hidden) {
+      flushProductCloseDoneCallbacks();
+      return;
+    }
+
+    var isClosing = !!productCloseTimer;
+    var isPanelOpen = page2 && page2.classList.contains("page2--product-open");
+
+    // Panel is neither open nor mid-close (e.g. mounted off-screen but never
+    // shown) → treat as idle and let any waiting caller continue right away.
+    if (!isPanelOpen && !isClosing) {
+      flushProductCloseDoneCallbacks();
+      return;
+    }
+
+    // Already sliding out: the running timer will flush our callback when the
+    // animation truly ends, so we just leave the callback queued.
+    if (isClosing && !isPanelOpen) {
       return;
     }
 
@@ -709,11 +776,32 @@
 
     productCloseTimer = window.setTimeout(function () {
       productCloseTimer = null;
-      if (page2 && page2.classList.contains("page2--product-open")) return;
+      // Re-opened during the close? Don't tear down, but release waiters so
+      // navigation callbacks never hang.
+      if (page2 && page2.classList.contains("page2--product-open")) {
+        flushProductCloseDoneCallbacks();
+        return;
+      }
       if (page2) page2.classList.remove("page2--product-closing");
       finishCloseProduct();
     }, PRODUCT_CLOSE_MS);
   }
+
+  // Small public handle so other modules (the cart) can close the product page
+  // and check whether it is open, keeping the two panels mutually exclusive.
+  window.Page2Product = {
+    close: closeProduct,
+    isOpen: function () {
+      return !!(productSection && !productSection.hidden);
+    },
+    // True while the purchase page is on screen in any form: fully open, or
+    // still sliding closed. Navigation code tests this (not just isOpen) so it
+    // waits for the panel to be completely gone before switching sections,
+    // exactly like the cart drawer's isActive().
+    isActive: function () {
+      return !!(productSection && !productSection.hidden);
+    },
+  };
 
   function initAlbum(album) {
     populateAlbum(album);
@@ -817,40 +905,35 @@
     var folder = card.getAttribute("data-shop-folder") || "";
     var nameEl = card.querySelector(".shop-card__name");
     var name = getShopCardLineText(nameEl);
+    var nameParts = getShopCardLineParts(nameEl);
     var index = typeof album._index === "number" ? album._index : 0;
     var slides = getSlides(album);
     var slide = slides[index];
     if (!slide) return null;
 
+    // The cart thumbnail should always show the last image in the album's
+    // gallery (the final file in the folder), regardless of which slide is
+    // currently selected. Fall back to the selected slide if the album is empty.
+    var displaySlide = slides[slides.length - 1] || slide;
+
     return {
       id: folder + ":" + String(index),
       folder: folder,
       name: name,
+      nameParts: nameParts,
       imageIndex: index,
-      imageUrl: slide.dataset.image || "",
-      color: slide.dataset.color || slide.style.backgroundColor || "",
+      imageUrl: displaySlide.dataset.image || "",
+      color: displaySlide.dataset.color || displaySlide.style.backgroundColor || "",
     };
   }
 
   albums.forEach(initAlbum);
 
-  // The header stays visible above the product page; clicking a navigation
-  // column should also close the product page so the chosen section is shown.
-  // Capture phase runs before the header's own handler, so the overlay hides
-  // first and the user sees the scroll land on the selected section.
-  var header = document.querySelector(".page2-header");
-  if (header && productSection) {
-    header.addEventListener(
-      "click",
-      function (event) {
-        if (productSection.hidden) return;
-        var col = event.target.closest(".page2-header-col");
-        if (!col || !col.querySelector(".page2-col-title")) return;
-        closeProduct();
-      },
-      true
-    );
-  }
+  // Clicking a header navigation column while the purchase page is open is now
+  // handled by the page's own showSection() logic (index.html): it closes the
+  // product page FIRST, waits for the slide-out to finish, and only then swaps
+  // sections — the same "close, then navigate" flow the cart uses. So no
+  // separate instant-close handler is needed here anymore.
 
   var productCloseBtn =
     productSection &&

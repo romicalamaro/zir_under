@@ -1115,9 +1115,19 @@ button.sidebar__grid-btn {
   mix-blend-mode: color-dodge;
 }
 
-#design-svg.is-hope-merge-mode,
 #design-svg.is-pride-brush-mode {
   cursor: crosshair;
+  touch-action: none;
+}
+
+/* Hope drawing mode: the pointer becomes a pen while the "pen" toggle is on.
+   Inline SVG data-URI cursor (white body, black outline) with the hotspot at
+   the pen tip (bottom-left, 2 22). Falls back to crosshair if unsupported. */
+#design-svg.is-hope-merge-mode {
+  cursor:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M17%203a2.85%202.83%200%201%201%204%204L7.5%2020.5%202%2022l1.5-5.5Z'%20fill='white'%20stroke='black'%20stroke-width='1.5'%20stroke-linejoin='round'/%3E%3Cpath%20d='M15%205l4%204'%20stroke='black'%20stroke-width='1.5'/%3E%3C/svg%3E")
+      2 22,
+    crosshair;
   touch-action: none;
 }
 
@@ -1236,12 +1246,13 @@ button.sidebar__grid-btn {
 
 .design-intro__panel:nth-child(1) {
   z-index: 1;
-  height: calc(
-    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
-  );
-  min-height: calc(
-    var(--design-intro-step-height) - var(--design-intro-scroll-peek)
-  );
+  /* Full-height first intro panel so the hero image reaches the bottom of the
+     screen (no white peek of the next panel at the bottom of page 1). Panel 2
+     keeps its top offset, so its top peek of this image is preserved. */
+  height: var(--design-intro-step-height);
+  min-height: var(--design-intro-step-height);
+  height: 100cqh;
+  min-height: 100cqh;
 }
 
 .design-intro__panel:nth-child(2) {
@@ -1341,10 +1352,10 @@ button.sidebar__grid-btn {
   pointer-events: none;
 }
 
-/* Group arrow in the right grid band (column 8 onward). */
+/* Center the label + arrow on the horizontal middle of the screen. */
 .design-intro__scroll-group {
-  grid-column: 8 / -1;
-  justify-self: start;
+  grid-column: 1 / -1;
+  justify-self: center;
   width: fit-content;
   max-width: 100%;
   display: flex;
@@ -1352,8 +1363,22 @@ button.sidebar__grid-btn {
   align-items: center;
 }
 
+.design-intro__scroll-label {
+  font-family: "Suisse Intl", sans-serif;
+  font-weight: 200;
+  /* Same size as .design-intro__text--secondary: base intro text * 0.5 */
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5 * 0.5
+  );
+  line-height: 1.15;
+  color: var(--page2-bg, #fff);
+  margin-bottom: var(--page2-space-4);
+  text-align: center;
+  pointer-events: none;
+}
+
 .design-intro__scroll-arrow-mask {
-  --design-intro-scroll-arrow-size: calc(var(--page2-space-20, 1.25rem) * 3);
+  --design-intro-scroll-arrow-size: calc(var(--page2-space-20, 1.25rem) * 1.5);
   overflow: hidden;
   /* Match rendered SVG height (viewBox 24×24, stem+chevron ≈ 75% of width) */
   height: calc(var(--design-intro-scroll-arrow-size) * 0.75);
@@ -1549,6 +1574,15 @@ button.sidebar__grid-btn {
 #questionnaire-scroll[lang="fa"] .questionnaire-madlibs-blank--english {
   direction: ltr;
   unicode-bidi: isolate;
+}
+
+/* FA: a Latin (LTR) city/name blank is forced direction:ltr so typed Latin
+   values read correctly, but that left-aligns the Persian placeholder hint.
+   While the field is still empty (:placeholder-shown), right-align it so the
+   hint reads from the RTL side of the sentence. Typed values stay LTR. */
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-madlibs-blank--english:placeholder-shown {
+  text-align: right;
 }
 
 /* Spatial controls: keep left-to-right order/behavior like English even in FA UI */
@@ -1750,7 +1784,14 @@ button.sidebar__grid-btn {
   --questionnaire-text-scale: 1.5;
   /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20% */
   --questionnaire-small-text-multiplier: 0.546;
+  /* Unified, fixed question + small-text sizes (do NOT scale with
+     --questionnaire-text-scale). 1.3125rem = 21px, 0.875rem = 14px @ 16px root. */
+  --questionnaire-question-size: 1.3125rem;
+  --questionnaire-small-size: 0.875rem;
   --questionnaire-vertical-inset: var(--page2-space-20, 1.25rem); /* 20px @ ref */
+  /* Fixed breathing room above/below each question divider line, shared by all
+     multi-question sections (Community, Family) and the Feelings/Hope line. */
+  --questionnaire-divider-gap: var(--page2-space-20, 1.25rem); /* 20px @ ref */
   /* Set by syncQuestionnaireCardHeights() from longest header/body content */
   --questionnaire-card-header-height: auto;
   --questionnaire-card-expanded-header-height: auto;
@@ -1948,11 +1989,7 @@ button.sidebar__grid-btn {
 .questionnaire-family-dot-options .family-dot-option__label {
   font-family: "Suisse Intl", sans-serif;
   font-weight: 200;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-small-size);
 }
 
 .questionnaire-panel__canvas .stage-wrap {
@@ -1975,12 +2012,104 @@ button.sidebar__grid-btn {
   /* No outer frame: the open section keeps only a single inner separator line
      (see .questionnaire-card.is-expanded); closed red folders fill full-width. */
   border: none;
+  /* Closed folders overlap each other by this fraction of a header's height, so
+     the stack reads like a set of physical folders. The hover "push" distance is
+     the same amount, so hovering fully separates a folder from the one above it. */
+  --questionnaire-card-overlap: 0.3;
+  --questionnaire-card-hover-push: calc(
+    var(--questionnaire-card-header-height) * var(--questionnaire-card-overlap)
+  );
 }
 
 .questionnaire-card {
   box-sizing: border-box;
   border: none;
   overflow: hidden;
+  /* Needed so --card-z (set per card in JS) controls which folder paints on top.
+     transform transition drives the "flip through" push on hover (same 0.25s
+     ease timing as the color-palette circles). */
+  position: relative;
+  z-index: var(--card-z, 0);
+  transition: transform 0.25s ease;
+}
+
+/* The open section always sits in front of the closed folders around it. */
+.questionnaire-card.is-expanded {
+  z-index: 100;
+}
+
+/* Overlap: pull every closed folder up so its top tucks under whatever sits
+   above it (a closed folder OR the open section). This keeps all closed folders
+   at the same small visible size at rest; a folder only "grows" when hovered
+   (see the flip-through rule below). The very first card in the stack has nothing
+   above it, so it is excluded — otherwise it would be pulled off the top edge. */
+.questionnaire-card:not(.is-expanded):not(:first-child) {
+  margin-top: calc(var(--questionnaire-card-hover-push) * -1);
+}
+
+/* Flip-through hover for COVERED folders (every folder except the first): the
+   hovered (or keyboard-focused) folder and every folder after it slide down
+   together via transform, opening a gap that reveals the hovered folder from
+   under the one above it. The first card is handled separately below because it
+   has no folder above to slide out from. */
+.questionnaire-card:not(.is-expanded):not(:first-child):hover,
+.questionnaire-card:not(.is-expanded):not(:first-child):focus-within,
+.questionnaire-card:not(.is-expanded):not(:first-child):hover ~ .questionnaire-card,
+.questionnaire-card:not(.is-expanded):not(:first-child):focus-within ~ .questionnaire-card {
+  transform: translateY(var(--questionnaire-card-hover-push));
+}
+
+/* First closed folder: nothing sits above it to tuck under, so it is made small
+   by trimming its height from the BOTTOM (top edge stays static) while its text
+   is nudged UP to stay centered in the trimmed rectangle. On hover it grows back
+   to full height downward (pushing the folders below via layout), so it behaves
+   like the others: small at rest, grown on hover. */
+.questionnaire-card:not(.is-expanded):first-child {
+  height: calc(
+    var(--questionnaire-card-header-height) *
+      (1 - var(--questionnaire-card-overlap))
+  );
+  min-height: calc(
+    var(--questionnaire-card-header-height) *
+      (1 - var(--questionnaire-card-overlap))
+  );
+  transition: transform 0.25s ease, height 0.25s ease, min-height 0.25s ease;
+}
+
+.questionnaire-card:not(.is-expanded):first-child .questionnaire-card__header > * {
+  transition: transform 0.25s ease;
+  transform: translateY(
+    calc(
+      var(--questionnaire-card-header-height) *
+        var(--questionnaire-card-overlap) / -2
+    )
+  );
+}
+
+.questionnaire-card:not(.is-expanded):first-child:hover,
+.questionnaire-card:not(.is-expanded):first-child:focus-within {
+  height: var(--questionnaire-card-header-height);
+  min-height: var(--questionnaire-card-header-height);
+}
+
+.questionnaire-card:not(.is-expanded):first-child:hover .questionnaire-card__header > *,
+.questionnaire-card:not(.is-expanded):first-child:focus-within .questionnaire-card__header > * {
+  transform: none;
+}
+
+/* Respect reduced-motion: keep the static overlap/size but drop the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .questionnaire-card,
+  .questionnaire-card:not(.is-expanded):first-child,
+  .questionnaire-card:not(.is-expanded):first-child .questionnaire-card__header > * {
+    transition: none;
+  }
+  .questionnaire-card:not(.is-expanded):not(:first-child):hover,
+  .questionnaire-card:not(.is-expanded):not(:first-child):focus-within,
+  .questionnaire-card:not(.is-expanded):not(:first-child):hover ~ .questionnaire-card,
+  .questionnaire-card:not(.is-expanded):not(:first-child):focus-within ~ .questionnaire-card {
+    transform: none;
+  }
 }
 
 .questionnaire-card:not(.is-expanded) {
@@ -2015,6 +2144,18 @@ button.sidebar__grid-btn {
 .questionnaire-panel--locale-fa .questionnaire-card.is-expanded {
   border-right: none;
   border-left: 1px solid var(--color-brown);
+}
+
+/* Cap the open stack: when the FIRST section is open it also gets a brown line
+   along its top edge, and when the LAST section is open it gets one along its
+   bottom edge. This closes off the top/bottom of the questionnaire so the open
+   panel reads as a framed column rather than an open-ended strip. */
+.questionnaire-card.is-expanded:first-child {
+  border-top: 1px solid var(--color-brown);
+}
+
+.questionnaire-card.is-expanded:last-child {
+  border-bottom: 1px solid var(--color-brown);
 }
 
 /* Drop-down reveal when a section folder opens. `is-opening` is added by JS
@@ -2110,13 +2251,30 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
+/* The closed-folder overlap hides the TOP `overlap` fraction of every COVERED
+   folder (the folder above paints over it). The header text is centered in the
+   FULL rectangle, so within the visible red band it would look too high. Nudging
+   the text down by half the overlap re-centers it inside the visible band.
+   Every covered folder is targeted (any closed folder that is not the first card
+   in the stack tucks under the element above it). The first card is trimmed and
+   re-centered separately above (its text is nudged UP instead of down). The
+   transform shifts the text only and never affects the measured rectangle height. */
+.questionnaire-card:not(.is-expanded):not(:first-child)
+  .questionnaire-card__header
+  > * {
+  transform: translateY(
+    calc(var(--questionnaire-card-header-height) * var(--questionnaire-card-overlap) / 2)
+  );
+}
+
 .questionnaire-card__num,
 .questionnaire-card__title {
   font-family: "PP Monument Condensed", sans-serif;
   /* Section/folder title size: enlarged to 1.3, then reduced 30% -> 0.91
      (base multiplier was 0.65). Controls PROFILE, GRID, etc. heading size.
-     --questionnaire-card-title-scale is 1 when collapsed, 1.5 when expanded. */
-  --questionnaire-card-title-scale: 1;
+     Closed folders now use the same 1.5 scale as the open section, so their
+     titles read at the open-section size. */
+  --questionnaire-card-title-scale: 1.5;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.91 *
       var(--questionnaire-card-title-scale, 1) *
@@ -2148,6 +2306,8 @@ button.sidebar__grid-btn {
   width: 0.28em;
   height: 0.28em;
   background: currentColor;
+  /* Match the closed title's 1.5 scale so the square grows with the larger text. */
+  --questionnaire-card-title-scale: 1.5;
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.91 *
       var(--questionnaire-card-title-scale, 1) *
@@ -2244,10 +2404,7 @@ button.sidebar__grid-btn {
 .questionnaire-step__heading {
   margin: 0;
   font-family: "Suisse Intl", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-question-size);
   font-weight: 400;
   line-height: 1.15;
   color: var(--color-brown);
@@ -2603,15 +2760,12 @@ button.sidebar__grid-btn {
   margin: 0;
   --madlibs-line-gap: 0.85rem;
   --madlibs-underline-gap: 3px;
-  --madlibs-underline-thickness: 3px;
+  --madlibs-underline-thickness: 2px;
   display: flex;
   flex-direction: column;
   gap: var(--madlibs-line-gap);
   font-family: "Suisse Intl", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-question-size);
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0.01em;
@@ -3128,6 +3282,54 @@ button.sidebar__grid-btn {
   outline-offset: 2px;
 }
 
+/* "Order" submit button as an outlined circle with a checkmark. Matches the
+   Next button exactly: transparent background with a brown outline + brown
+   checkmark by default, filling brown (white checkmark) on hover. Shares the
+   Next button's circular size (see --questionnaire-next-btn-size) and thin
+   0.7 stroke so the two buttons read as one family. */
+.questionnaire-archive-btn--circle {
+  box-sizing: border-box;
+  width: var(--questionnaire-next-btn-size, clamp(2.45rem, 2.836vw, 3.0625rem));
+  height: var(--questionnaire-next-btn-size, clamp(2.45rem, 2.836vw, 3.0625rem));
+  padding: 0;
+  border-radius: 50%;
+  color: var(--color-brown);
+  background: transparent;
+  border: 1px solid var(--color-brown);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hover: fill brown so the checkmark (currentColor) reads white — same
+   interaction as the Next arrow button. Overrides the base archive-btn hover. */
+.questionnaire-archive-btn--circle:hover:not(:disabled) {
+  background: var(--color-brown);
+  color: #fff;
+}
+
+.questionnaire-archive-btn--circle .questionnaire-archive-btn__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.questionnaire-archive-btn--circle .questionnaire-archive-btn__icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.questionnaire-archive-btn--circle .questionnaire-archive-btn__check {
+  stroke: currentColor;
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
 /* "Next" button — circular outline with arrow, bottom-right of each section. */
 .questionnaire-card__next-footer {
   display: flex;
@@ -3229,13 +3431,51 @@ button.sidebar__grid-btn {
   margin-top: 0.75rem;
 }
 
+/* Lay the final "order" section on a 6-column grid so the button can occupy a
+   single column at the right. The button and confirmation live inside the
+   .questionnaire-step__anim-lower wrapper (added by prepareStepAnimationLayers),
+   so the grid goes on that wrapper — the button is not a direct child of the
+   step itself.
+   Note: the grid keeps its natural 100% width (no right-gutter reclaim) so its
+   right edge lands on the card body content edge — exactly where the circular
+   "Next" button sits (its footer is also content-width, right-aligned). This
+   makes the order button share the same distance from the section's right edge
+   as the Next button. */
+.questionnaire-step--complete .questionnaire-step__anim-lower {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  column-gap: var(--page2-gutter, 1.25rem);
+  align-content: start;
+}
+
+/* Button occupies the single right-most column (column 6). In Persian the
+   questionnaire scroll is dir="rtl", so the grid fills right-to-left and this
+   same column 6 becomes the left-most column — mirroring the Next button. */
+.questionnaire-step--complete .questionnaire-archive-btn {
+  grid-column: 6 / span 1;
+  align-self: start; /* override the flex-end from the base rule (now a grid item) */
+  width: 100%;
+}
+
+/* The circular variant keeps its fixed diameter (not stretched to the full
+   column) and sits at the column's end edge — mirroring in RTL like the Next
+   button. */
+.questionnaire-step--complete .questionnaire-archive-btn--circle {
+  width: var(--questionnaire-next-btn-size, clamp(2.45rem, 2.836vw, 3.0625rem));
+  justify-self: end;
+}
+
+/* Confirmation message spans the full 6-column width, below the button. */
+.questionnaire-step--complete .questionnaire-archive-confirm {
+  grid-column: 1 / -1;
+}
+
 /* Last section ("Submit & Order") only: this card has almost no content, so the
    shared uniform card height leaves a large empty gap between the button and the
-   bottom divider line. Let this one card shrink to its content instead, and set
-   the space below the button so the bottom divider sits the same distance from
-   the button as the top divider line above the section header.
-   Top gap = header height + body top padding (1.5rem) + button margin (0.75rem),
-   so the bottom padding mirrors it. Only affects this section. */
+   bottom divider line. Let this one card shrink to its content instead. The
+   bottom padding matches every other section's bottom inset (--page2-space-20),
+   so the gap below the order button equals the gap below the circular "Next"
+   button in the other sections. Only affects this section. */
 .questionnaire-card[data-section-key="submitOrder"].is-expanded {
   height: auto;
   min-height: var(--questionnaire-card-expanded-header-height);
@@ -3244,10 +3484,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-card[data-section-key="submitOrder"].is-expanded
   .questionnaire-card__body {
-  padding-block: 1.5rem
-    calc(
-      var(--questionnaire-card-expanded-header-height) + 1.5rem + 0.75rem
-    );
+  padding-block: 1.5rem var(--page2-space-20, 1.25rem);
 }
 
 .questionnaire-archive-confirm {
@@ -3475,17 +3712,17 @@ button.sidebar__grid-btn {
   grid-column: 1;
   grid-row: 2;
   align-self: start;
+  /* Pull labels ~30% closer to the visible slider bar. The slider input is
+     taller than its visible track, leaving transparent space beneath the bar;
+     this negative margin lifts the labels up into that space. */
+  margin-top: -0.4rem;
   width: 100%;
   min-width: 0;
 }
 
 .questionnaire-slider-range-label {
   font-family: "PP Monument Condensed", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-small-size);
   font-weight: 700;
   line-height: 1.3;
   color: var(--color-brown);
@@ -3863,11 +4100,7 @@ button.sidebar__grid-btn {
 
 .questionnaire-feelings-spider__label {
   font-family: "Suisse Intl", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-small-size);
   font-weight: 400;
   fill: var(--color-brown);
   pointer-events: none;
@@ -3928,6 +4161,18 @@ button.sidebar__grid-btn {
   );
 }
 
+/* Short activating sentence shown above the Hope heading. Matches the size of
+   the other questionnaire questions (the feelings intro / question size). */
+.questionnaire-feelings-hope-intro {
+  margin: 0 0 0.4rem;
+  font-family: "Suisse Intl", sans-serif;
+  font-size: var(--questionnaire-question-size);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--color-brown);
+  white-space: pre-line;
+}
+
 /* Hope View/Merge styled like the Shuffle layout button: square corners,
    uppercase, black/white. Selected = black fill (Shuffle's default look);
    unselected = its outlined counterpart. */
@@ -3950,15 +4195,47 @@ button.sidebar__grid-btn {
     border-color 0.2s ease;
 }
 
+/* Hover: keep the fill white and thicken the frame instead (like the grid
+   example buttons, whose outer frame doubles on hover). box-sizing keeps the
+   button the same outer size so the extra border width causes no layout shift. */
 .questionnaire-feelings-hope-options .questionnaire-option:hover {
-  background: #f5f5f5;
+  background: #fff;
   border-color: var(--color-brown);
+  border-width: 2px;
 }
 
 .questionnaire-feelings-hope-options .questionnaire-option.is-selected {
   background: var(--color-brown);
   border-color: var(--color-brown);
   color: #fff;
+}
+
+/* Pen toggle + undo buttons: sized to match the Shuffle button exactly (one
+   page-grid column wide, same padding and icon size). Scoped under the options
+   wrapper so it beats the base `.questionnaire-option` padding/width. The glyph
+   uses currentColor so it inverts on the selected/hover state. */
+.questionnaire-feelings-hope-options .questionnaire-feelings-hope-pen,
+.questionnaire-feelings-hope-options .questionnaire-feelings-hope-reset {
+  --q-page-col: calc(
+    (100vw - 2 * var(--page2-margin-inline, 1.25rem) - 11 * var(--page2-gutter, 1.25rem)) /
+      12
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Lock to exactly one grid column: no grow/shrink so both buttons stay the
+     same width as the Shuffle button instead of stretching to fill the row. */
+  flex: 0 0 var(--q-page-col);
+  width: var(--q-page-col);
+  padding: clamp(0.35rem, 0.486vw, 0.525rem);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.questionnaire-feelings-hope-pen__icon {
+  width: clamp(1.25rem, 1.5vw, 1.6rem);
+  height: clamp(1.25rem, 1.5vw, 1.6rem);
+  display: block;
 }
 
 .questionnaire-feelings-actions {
@@ -3971,23 +4248,32 @@ button.sidebar__grid-btn {
   margin: 0;
 }
 
-/* Match the product "Add to cart" button: black fill, white uppercase text,
-   square corners, inverts to white/brown on hover. */
+/* Match the product "Add to cart" button: black fill, white icon,
+   square corners, inverts to white/brown on hover. Width is capped to a single
+   page-grid column (one of the 12 tracks) so it reads as a compact icon button. */
 .questionnaire-feelings-shuffle-btn {
-  padding: clamp(0.35rem, 0.486vw, 0.525rem)
-    clamp(0.875rem, 1.215vw, 1.3125rem);
+  --q-page-col: calc(
+    (100vw - 2 * var(--page2-margin-inline, 1.25rem) - 11 * var(--page2-gutter, 1.25rem)) /
+      12
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--q-page-col);
+  padding: clamp(0.35rem, 0.486vw, 0.525rem);
   border: 1px solid var(--color-brown);
   background: var(--color-brown);
   color: #fff;
-  font-family: "Suisse Intl Light", sans-serif;
-  font-size: clamp(0.7rem, 0.81vw, 0.875rem);
-  font-weight: normal;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   cursor: pointer;
   transition:
     background 0.2s ease,
     color 0.2s ease;
+}
+
+.questionnaire-feelings-shuffle-btn__icon {
+  width: clamp(1.25rem, 1.5vw, 1.6rem);
+  height: clamp(1.25rem, 1.5vw, 1.6rem);
+  display: block;
 }
 
 .questionnaire-feelings-shuffle-btn:hover:not(:disabled) {
@@ -4003,10 +4289,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-intro {
   margin: 0;
   font-family: "Suisse Intl", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.95 *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-question-size);
   font-weight: 400;
   line-height: 1.2;
   color: var(--color-brown);
@@ -4028,7 +4311,9 @@ button.sidebar__grid-btn {
 .questionnaire-section-list {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--page2-space-20, 1.25rem) * 2); /* 40px @ ref — 2× previous question spacing */
+  /* 2× the divider gap so the hairline centers with an equal --questionnaire-divider-gap
+     of space on each side (see the :not(:first-child) rule below). */
+  gap: calc(var(--questionnaire-divider-gap, 1.25rem) * 2);
   width: 100%;
 }
 
@@ -4039,13 +4324,21 @@ button.sidebar__grid-btn {
   width: 100%;
 }
 
+/* Thin separator between consecutive questions in multi-question sections
+   (Community, Family), matching the hairline above the Feelings/Hope block.
+   The line is centered inside the list gap: pull the block up by one
+   divider-gap and pad it down by one divider-gap, leaving exactly
+   --questionnaire-divider-gap of space above and below the line. */
+.questionnaire-section-list .questionnaire-section-question:not(:first-child) {
+  margin-top: calc(var(--questionnaire-divider-gap, 1.25rem) * -1);
+  padding-top: var(--questionnaire-divider-gap, 1.25rem);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .questionnaire-section-question-heading {
   margin: 0;
   font-family: "Suisse Intl", sans-serif;
-  font-size: calc(
-    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 *
-      var(--questionnaire-text-scale, 1)
-  );
+  font-size: var(--questionnaire-question-size);
   font-weight: 400;
   line-height: 1.2;
   color: var(--color-brown);
@@ -4067,6 +4360,7 @@ button.sidebar__grid-btn {
   .questionnaire-feelings-emotion-heading,
   .questionnaire-feelings-sublabel,
   .questionnaire-feelings-intro,
+  .questionnaire-feelings-hope-intro,
   .questionnaire-feelings-spider__label,
   .questionnaire-section-question-heading
 ) {
@@ -4140,6 +4434,7 @@ button.sidebar__grid-btn {
   .questionnaire-feelings-emotion-heading,
   .questionnaire-feelings-sublabel,
   .questionnaire-feelings-intro,
+  .questionnaire-feelings-hope-intro,
   .questionnaire-feelings-spider__label,
   .questionnaire-section-question-heading,
   .family-dot-option__label
@@ -4194,9 +4489,9 @@ button.sidebar__grid-btn {
   text-transform: uppercase;
 }
 
-#questionnaire-scroll[lang="fa"] :is(
-  .questionnaire-profile-madlibs .questionnaire-madlibs-blank--english::placeholder
-) {
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-profile-madlibs
+  .questionnaire-madlibs-blank--english::placeholder {
   font-family: "Vazirmatn", sans-serif;
   font-weight: 400;
   text-transform: none;
@@ -4215,11 +4510,18 @@ button.sidebar__grid-btn {
   text-transform: none;
 }
 
-#questionnaire-scroll[lang="fa"] .questionnaire-profile-madlibs :is(
+/* NOTE: ::placeholder is a pseudo-element and is NOT allowed inside :is().
+   Putting it there invalidates the whole rule, so these must be written as a
+   plain comma-separated list to actually apply Vazirmatn to FA placeholders. */
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-profile-madlibs
   input.questionnaire-madlibs-blank::placeholder,
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-profile-madlibs
   .questionnaire-madlibs-name-mode__input::placeholder,
-  .questionnaire-madlibs-dropdown__label.is-placeholder
-) {
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-profile-madlibs
+  .questionnaire-madlibs-dropdown__label.is-placeholder {
   font-family: "Vazirmatn", sans-serif;
   font-weight: 400;
   text-transform: none;
@@ -4238,6 +4540,7 @@ button.sidebar__grid-btn {
 .questionnaire-card--brown .questionnaire-profile-madlibs,
 .questionnaire-card--brown .questionnaire-step__heading,
 .questionnaire-card--brown .questionnaire-feelings-intro,
+.questionnaire-card--brown .questionnaire-feelings-hope-intro,
 .questionnaire-card--brown .questionnaire-feelings-emotion-heading,
 .questionnaire-card--brown .questionnaire-section-question-heading,
 .questionnaire-card--brown .questionnaire-slider-range-label,
