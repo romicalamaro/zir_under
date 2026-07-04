@@ -45,6 +45,10 @@
         "I feel this clearly",
         "This feeling is very strong",
       ],
+      scaleShort: {
+        min: "Not at all",
+        max: "Very much",
+      },
     },
     ui: {
       yes: "Yes",
@@ -329,6 +333,10 @@
         "به‌وضوح این احساس را دارم",
         "این احساس بسیار قوی است",
       ],
+      scaleShort: {
+        min: "اصلاً",
+        max: "بسیار",
+      },
     },
     ui: {
       yes: "بله",

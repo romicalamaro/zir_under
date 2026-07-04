@@ -12,7 +12,7 @@
     <meta name="application-name" content="zin.under" />
     <meta property="og:title" content="zin.under" />
     <meta property="og:site_name" content="zin.under" />
-    <link rel="stylesheet" href="css/styles.css?v=20260704-feelings-next-bottom" />
+    <link rel="stylesheet" href="css/styles.css?v=20260704-feelings-legend" />
     <!-- Header grid must exist before body paints — JS refines track widths later. -->
     <style id="page2-header-critical">
       #page2 {
@@ -5379,6 +5379,7 @@
         var DEFAULT_OPEN_INDEX = 1; /* home — second column from the left */
         var HOME_COL_INDEX = DEFAULT_OPEN_INDEX;
         var SIGNS_COL_INDEX = 2;
+        var SHOP_COL_INDEX = 3;
         var DESIGN_COL_INDEX = 4;
         var columnSpans = [];
         var headerCols = header.querySelectorAll(".page2-header-col");
@@ -6089,6 +6090,18 @@
             typeof window.Questionnaire.resetToIntro === "function"
           ) {
             window.Questionnaire.resetToIntro();
+          }
+
+          /* Leaving the shop should snap every product-card carousel back to
+             its first image, so returning to the shop always starts fresh (any
+             left/right swiping is forgotten). The shop is display:none once we
+             leave, so this reset is not visible mid-swap. */
+          if (
+            colIndex !== SHOP_COL_INDEX &&
+            window.Page2Shop &&
+            typeof window.Page2Shop.resetAlbums === "function"
+          ) {
+            window.Page2Shop.resetAlbums();
           }
 
           var scrollToSigns = colIndex === SIGNS_COL_INDEX;
@@ -7426,7 +7439,7 @@
       })();
     </script>
 
-    <script defer src="js/shopAlbums.js?v=20260701-full-deploy"></script>
+    <script defer src="js/shopAlbums.js?v=20260704-feelings-legend"></script>
     <script defer src="js/cartDrawer.js?v=20260701-full-deploy"></script>
     <script defer src="js/buyPreview3d.js?v=20260704-no-vertical-flash"></script>
     <script defer src="js/page2Units.js"></script>
@@ -7444,9 +7457,9 @@
     <script defer src="js/signsCatalog.js?v=20260701-full-deploy"></script>
     <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
     <script defer src="js/sectionProgression.js?v=20260625-grid-unlock-fix"></script>
-    <script defer src="js/feelingsSpiderChart.js"></script>
-    <script defer src="js/questionnaireStrings.js?v=20260701-full-deploy"></script>
-    <script defer src="js/questionnaire.js?v=20260704-post-submit-resume"></script>
+    <script defer src="js/feelingsSpiderChart.js?v=20260704-feelings-legend"></script>
+    <script defer src="js/questionnaireStrings.js?v=20260704-feelings-legend"></script>
+    <script defer src="js/questionnaire.js?v=20260704-feelings-legend"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>

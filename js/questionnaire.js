@@ -121,6 +121,10 @@
     return getStrings().feelings.scaleLabels;
   }
 
+  function getFeelingsScaleShort() {
+    return getStrings().feelings.scaleShort || {};
+  }
+
   function getStepConfig(stepId) {
     var meta = STEP_META[stepId];
     var str = getStrings().steps[stepId];
@@ -3668,6 +3672,59 @@
     });
   }
 
+  function appendFeelingsScaleLegend(parent) {
+    var scaleLabels = getFeelingsScaleLabels();
+    var wrap = document.createElement("div");
+    wrap.className = "questionnaire-feelings-scale-legend";
+
+    var minLabel = document.createElement("span");
+    minLabel.className =
+      "questionnaire-feelings-scale-legend__label questionnaire-feelings-scale-legend__label--min";
+    minLabel.textContent = scaleLabels[0];
+
+    var maxLabel = document.createElement("span");
+    maxLabel.className =
+      "questionnaire-feelings-scale-legend__label questionnaire-feelings-scale-legend__label--max";
+    maxLabel.textContent = scaleLabels[4];
+
+    var svgNs = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "questionnaire-feelings-scale-legend__line");
+    svg.setAttribute("viewBox", "0 0 120 4");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+
+    var dashPatterns = ["3 10", "3 6", "3 3", "3 1", null];
+    var segmentWidth = 120 / dashPatterns.length;
+    var i;
+    for (i = 0; i < dashPatterns.length; i++) {
+      var segment = document.createElementNS(svgNs, "line");
+      segment.setAttribute("x1", String(i * segmentWidth));
+      segment.setAttribute("x2", String((i + 1) * segmentWidth));
+      segment.setAttribute("y1", "2");
+      segment.setAttribute("y2", "2");
+      if (dashPatterns[i]) {
+        segment.setAttribute("stroke-dasharray", dashPatterns[i]);
+      }
+      svg.appendChild(segment);
+    }
+
+    var track = document.createElement("div");
+    track.className = "questionnaire-feelings-scale-legend__track";
+
+    var demo = document.createElement("span");
+    demo.className = "questionnaire-feelings-scale-legend__demo";
+    demo.setAttribute("aria-hidden", "true");
+
+    track.appendChild(svg);
+    track.appendChild(demo);
+
+    wrap.appendChild(minLabel);
+    wrap.appendChild(track);
+    wrap.appendChild(maxLabel);
+    parent.appendChild(wrap);
+  }
+
   function appendFeelingsSpiderChart(parent, onChange) {
     var wrap = document.createElement("div");
     wrap.className = "questionnaire-feelings-spider";
@@ -3683,6 +3740,7 @@
     wrap._feelingsSpiderChart = window.FeelingsSpiderChart.create(wrap, {
       rows: getFeelingsTableRows(),
       scaleLabels: getFeelingsScaleLabels(),
+      scaleShort: getFeelingsScaleShort(),
       couplings: FEELINGS_COUPLINGS,
       getBounds: getQuestionnaireFeelingsBounds,
       getValue: function (stepId) {
@@ -3696,6 +3754,10 @@
         if (onChange) onChange();
       },
     });
+
+    scheduleFeelingsSpiderLabelFontSync(
+      parent.closest(".questionnaire-step") || panelEl
+    );
   }
 
   /**

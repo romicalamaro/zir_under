@@ -11,7 +11,7 @@
   var VIEW_SIZE = 480;
   var CENTER = VIEW_SIZE / 2;
   var OUTER_RADIUS = 118;
-  var LABEL_RADIUS = OUTER_RADIUS + 50;
+  var LABEL_RADIUS = OUTER_RADIUS + 32;
   var AXIS_HIT_WIDTH = 22;
   var QUESTIONNAIRE_SMALL_SIZE_FALLBACK_PX = 14;
 
@@ -45,6 +45,19 @@
       x: CENTER + distance * Math.cos(angle),
       y: CENTER + distance * Math.sin(angle),
     };
+  }
+
+  /**
+   * Pick the SVG text-anchor for a label based on where its axis points, so the
+   * text grows *away* from the chart instead of overlapping the data dot.
+   * Right-side labels start at the anchor point, left-side labels end at it, and
+   * near-vertical (top/bottom) labels stay centered.
+   */
+  function labelAnchorForAxis(index, count) {
+    var cos = Math.cos(axisAngle(index, count));
+    if (cos > 0.4) return "start";
+    if (cos < -0.4) return "end";
+    return "middle";
   }
 
   function polygonPointsForRing(ringStep, count, outerRadius, steps) {
@@ -136,6 +149,7 @@
     options = options || {};
     var rows = options.rows || [];
     var scaleLabels = options.scaleLabels || [];
+    var scaleShort = options.scaleShort || {};
     var getBounds = options.getBounds;
     var getValue = options.getValue;
     var setValue = options.setValue;
@@ -260,11 +274,12 @@
 
     state.forEach(function (axisState, idx) {
       var labelPt = pointOnAxis(idx, count, LABEL_RADIUS);
+      var labelAnchor = labelAnchorForAxis(idx, count);
       var labelEl = createSvgEl("text", {
         class: "questionnaire-feelings-spider__label",
         x: String(labelPt.x),
         y: String(labelPt.y),
-        "text-anchor": "middle",
+        "text-anchor": labelAnchor,
         "dominant-baseline": "middle",
         "pointer-events": "none",
       });
@@ -305,12 +320,98 @@
       handlesLayer.appendChild(handle);
     });
 
+    // Intro layer: a temporary self-explaining overlay shown when the chart
+    // first appears. It dims the real graph (via the --intro class + CSS),
+    // hides the emotion labels, and instead demonstrates the scale on the
+    // top-left axis (index count-1): "Very" at center (max intensity) and
+    // "Not at all" at the outer vertex (min intensity), with a dark dot that
+    // slides between them. Any first interaction removes it (see exitIntro).
+    var introLayer = createSvgEl("g", {
+      class: "questionnaire-feelings-spider__intro",
+      "aria-hidden": "true",
+    });
+    var introActive = count > 0;
+    if (introActive) {
+      var introAxisIndex = count - 1;
+      var introOuterPt = pointOnAxis(introAxisIndex, count, outerRadius);
+      var introLabelPt = pointOnAxis(introAxisIndex, count, LABEL_RADIUS);
+      var introDx = introOuterPt.x - CENTER;
+      var introDy = introOuterPt.y - CENTER;
+
+      introLayer.appendChild(
+        createSvgEl("line", {
+          class: "questionnaire-feelings-spider__intro-axis",
+          x1: String(CENTER),
+          y1: String(CENTER),
+          x2: String(introOuterPt.x),
+          y2: String(introOuterPt.y),
+        })
+      );
+      introLayer.appendChild(
+        createSvgEl("circle", {
+          class: "questionnaire-feelings-spider__intro-dot",
+          cx: String(CENTER),
+          cy: String(CENTER),
+          r: "5",
+        })
+      );
+      var introDemo = createSvgEl("circle", {
+        class: "questionnaire-feelings-spider__intro-demo",
+        cx: String(CENTER),
+        cy: String(CENTER),
+        r: "5",
+      });
+      introDemo.setAttribute(
+        "style",
+        "--demo-dx:" + introDx.toFixed(2) + "px;--demo-dy:" + introDy.toFixed(2) + "px"
+      );
+      introLayer.appendChild(introDemo);
+
+      var introMaxLabel = createSvgEl("text", {
+        class:
+          "questionnaire-feelings-spider__label questionnaire-feelings-spider__intro-label",
+        x: String(CENTER - 12),
+        y: String(CENTER),
+        "text-anchor": "end",
+        "dominant-baseline": "middle",
+        "pointer-events": "none",
+      });
+      introMaxLabel.textContent = scaleShort.max || "";
+      introLayer.appendChild(introMaxLabel);
+      labelEls.push(introMaxLabel);
+
+      var introMinLabel = createSvgEl("text", {
+        class:
+          "questionnaire-feelings-spider__label questionnaire-feelings-spider__intro-label",
+        x: String(introLabelPt.x),
+        y: String(introLabelPt.y),
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+        "pointer-events": "none",
+      });
+      introMinLabel.textContent = scaleShort.min || "";
+      introLayer.appendChild(introMinLabel);
+      labelEls.push(introMinLabel);
+
+      container.classList.add("questionnaire-feelings-spider--intro");
+    }
+
     svg.appendChild(gridLayer);
     svg.appendChild(axisHitLayer);
     svg.appendChild(dataLayer);
     svg.appendChild(handlesLayer);
     svg.appendChild(labelsLayer);
+    svg.appendChild(introLayer);
     container.appendChild(svg);
+
+    function exitIntro() {
+      if (!introActive) return;
+      introActive = false;
+      container.classList.remove("questionnaire-feelings-spider--intro");
+      if (introLayer && introLayer.parentNode) {
+        introLayer.parentNode.removeChild(introLayer);
+      }
+    }
 
     var resizeObserver = null;
     if (typeof ResizeObserver !== "undefined") {
@@ -446,6 +547,7 @@
     }
 
     function startDrag(axisState, event, captureEl) {
+      exitIntro();
       if (activeDrag) endDrag();
       activeDrag = {
         axisState: axisState,
@@ -496,6 +598,7 @@
           return;
         }
         event.preventDefault();
+        exitIntro();
         commitAxisStep(axisState, axisState.step + delta, false);
       });
     });

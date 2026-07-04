@@ -803,6 +803,21 @@
     },
   };
 
+  // Snap every shop-card carousel back to its first image (index 0) with no
+  // animation. Page navigation calls this when the user leaves the shop, so
+  // returning to the shop always starts from the first photo again.
+  function resetAlbumsToFirst() {
+    albums.forEach(function (album) {
+      stopHoverAutoplay(album);
+      goTo(album, 0, { instant: true });
+    });
+  }
+
+  // Public handle so the page can reset the shop carousels when navigating away.
+  window.Page2Shop = {
+    resetAlbums: resetAlbumsToFirst,
+  };
+
   function initAlbum(album) {
     populateAlbum(album);
     album._index = 0;
