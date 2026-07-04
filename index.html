@@ -379,13 +379,13 @@
               <div class="page2-home-about">
                 <div class="page2-about-content">
                   <p class="page2-about-text">
-                    Under is a modular textile system that creates adaptable
+                    Under is a modular textile system that creates
                     scarves, wraps, and head coverings that express solidarity
                     and support for
                     Iranian women. Its designs are based on a visual sign
                     language that translates emotional states into graphic
                     patterns, giving voice to women for whom Iran is part of
-                    their identity.
+                    their&nbsp;identity.
                   </p>
                   <p
                     class="page2-about-text page2-about-text--fa"
@@ -433,7 +433,7 @@
                     class="page2-home-signs__list page2-home-signs__list--suffix"
                     id="page2-home-signs-list-suffix"
                     role="list"
-                    aria-label="Signs — feelings"
+                    aria-label="Signs - feelings"
                   ></div>
                 </div>
               </div>
@@ -505,11 +505,11 @@
                       طراحی منسوجات «زیر» از طومار توپقاپی الهام گرفته شده است؛
                       مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که
                       به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و
-                      هنرمندان جهان ایرانی–اسلامی عمل می‌کرد.
+                      هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.
                     </p>
                     <p class="page2-home-topkapi__body">
                       The design of Under&rsquo;s textiles is inspired by the
-                      Topkapi Scroll &ndash; a fifteenth&ndash;sixteenth-century
+                      Topkapi Scroll - a fifteenth-sixteenth-century
                       compendium of geometric patterns that functioned as a
                       modular drawing library for Persian-Islamic architects and
                       artisans.
@@ -1032,8 +1032,8 @@
                       identity.
                     </p>
                     <p class="design-intro__text design-intro__text--secondary">
-                      If you are here to express solidarity and support, you are
-                      warmly invited to visit the
+                      If you are here to express solidarity, you are invited to
+                      visit the
                       <button
                         type="button"
                         class="design-intro__shop-link"
@@ -1041,7 +1041,7 @@
                       >
                         main shop
                       </button>
-                      and explore the existing collections.
+                      and explore the&nbsp;collections.
                     </p>
                     <div class="design-start__lang-btns">
                       <button
@@ -2097,6 +2097,18 @@
         font-weight: 300;
         line-height: 1.5;
         color: #fff;
+      }
+
+      /* Copyright nudge — 21.5″ screens only (viewport ≈ 1920px wide).
+         On this specific screen class the © line sits a bit too far from the
+         zin.under wordmark, so we pull it two grid columns to the LEFT (start
+         at column 8 instead of 10), moving it toward the logo. The range is
+         kept between the 16″ reference (1728) and 27″ displays (2560) so the
+         base layout on every other screen size is untouched. */
+      @media (min-width: 1825px) and (max-width: 2000px) {
+        #page2 .page2-footer__copyright {
+          grid-column: 8 / -1;
+        }
       }
 
       #page2 .page2-about-media__frame {
@@ -4954,6 +4966,22 @@
         outline-offset: 2px;
       }
 
+      /* End-of-questionnaire popup Buy button: brown instead of the red used
+         by the cart-drawer Buy / shop banner. */
+      #page2 .page2-buy-preview__go-archive {
+        border-color: var(--color-brown);
+        background: var(--color-brown);
+      }
+
+      #page2 .page2-buy-preview__go-archive:hover {
+        background: #fff;
+        color: var(--color-brown);
+      }
+
+      #page2 .page2-buy-preview__go-archive:focus-visible {
+        outline-color: var(--color-brown);
+      }
+
       @media (prefers-reduced-motion: reduce) {
         #page2 .page2-cart-scrim,
         #page2 .page2-cart-drawer {
@@ -6148,6 +6176,16 @@
             } else if (!switchingHomeScrollTarget) {
               resetHomeScroll();
             }
+          } else if (!scrollToSigns) {
+            /* Re-clicking the section that is ALREADY open (e.g. clicking
+               "home" in the header while home is active and scrolled down):
+               jump back to the top of that page. Signs is excluded because
+               clicking it is meant to scroll TO the signs area, not the top. */
+            if (isHomeScrollCol(colIndex)) {
+              resetHomeScroll();
+            } else {
+              page2.scrollTop = 0;
+            }
           }
 
           if (isHomeScrollCol(colIndex)) {
@@ -6723,25 +6761,6 @@
           if (hoveredHeaderColIndex < 0) return;
           clearHeaderCellHover();
           refreshLayout(true);
-        });
-
-        page2.addEventListener("click", function (event) {
-          if (!isPage2Visible()) return;
-          if (header.contains(event.target)) return;
-          if (event.target.closest("#section-signs")) return;
-          if (event.target.closest("#page2-home-signs")) return;
-          if (event.target.closest("#section-design")) return;
-          if (event.target.closest("#section-shop")) return;
-          if (event.target.closest("#section-archive")) return;
-          if (event.target.closest("#section-product")) return;
-
-          var gridColIndex = gridColIndexAtClientX(event.clientX);
-          if (gridColIndex < 0) return;
-
-          var headerColIndex = headerColForGridCol(gridColIndex);
-          if (headerColIndex === null || isLockedColumn(headerColIndex)) return;
-
-          showSection(headerColIndex);
         });
 
         function getLogoBottomPaddingPx() {

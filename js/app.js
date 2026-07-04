@@ -29,6 +29,9 @@
   var cachedStarFills = [];
   /** @type {{ outline: {x:number,y:number}[] }[]} */
   var cachedStarRhombusFills = [];
+  /** Coarse octagon/square cells for star-grid Hope merge detection. */
+  var cachedStarCoarseMergeCells = null;
+  var cachedStarCoarseMergeCellsSig = "";
   /** @type {{ id: string, cx: number, cy: number, r: number }[]} */
   var cachedStructuralCircles = [];
   /** Chord keys for structural ellipse outlines (Circles grid merge hit-test). */
@@ -826,11 +829,36 @@
     });
   }
 
+  function getHopeStippleImageFetchUrl() {
+    var version =
+      typeof HOPE_STIPPLE_ASSET_VERSION !== "undefined"
+        ? HOPE_STIPPLE_ASSET_VERSION
+        : 1;
+    var bleed =
+      typeof HOPE_STIPPLE_LAYOUT_BLEED_PX !== "undefined"
+        ? HOPE_STIPPLE_LAYOUT_BLEED_PX
+        : 0;
+    return HOPE_STIPPLE_IMAGE + "?v=" + version + "&b=" + bleed;
+  }
+
+  function getHopeStippleSourceViewBoxSize() {
+    return {
+      w:
+        typeof HOPE_STIPPLE_SOURCE_VIEWBOX_W !== "undefined"
+          ? HOPE_STIPPLE_SOURCE_VIEWBOX_W
+          : CANVAS_W,
+      h:
+        typeof HOPE_STIPPLE_SOURCE_VIEWBOX_H !== "undefined"
+          ? HOPE_STIPPLE_SOURCE_VIEWBOX_H
+          : CANVAS_H,
+    };
+  }
+
   function ensureHopeStippleRawExportDataUri() {
     if (hopeStippleRawExportDataUri) {
       return Promise.resolve(hopeStippleRawExportDataUri);
     }
-    return fetch(HOPE_STIPPLE_IMAGE)
+    return fetch(getHopeStippleImageFetchUrl(), { cache: "no-store" })
       .then(function (res) {
         if (!res || !res.ok) return null;
         return res.blob();
@@ -967,7 +995,14 @@
   ) {
     var minX = typeof sourceMinX === "number" ? sourceMinX : 0;
     var minY = typeof sourceMinY === "number" ? sourceMinY : 0;
-    var scale = Math.min(CANVAS_W / sourceW, CANVAS_H / sourceH);
+    var bleed =
+      typeof HOPE_STIPPLE_LAYOUT_BLEED_PX !== "undefined"
+        ? HOPE_STIPPLE_LAYOUT_BLEED_PX
+        : 0;
+    var scale = Math.max(
+      (CANVAS_W + 2 * bleed) / sourceW,
+      (CANVAS_H + 2 * bleed) / sourceH
+    );
     var drawW = sourceW * scale;
     var drawH = sourceH * scale;
     return {
@@ -1066,7 +1101,7 @@
         lines.push("</clipPath>");
         lines.push("</defs>");
 
-        lines.push('<g clip-path="url(#inner-content-clip)">');
+        lines.push('<g clip-path="url(#stipple-content-clip)">');
         lines.push(
           '<g id="layer-stipple-svg" clip-path="url(#' +
             MERGE_REGIONS_CLIP_ID +
@@ -1131,7 +1166,7 @@
     lines.push("</clipPath>");
     lines.push("</defs>");
 
-    lines.push('<g clip-path="url(#inner-content-clip)">');
+    lines.push('<g clip-path="url(#stipple-content-clip)">');
     lines.push(
       '<g id="layer-stipple-svg" clip-path="url(#' +
         MERGE_REGIONS_CLIP_ID +
@@ -1250,7 +1285,7 @@
         lines.push("</clipPath>");
         lines.push("</defs>");
 
-        lines.push('<g clip-path="url(#inner-content-clip)">');
+        lines.push('<g clip-path="url(#stipple-content-clip)">');
         lines.push(
           '<g id="layer-stipple-svg" clip-path="url(#' +
             MERGE_REGIONS_CLIP_ID +
@@ -1345,9 +1380,47 @@
     maskImg.setAttribute("y", "0");
     maskImg.setAttribute("width", String(CANVAS_W));
     maskImg.setAttribute("height", String(CANVAS_H));
-    // PNG is rasterized at full canvas size with opaque white letterbox baked in.
     maskImg.setAttribute("preserveAspectRatio", "none");
     maskImg.setAttribute("href", maskHref);
+  }
+
+  function getStippleContentClipRect() {
+    var bleed =
+      typeof HOPE_STIPPLE_LAYOUT_BLEED_PX !== "undefined"
+        ? HOPE_STIPPLE_LAYOUT_BLEED_PX
+        : 0;
+    var source = getHopeStippleSourceViewBoxSize();
+    var layout = getHopeStippleUniformLayout(source.w, source.h);
+    var x = Math.min(0, layout.offsetX) - bleed;
+    var y = Math.min(0, layout.offsetY) - bleed;
+    var x2 = Math.max(CANVAS_W, layout.offsetX + layout.drawW) + bleed;
+    var y2 = Math.max(CANVAS_H, layout.offsetY + layout.drawH) + bleed;
+    return {
+      x: x,
+      y: y,
+      width: x2 - x,
+      height: y2 - y,
+    };
+  }
+
+  function syncStippleContentClipPath(defs) {
+    if (!defs) return;
+    var clip = defs.querySelector("#stipple-content-clip");
+    if (!clip) {
+      clip = elSvg("clipPath");
+      clip.setAttribute("id", "stipple-content-clip");
+      var clipRect = elSvg("rect");
+      clipRect.setAttribute("id", "stipple-content-clip-rect");
+      clip.appendChild(clipRect);
+      defs.appendChild(clip);
+    }
+    var clipRect = clip.querySelector("#stipple-content-clip-rect");
+    if (!clipRect) return;
+    var rect = getStippleContentClipRect();
+    clipRect.setAttribute("x", String(rect.x));
+    clipRect.setAttribute("y", String(rect.y));
+    clipRect.setAttribute("width", String(rect.width));
+    clipRect.setAttribute("height", String(rect.height));
   }
 
   function loadHopeStippleSvg() {
@@ -1363,9 +1436,15 @@
     if (hopeStippleImageReady) return Promise.resolve(true);
     if (hopeStippleReadyPromise) return hopeStippleReadyPromise;
 
-    hopeStippleReadyPromise = ensureHopeStippleRawExportDataUri()
-      .then(function (rawUri) {
-        if (rawUri) {
+    hopeStippleReadyPromise = Promise.all([
+      ensureHopeStippleRawExportDataUri(),
+      getHopeStippleSvgTextForExport(),
+    ])
+      .then(function (results) {
+        var rawUri = results[0];
+        var svgText = results[1];
+        if (svgText) hopeStippleSvgText = svgText;
+        if (rawUri || hopeStippleSvgText) {
           hopeStippleImageReady = true;
           applyMergeReveal();
           return true;
@@ -1375,9 +1454,8 @@
             getHopeStippleSvgTextForExport(),
             ensureHopeStippleRawExportDataUri(),
           ]);
-        }).then(function (results) {
-          var svgText = results[0];
-          if (svgText) hopeStippleSvgText = svgText;
+        }).then(function (embedResults) {
+          if (embedResults[0]) hopeStippleSvgText = embedResults[0];
           hopeStippleImageReady = !!(
             hopeStippleRawExportDataUri || hopeStippleSvgText
           );
@@ -3363,26 +3441,6 @@
     } else {
       result = freshRegions;
     }
-    // #region agent log
-    try {
-      var _cMids = [];
-      var _cSegs = getSegmentsForMergeRegionDetection();
-      for (var _csi = 0; _csi < _cSegs.length; _csi++) {
-        var _cs = _cSegs[_csi];
-        if (removedEdges.has(TopkapiGeometry.segmentKey(_cs.x1, _cs.y1, _cs.x2, _cs.y2))) {
-          _cMids.push({ x: (_cs.x1 + _cs.x2) * 0.5, y: (_cs.y1 + _cs.y2) * 0.5 });
-        }
-      }
-      var _cInside = result.map(function (r) {
-        var _n = 0;
-        for (var _m = 0; _m < _cMids.length; _m++) {
-          if (hopePointInPolygon(_cMids[_m].x, _cMids[_m].y, r.points)) _n++;
-        }
-        return _n;
-      });
-      fetch('http://127.0.0.1:7404/ingest/96f8185a-70ab-4bae-981f-1951228b7feb',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'000036'},body:JSON.stringify({sessionId:'000036',runId:'run2',hypothesisId:'FINAL',location:'app.js:3366',message:'getMergedRegionsForMask final (paints dots)',data:{gridStar:isStarGrid(),removedEdges:removedEdges.size,freshCount:freshRegions.length,stickyCount:stickyMergedCutoutFaces?stickyMergedCutoutFaces.length:null,resultCount:result.length,resultAreas:result.map(function(r){return Math.round(polygonAreaAbs(r.points));}),resultRemovedInside:_cInside},timestamp:Date.now()})}).catch(function(){});
-    } catch (e) {}
-    // #endregion
     mergedRegionsForMaskCache = result;
     return result;
   }
@@ -4249,6 +4307,17 @@
     }
 
     layer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
+    syncStippleContentClipPath(defs);
+
+    if (hopeStippleSvgText) {
+      appendHopeStippleSvgToLayer(
+        layer,
+        hopeStippleSvgText,
+        getHopeDotsColor()
+      );
+      return;
+    }
+
     ensureHopeDotsMaskDef(defs);
     var rect = elSvg("rect");
     rect.setAttribute("data-hope-dots-rect", "1");
@@ -6125,6 +6194,11 @@
         getInnerScale()
       );
     }
+    // Star grid reveals coarse cells directly (see getStarGridRevealedMergeCells)
+    // and ignores the traced regions, so skip the costly full-pattern trace.
+    if (isStarGrid()) {
+      return [];
+    }
     return getAllSegmentsForTracing();
   }
 
@@ -6521,7 +6595,9 @@
     requestAnimationFrame(function () {
       hopeMergeDragRenderScheduled = false;
       if (!isHopeMergeDragActive()) return;
+      bumpHopeMergeState();
       updatePatternGridLinesOnly();
+      renderGridMaskLayer("hope-merge-drag");
     });
   }
 
@@ -6866,80 +6942,99 @@
   }
 
   /**
-   * Star grid: drop micro-faces and single-star false positives; keep real multi-star merges.
+   * Coarse octagon/square cells used to DETECT star-grid Hope merges. The star
+   * grid's drawn pattern is far too intricate to trace merge faces from: it
+   * produces giant thin winding polygons that sprawl past the stroke. Detecting
+   * on this clean coarse mesh (the same one Pride auto-merge uses) yields
+   * compact cells, matching how the octagon/circles grids behave. Cached per
+   * layout — the mesh does not depend on which walls are removed.
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function getStarGridCoarseMergeCells() {
+    if (
+      typeof TopkapiGeometry === "undefined" ||
+      !TopkapiGeometry.traceFaces ||
+      !TopkapiGeometry.buildPatternSegments
+    ) {
+      return [];
+    }
+    var layout = getStarLayout();
+    var sig =
+      layout.n + "|" + Math.round(layout.tileSize) + "|" + CANVAS_W + "|" + CANVAS_H;
+    if (
+      cachedStarCoarseMergeCells !== null &&
+      cachedStarCoarseMergeCellsSig === sig
+    ) {
+      return cachedStarCoarseMergeCells;
+    }
+    var coarseInner =
+      typeof STAR_GRID_PRIDE_COARSE_INNER_SCALE !== "undefined"
+        ? STAR_GRID_PRIDE_COARSE_INNER_SCALE
+        : 1;
+    var coarseSegs = TopkapiGeometry.buildPatternSegments(
+      layout.tileSize,
+      CANVAS_W,
+      CANVAS_H,
+      layout.n,
+      coarseInner
+    );
+    cachedStarCoarseMergeCells = TopkapiGeometry.traceFaces(coarseSegs);
+    cachedStarCoarseMergeCellsSig = sig;
+    return cachedStarCoarseMergeCells;
+  }
+
+  /**
+   * Star grid: reveal the coarse cells that contain at least one erased wall, so
+   * the dots follow the stroke. Each cell is a compact polygon; the mask/clip
+   * renderer already supports many regions, and adjacent cells abut to read as
+   * one contiguous merge. Fine walls are still removed via the full-mesh
+   * hit-test, so the visual hole stays clean.
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function getStarGridRevealedMergeCells() {
+    if (!removedEdges.size) return [];
+    var cells = getStarGridCoarseMergeCells();
+    if (!cells.length) return [];
+
+    var mids = [];
+    var segs = getSegmentsForHopeMerge();
+    var si;
+    for (si = 0; si < segs.length; si++) {
+      var s = segs[si];
+      if (
+        removedEdges.has(TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2))
+      ) {
+        mids.push({ x: (s.x1 + s.x2) * 0.5, y: (s.y1 + s.y2) * 0.5 });
+      }
+    }
+    if (!mids.length) return [];
+
+    var out = [];
+    var ci;
+    var mi;
+    for (ci = 0; ci < cells.length; ci++) {
+      for (mi = 0; mi < mids.length; mi++) {
+        if (hopePointInPolygon(mids[mi].x, mids[mi].y, cells[ci].points)) {
+          out.push(cells[ci]);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
    * @param {{ points: { x: number, y: number }[] }[]} regions
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
   function filterHopeMergeRegionsForGridType(regions) {
+    // Star grid detects merges on the coarse cell mesh (see helper above), not
+    // on the intricate drawn pattern, so it does not use `regions` at all.
+    if (isStarGrid()) {
+      return getStarGridRevealedMergeCells();
+    }
     if (!regions.length) return regions;
     var maxHoleArea = getHopeMergeMaxRegionAreaPx();
-    if (isStarGrid()) {
-      var minArea = getStarGridHopeMergeMinAreaPx();
-      // Concave star faces geometrically enclose >=2 baseline cells even when no
-      // wall between them was removed (false merges). A genuine merge of k cells
-      // removes at least k-1 interior walls, so a real region contains many
-      // removed-edge midpoints in its interior; false ones contain ~none.
-      var starRemovedMids = [];
-      var starSegs = getSegmentsForMergeRegionDetection();
-      var _ssi;
-      for (_ssi = 0; _ssi < starSegs.length; _ssi++) {
-        var _sseg = starSegs[_ssi];
-        if (
-          removedEdges.has(
-            TopkapiGeometry.segmentKey(_sseg.x1, _sseg.y1, _sseg.x2, _sseg.y2)
-          )
-        ) {
-          starRemovedMids.push({
-            x: (_sseg.x1 + _sseg.x2) * 0.5,
-            y: (_sseg.y1 + _sseg.y2) * 0.5,
-          });
-        }
-      }
-      var out = [];
-      var i;
-      // #region agent log
-      var _starDbg = [];
-      // #endregion
-      for (i = 0; i < regions.length; i++) {
-        var starArea = polygonAreaAbs(regions[i].points);
-        var _passArea = starArea >= minArea && starArea <= maxHoleArea;
-        var starFills = countStarFillsInsideMergeRegion(regions[i]);
-        var rmInside = 0;
-        var _rm;
-        for (_rm = 0; _rm < starRemovedMids.length; _rm++) {
-          if (
-            hopePointInPolygon(
-              starRemovedMids[_rm].x,
-              starRemovedMids[_rm].y,
-              regions[i].points
-            )
-          ) {
-            rmInside++;
-          }
-        }
-        // Real merge: interior removed walls >= half the enclosed star fills.
-        var _keep = _passArea && starFills >= 2 && rmInside * 2 >= starFills;
-        // #region agent log
-        var _bx0 = 1e9, _by0 = 1e9, _bx1 = -1e9, _by1 = -1e9, _bp;
-        for (_bp = 0; _bp < regions[i].points.length; _bp++) {
-          var _pp = regions[i].points[_bp];
-          if (_pp.x < _bx0) _bx0 = _pp.x;
-          if (_pp.y < _by0) _by0 = _pp.y;
-          if (_pp.x > _bx1) _bx1 = _pp.x;
-          if (_pp.y > _by1) _by1 = _pp.y;
-        }
-        var _bbArea = (_bx1 - _bx0) * (_by1 - _by0);
-        _starDbg.push({ a: Math.round(starArea), verts: regions[i].points.length, fills: starFills, rmIn: rmInside, keep: _keep, fillPct: _bbArea > 0 ? Math.round((100 * starArea) / _bbArea) : 0, bbW: Math.round(_bx1 - _bx0), bbH: Math.round(_by1 - _by0) });
-        // #endregion
-        if (_keep) out.push(regions[i]);
-      }
-      // #region agent log
-      try {
-        fetch('http://127.0.0.1:7404/ingest/96f8185a-70ab-4bae-981f-1951228b7feb',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'000036'},body:JSON.stringify({sessionId:'000036',runId:'run3',hypothesisId:'STAR',location:'app.js:6900',message:'star filter decisions',data:{canvasW:CANVAS_W,canvasH:CANVAS_H,removedEdges:removedEdges.size,removedMids:starRemovedMids.length,minArea:Math.round(minArea),maxHoleArea:Math.round(maxHoleArea),rawCount:regions.length,outCount:out.length,regions:_starDbg},timestamp:Date.now()})}).catch(function(){});
-      } catch (e) {}
-      // #endregion
-      return out;
-    }
 
     if (isCirclesLikeGrid()) {
       var circleSeeds = filterMergeRegionsTouchingRemovedEdges(regions);
@@ -15780,6 +15875,13 @@
     return g;
   }
 
+  function createStippleContentClipGroup(id) {
+    var g = elSvg("g");
+    g.setAttribute("id", id);
+    g.setAttribute("clip-path", "url(#stipple-content-clip)");
+    return g;
+  }
+
   /**
    * Circles/diamonds emotion markers render above the grid + color-division tiles
    * (same mounting tier as Fear — outside #color-divisions-blend-root).
@@ -16110,6 +16212,7 @@
     bleedClip.appendChild(bleedClipRect);
     defs.appendChild(bleedClip);
     appendInnerContentClipPath(defs);
+    syncStippleContentClipPath(defs);
     ensureLabelBarIconTintFilter(defs);
     svg.appendChild(defs);
 
@@ -16154,7 +16257,9 @@
     clippedHopeMergeFill.appendChild(hopeMergeFillLayer);
     innerContent.appendChild(clippedHopeMergeFill);
 
-    var clippedStippleDots = createInnerContentClipGroup("inner-clipped-stipple-dots");
+    var clippedStippleDots = createStippleContentClipGroup(
+      "inner-clipped-stipple-dots"
+    );
     var stippleDotsLayer = elSvg("g");
     stippleDotsLayer.setAttribute("id", "layer-stipple-dots");
     clippedStippleDots.appendChild(stippleDotsLayer);
@@ -23215,6 +23320,18 @@
         CANVAS_W +
         '" height="' +
         CANVAS_H +
+        '"/></clipPath>'
+    );
+    var stippleClip = getStippleContentClipRect();
+    lines.push(
+      '<clipPath id="stipple-content-clip"><rect x="' +
+        stippleClip.x +
+        '" y="' +
+        stippleClip.y +
+        '" width="' +
+        stippleClip.width +
+        '" height="' +
+        stippleClip.height +
         '"/></clipPath>'
     );
     lines.push(

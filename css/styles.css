@@ -2994,6 +2994,12 @@ button.sidebar__grid-btn {
   width: auto;
   vertical-align: unset;
   align-self: flex-end;
+  /* The sign fills the tall field row, so it was visually anchored down at the
+     answer underline band. Lift it so its vertical center sits on the question
+     text instead (~0.25em ≈ half the offset between the underline and the text
+     line). Uses a transform so the answer input/underline layout is untouched,
+     and em keeps it aligned at any questionnaire text scale. */
+  transform: translateY(-0.25em);
   margin-inline: 0 0.2em;
   flex-shrink: 0;
 }
@@ -3142,11 +3148,27 @@ button.sidebar__grid-btn {
 
 .questionnaire-profile-madlibs
   .questionnaire-madlibs-dropdown:not(.is-profile-blank-empty)
-  .questionnaire-madlibs-dropdown__trigger,
+  .questionnaire-madlibs-dropdown__trigger {
+  width: auto;
+}
+
+/* Name/mode field: underline lives on __surface; keep it tied to the wrap width
+   set by JS (profile inputs use field-sizing: fixed and would otherwise stay
+   at the default input box width). */
 .questionnaire-profile-madlibs
   .questionnaire-madlibs-name-mode:not(.is-profile-blank-empty)
   .questionnaire-madlibs-name-mode__surface {
-  width: auto;
+  width: 100%;
+}
+
+/* Filled name field: shrink-wrap to content (override blank--medium 4ch floor). */
+.questionnaire-profile-madlibs
+  .questionnaire-madlibs-name-mode:not(.is-profile-blank-empty) {
+  min-width: 0;
+}
+
+.questionnaire-profile-madlibs .questionnaire-madlibs-name-mode__input {
+  min-width: 0;
 }
 
 .questionnaire-profile-madlibs input.questionnaire-madlibs-blank:not(.questionnaire-madlibs-dropdown),
@@ -4106,8 +4128,8 @@ button.sidebar__grid-btn {
      separator below. IMPORTANT: these are neutralised during height
      measurement (see .questionnaire-panel--measuring override) so the measured
      feelings body height is unchanged and the red section titles never grow. */
-  --feelings-spider-pull-top: -1.4375rem;
-  --feelings-spider-pull-bottom: -0.9375rem;
+  --feelings-spider-pull-top: -2.5rem;
+  --feelings-spider-pull-bottom: -2rem;
 }
 
 .questionnaire-step--feelings-all .questionnaire-step__answers {

@@ -16,7 +16,7 @@
       description:
         "This layer holds the personal details: name, age, and the country where the woman currently lives. It is the most technical and neutral layer, forming the basic context of her story.",
       descriptionFa:
-        "این لایه جزئیات شخصی — نام، سن و کشوری که زن در آن زندگی می‌کند — را در بر می‌گیرد. فنی‌ترین و خنثی‌ترین لایه است و زمینهٔ پایهٔ داستان او را می‌سازد.",
+        "این لایه جزئیات شخصی - نام، سن و کشوری که زن در آن زندگی می‌کند - را در بر می‌گیرد. فنی‌ترین و خنثی‌ترین لایه است و زمینهٔ پایهٔ داستان او را می‌سازد.",
     },
     {
       id: "grid",
@@ -46,16 +46,16 @@
       description:
         "This layer reflects how much autonomy and ownership she felt over her own body while living in Iran. It captures her experience of control, restriction, or freedom in relation to her physical self.",
       descriptionFa:
-        "این لایه منعکس‌کنندهٔ میزان خودمختاری و مالکیتی است که در ایران بر بدن خود احساس می‌کرد. تجربهٔ کنترل، محدودیت یا آزادی در رابطه با جسم خود را ثبت می‌کند.",
+        "این لایه منعکس‌کنندهٔ میزان خودمختاری و مالکیتی است که در ایران بر بدن خود احساس می‌کرد. تجربهٔ کنترل، محدودیت یا آزادی در رابطه با جسم خود را ثبت\u00A0می‌کند.",
     },
     {
       id: "feelings",
       label: "Feelings",
       labelFa: "احساسات",
       description:
-        "This final layer holds the most significant feelings that arise when she thinks about Iran. It translates her emotional landscape into visual form – from grief and anger to hope and connection.",
+        "This final layer holds the most significant feelings that arise when she thinks about Iran. It translates her emotional landscape into visual form - from grief and anger to hope and connection.",
       descriptionFa:
-        "این لایه نهایی مهم‌ترین احساساتی را در بر می‌گیرد که با فکر کردن به ایران به وجود می‌آیند. منظر عاطفی او را به فرم بصری ترجمه می‌کند — از سوگ و خشم تا امید و پیوند.",
+        "این لایه نهایی مهم‌ترین احساساتی را در بر می‌گیرد که با فکر کردن به ایران به وجود می‌آیند. منظر عاطفی او را به فرم بصری ترجمه می‌کند - از سوگ و خشم تا امید\u00A0و\u00A0پیوند.",
     },
   ];
 

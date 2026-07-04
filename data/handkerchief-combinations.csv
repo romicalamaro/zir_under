@@ -9,14 +9,14 @@ Profile,הצגת שם,nameDisplayMode,anonymous|initials|name,name,anonymous,nam
 Profile,גיל,age,2 digits,25,60,29,24,56,27,56,47,21
 Profile,איפה בבית?,homeAt,inIran|whereILive|nowhere,inIran,whereILive,nowhere,in betweeen,whereILive,nowhere,whereILive,inIran,inIran
 Profile,סימן צד (0=Lion),labelBarTagIndex,0-5,0,1,2,0,4,5,3,5,4
-Grid,קהילה (צפיפות),octagonsN,1 to 10,4,3,5,4,7,10,3,1,6
-Grid,זהות במרכז,innerScale,1 to 10,9,10,5,9,10,7,9,1,10
+Grid,קהילה (צפיפות),octagonsN,1 to 10,4,2,5,4,7,10,3,7,1
+Grid,זהות במרכז,innerScale,1 to 10,9,1,5,9,10,7,9,10,9
 Colors,מספר חלוקות צבע,colorDivisions,1 to 5,1,1,1,1,1,1,1,1,1
 Colors,Seed לפריסת חלוקות,colorDivisionShuffleSeed,0+,0,0,0,0,0,0,0,0,0
 Colors,סדר אזורים (Mix),colorDivisionAreaOrder,0|1|2|3|4 or empty,,,,,,,,,
 Family,חלוקות מסגרת,borderFrameDivisions,1|2|3,3,3,3,3,2,3,2,2,1
 Family,דהיית צבע,borderSideWhiteFill,0|25|50|75|100,100,0,25,100,50,100,25,75,75
-Body,מניפה — עלים,fanLeaves,0 to 10,0,3,3,0,10,2,9,5,7
+Body,מניפה — עלים,fanLeaves,0 to 10,0,2,3,0,10,2,9,6,2
 Feelings,Fear — אורך קווים,angerVerticalLength,1 to 5,4,5,4,4,2,5,2,3,5
 Feelings,Anxiety — עובי קו,anxietyVerticalStroke,1 to 5,4,2,5,4,2,4,2,4,5
 Feelings,Anger,angerTriangleDensity,1 to 5,4,5,5,4,3,5,2,2,1

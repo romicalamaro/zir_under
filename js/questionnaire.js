@@ -1075,7 +1075,7 @@
     if (mode === "initials") {
       return trimmed ? formatNameInitials(trimmed) : modes.initials || "Initials";
     }
-    if (mode === "name") return trimmed || modes.name || "Name";
+    if (mode === "name") return trimmed || modes.name || "name";
     return "";
   }
 
@@ -2749,6 +2749,24 @@
         expandedHeaderPx -
         stackPadBottom;
 
+      // Collapsed folders overlap each other via a negative margin equal to
+      // (header height × --questionnaire-card-overlap), so the stack consumes
+      // LESS vertical space than the sum of full folder heights. Credit that
+      // reclaimed space back so the open section can grow into it — otherwise a
+      // tall section (e.g. COMMUNITY) is clamped short and clips its Next button.
+      // Every collapsed folder except the first card carries the negative
+      // margin; for any non-first open section that count is exactly
+      // (cards.length - 2), used here as a safe lower bound so the stack can
+      // never be over-credited into a page-level scroll.
+      var overlapFraction =
+        parseFloat(
+          window
+            .getComputedStyle(stackEl)
+            .getPropertyValue("--questionnaire-card-overlap")
+        ) || 0;
+      var collapsedOverlapPx = maxCollapsedHeaderPx * overlapFraction;
+      availableBodyPx += Math.max(0, cards.length - 2) * collapsedOverlapPx;
+
       target = availableBodyPx - QUESTIONNAIRE_FIT_SAFETY_PX;
 
       if (target > 0) {
@@ -4071,16 +4089,31 @@
       var nameModeSurface = wrap.querySelector(
         ".questionnaire-madlibs-name-mode__surface"
       );
-      var nameIsEmpty =
-        !nameModeInput ||
-        (!nameModeInput.value && !nameModeInput.readOnly);
-      var nameMeasureText = nameModeInput ? nameModeInput.value || "" : "";
-      applyProfileMadlibsDropdownWidth(
-        wrap,
-        nameIsEmpty,
-        nameModeSurface || wrap,
-        nameMeasureText
-      );
+      var nameValue = nameModeInput ? String(nameModeInput.value || "").trim() : "";
+      var nameIsEmpty = !nameModeInput || !nameValue;
+      setProfileMadlibsBlankEmptyState(wrap, nameIsEmpty);
+      if (nameIsEmpty) {
+        applyProfileMadlibsBlankWidth(
+          wrap,
+          true,
+          nameModeSurface || wrap
+        );
+      } else if (nameModeInput) {
+        wrap.style.minWidth = "0";
+        var nameTextWidthPx = measureProfileMadlibsNaturalWidthPx(nameModeInput);
+        var caretSlotPx = 0;
+        if (nameModeSurface) {
+          var surfaceStyle = window.getComputedStyle(nameModeSurface);
+          caretSlotPx =
+            parseFloat(surfaceStyle.paddingInlineEnd) ||
+            parseFloat(surfaceStyle.paddingRight) ||
+            0;
+        }
+        if (nameTextWidthPx > 0) {
+          wrap.style.width =
+            Math.ceil(nameTextWidthPx + caretSlotPx) + "px";
+        }
+      }
       if (nameModeInput) {
         nameModeInput.style.width = "";
         nameModeInput.style.minWidth = "";
@@ -4262,13 +4295,22 @@
   // NOTE: only affects the questionnaire profile, not the label bar ("system").
   var PROFILE_MADLIBS_ICON_HEIGHT_EXPR =
     "calc(1.2em + var(--madlibs-underline-gap) + var(--madlibs-underline-thickness))";
+  /** Questionnaire-only per-field scale (1 = default). Not used on label bar / signs page. */
+  var PROFILE_MADLIBS_ICON_FIELD_SCALE = {
+    livingDuration: 0.85,
+    nowIn: 0.9,
+  };
 
   function applyProfileMadlibsIconSize(el, dims, stepId) {
     if (!el || !dims || !dims.width || !dims.height) return;
     var aspect = dims.width / dims.height;
-    el.style.height = PROFILE_MADLIBS_ICON_HEIGHT_EXPR;
-    el.style.width =
-      "calc(" + PROFILE_MADLIBS_ICON_HEIGHT_EXPR + " * " + aspect + ")";
+    var scale = PROFILE_MADLIBS_ICON_FIELD_SCALE[stepId] || 1;
+    var heightExpr =
+      scale === 1
+        ? PROFILE_MADLIBS_ICON_HEIGHT_EXPR
+        : "calc((" + PROFILE_MADLIBS_ICON_HEIGHT_EXPR + ") * " + scale + ")";
+    el.style.height = heightExpr;
+    el.style.width = "calc(" + heightExpr + " * " + aspect + ")";
   }
 
   function createMadlibsFieldIcon(stepId) {

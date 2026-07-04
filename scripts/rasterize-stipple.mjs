@@ -12,6 +12,7 @@ const root = join(__dirname, "..");
 
 const CANVAS_W = 803;
 const CANVAS_H = 2126;
+const HOPE_STIPPLE_LAYOUT_BLEED_PX = 80;
 
 const inputSvg = resolve(root, process.argv[2] || "stipple-1780673179311.svg");
 const outputPng = resolve(root, process.argv[3] || "stipple-1780673179311.png");
@@ -22,7 +23,11 @@ const viewBox = viewBoxMatch ? viewBoxMatch[1] : `0 0 ${CANVAS_W} ${CANVAS_H}`;
 const vbParts = viewBox.trim().split(/[\s,]+/).map(Number);
 const vbW = vbParts[2] > 0 ? vbParts[2] : CANVAS_W;
 const vbH = vbParts[3] > 0 ? vbParts[3] : CANVAS_H;
-const scale = Math.min(CANVAS_W / vbW, CANVAS_H / vbH);
+const bleed = HOPE_STIPPLE_LAYOUT_BLEED_PX;
+const scale = Math.max(
+  (CANVAS_W + 2 * bleed) / vbW,
+  (CANVAS_H + 2 * bleed) / vbH
+);
 const drawW = vbW * scale;
 const drawH = vbH * scale;
 const offsetX = (CANVAS_W - drawW) / 2;

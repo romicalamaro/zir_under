@@ -49,7 +49,7 @@
     octagonsN: "Part of the community",
     innerScale: "Iranian identity",
     fanLeaves: "Body autonomy",
-    labelBarTagIndex: "Side sign (0–5)",
+    labelBarTagIndex: "Side sign (0-5)",
     borderFrameDivisions: "Frame divisions",
     borderSideWhiteFill: "Margin empty cells",
   };

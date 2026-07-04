@@ -65,7 +65,7 @@
         "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.",
       savedToArchive: "Saved to archive",
       archiveFull:
-        "Archive is full — delete older handkerchiefs to save new ones.",
+        "Archive is full - delete older handkerchiefs to save new ones.",
       archiveError: "Could not save to archive. Try again.",
       sectionAriaPrefix: "Section ",
       profileAria: "Profile",
@@ -76,10 +76,10 @@
       nameModes: {
         anonymous: "Anonymous",
         initials: "Initials",
-        name: "Name",
+        name: "name",
       },
       initialsPlaceholder: "Initials",
-      namePlaceholder: "Name",
+      namePlaceholder: "name",
       stepsRemainingOne: "1 step remaining",
       stepsRemainingMany: function (n) {
         return n + " steps remaining";
@@ -148,13 +148,13 @@
       },
       name: {
         label: "Name",
-        placeholder: "Name",
+        placeholder: "name",
         ariaLabel: "Name",
         modeAriaLabel: "How name appears on the label",
         modes: {
           anonymous: "Anonymous",
           initials: "Initials",
-          name: "Name",
+          name: "name",
         },
       },
       age: {
@@ -241,12 +241,12 @@
         ],
       },
       angerVerticalLength: {
-        label: "Fear — Vertical line length",
+        label: "Fear - Vertical line length",
         ariaLabel: "Vertical line length",
       },
       anxietyVerticalStroke: {
-        label: "Fear — Anxiety",
-        ariaLabel: "Anxiety — vertical line thickness",
+        label: "Fear - Anxiety",
+        ariaLabel: "Anxiety - vertical line thickness",
       },
       angerTriangleDensity: {
         label: "Anger",
@@ -255,8 +255,8 @@
       hopeMode: {
         label: "Hope",
         ariaLabel: "Hope interaction mode",
-        penAriaLabel: "Drawing pen — draw across the canvas to reveal hope",
-        resetAriaLabel: "Undo the drawing — restore the canvas",
+        penAriaLabel: "Drawing pen - draw across the canvas to reveal hope",
+        resetAriaLabel: "Undo the drawing - restore the canvas",
         options: {
           view: "View",
           merge: "Merge",
@@ -353,7 +353,7 @@
         "پرسشنامه را تکمیل کردی و منسوج خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای خودمختاری بر بدن خود مبارزه می‌کنند.",
       savedToArchive: "در آرشیو ذخیره شد",
       archiveFull:
-        "آرشیو پر است — برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",
+        "آرشیو پر است - برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",
       archiveError: "ذخیره در آرشیو ممکن نشد. دوباره تلاش کنید.",
       sectionAriaPrefix: "بخش ",
       profileAria: "پروفایل",
@@ -531,12 +531,12 @@
         ],
       },
       angerVerticalLength: {
-        label: "ترس — طول خط عمودی",
+        label: "ترس - طول خط عمودی",
         ariaLabel: "طول خط عمودی",
       },
       anxietyVerticalStroke: {
-        label: "ترس — اضطراب",
-        ariaLabel: "اضطراب — ضخامت خط عمودی",
+        label: "ترس - اضطراب",
+        ariaLabel: "اضطراب - ضخامت خط عمودی",
       },
       angerTriangleDensity: {
         label: "خشم",
@@ -545,8 +545,8 @@
       hopeMode: {
         label: "امید",
         ariaLabel: "حالت تعامل امید",
-        penAriaLabel: "قلم طراحی — روی بوم بکشید تا امید آشکار شود",
-        resetAriaLabel: "بازگرداندن — بوم را به حالت قبل برگردانید",
+        penAriaLabel: "قلم طراحی - روی بوم بکشید تا امید آشکار شود",
+        resetAriaLabel: "بازگرداندن - بوم را به حالت قبل برگردانید",
         options: {
           view: "نمایش",
           merge: "ادغام",
@@ -566,7 +566,7 @@
       },
       strengthDensity: {
         label: "قدرت",
-        ariaLabel: "تراکم دایره در مربع — قدرت",
+        ariaLabel: "تراکم دایره در مربع - قدرت",
       },
       autoMergeIntensity: {
         label: "افتخار",

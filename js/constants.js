@@ -914,6 +914,13 @@ var OCTAGON_GRID_PRIDE_EDGE_SCALE = 0.85;
 var HOPE_LOW_INNER_SCALE_MIN_AREA_TILE_FRACTION = 1.5;
 /** Default stipple dot fill (Hope layer) */
 var HOPE_DOTS_COLOR_DEFAULT = "#3c06a7";
+/** Source viewBox of stipple-1780673179311.svg (uniform layout reference) */
+var HOPE_STIPPLE_SOURCE_VIEWBOX_W = 488;
+var HOPE_STIPPLE_SOURCE_VIEWBOX_H = 1230;
+/** Bump when stipple PNG/layout changes so fetches bypass browser cache */
+var HOPE_STIPPLE_ASSET_VERSION = 2;
+/** Extra uniform bleed (px) so Hope stipple covers canvas edges after merge */
+var HOPE_STIPPLE_LAYOUT_BLEED_PX = 80;
 
 /**
  * Full project palette (14 colors). Each session picks COLOR_PALETTE_PICK_COUNT
