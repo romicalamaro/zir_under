@@ -8,11 +8,12 @@
 
   var SVG_NS = "http://www.w3.org/2000/svg";
 
-  var VIEW_SIZE = 420;
+  var VIEW_SIZE = 480;
   var CENTER = VIEW_SIZE / 2;
   var OUTER_RADIUS = 118;
-  var LABEL_RADIUS = OUTER_RADIUS + 34;
+  var LABEL_RADIUS = OUTER_RADIUS + 50;
   var AXIS_HIT_WIDTH = 22;
+  var QUESTIONNAIRE_SMALL_SIZE_FALLBACK_PX = 14;
 
   function getSteps() {
     return typeof FEELINGS_SLIDER_STEPS !== "undefined"
@@ -90,6 +91,34 @@
       }
     }
     return el;
+  }
+
+  /** Read --questionnaire-small-size (0.875rem / 14px) from the panel. */
+  function readQuestionnaireSmallSizePx(container) {
+    var panel = container.closest(".questionnaire-panel");
+    if (!panel) return QUESTIONNAIRE_SMALL_SIZE_FALLBACK_PX;
+    var probe = document.createElement("span");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.pointerEvents = "none";
+    probe.style.fontSize = "var(--questionnaire-small-size)";
+    panel.appendChild(probe);
+    var px = parseFloat(window.getComputedStyle(probe).fontSize);
+    panel.removeChild(probe);
+    return px > 0 ? px : QUESTIONNAIRE_SMALL_SIZE_FALLBACK_PX;
+  }
+
+  /** Map CSS px to SVG user units so labels render at --questionnaire-small-size. */
+  function syncLabelFontSize(svg, labelEls, container) {
+    var rect = svg.getBoundingClientRect();
+    if (!rect.width || !labelEls.length) return;
+    var targetPx = readQuestionnaireSmallSizePx(container);
+    var fontSizeUnits = (targetPx * VIEW_SIZE) / rect.width;
+    var i;
+    for (i = 0; i < labelEls.length; i++) {
+      labelEls[i].style.removeProperty("font-size");
+      labelEls[i].setAttribute("font-size", String(fontSizeUnits));
+    }
   }
 
   /**
@@ -227,6 +256,7 @@
 
     var handleEls = [];
     var handleHitEls = [];
+    var labelEls = [];
 
     state.forEach(function (axisState, idx) {
       var labelPt = pointOnAxis(idx, count, LABEL_RADIUS);
@@ -239,6 +269,7 @@
         "pointer-events": "none",
       });
       labelEl.textContent = axisState.label;
+      labelEls.push(labelEl);
       labelsLayer.appendChild(labelEl);
 
       var outerAxisPt = pointOnAxis(idx, count, outerRadius);
@@ -280,6 +311,14 @@
     svg.appendChild(handlesLayer);
     svg.appendChild(labelsLayer);
     container.appendChild(svg);
+
+    var resizeObserver = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(function () {
+        syncLabelFontSize(svg, labelEls, container);
+      });
+      resizeObserver.observe(svg);
+    }
 
     var activeDrag = null;
     var dragDirty = false;
@@ -465,10 +504,15 @@
     // never opens in an impossible state, persisting any bump without notifying.
     persistCoupledChanges();
     syncAllVisuals();
+    syncLabelFontSize(svg, labelEls, container);
 
     return {
       destroy: function () {
         endDrag();
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+          resizeObserver = null;
+        }
         if (container.contains(svg)) {
           container.removeChild(svg);
         }
@@ -486,6 +530,10 @@
         });
         persistCoupledChanges();
         syncAllVisuals();
+        syncLabelFontSize(svg, labelEls, container);
+      },
+      syncLabelFontSize: function () {
+        syncLabelFontSize(svg, labelEls, container);
       },
     };
   }

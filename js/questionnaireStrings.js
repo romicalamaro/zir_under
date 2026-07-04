@@ -23,19 +23,19 @@
       intro:
         "How much do you feel these emotions when you think about Iran?",
       hopeIntro:
-        "Hope is something you make.\nDraw across the canvas to connect the grid and reveal it.",
+        "Hope is something you make. Draw across the canvas to reveal it.",
       hopeHeading: "Hope",
       tableRows: [
         { label: "Fear", stepId: "angerVerticalLength" },
-        { label: "Anxiety / Tension", stepId: "anxietyVerticalStroke" },
+        { label: "Anxiety", stepId: "anxietyVerticalStroke" },
         { label: "Anger", stepId: "angerTriangleDensity" },
         { label: "Sadness", stepId: "circleDensity" },
         { label: "Longing", stepId: "longingCircleDensity" },
         { label: "Grief", stepId: "griefCircleDensity" },
-        { label: "Strength / Power", stepId: "strengthDensity" },
+        { label: "Strength", stepId: "strengthDensity" },
         { label: "Pride", stepId: "autoMergeIntensity" },
         { label: "Pain", stepId: "prideFillPercent" },
-        { label: "Guilt / Shame", stepId: "guiltShameFillPercent" },
+        { label: "Guilt", stepId: "guiltShameFillPercent" },
         { label: "Helplessness", stepId: "helplessnessPercent" },
       ],
       scaleLabels: [
@@ -55,6 +55,10 @@
       shuffleLayoutAria:
         "Randomize emotion placement on the canvas without changing intensity values",
       submitOrder: "order",
+      goToArchive: "Buy",
+      completionPreviewHeading: "Thank you!",
+      completionPreviewCopy:
+        "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.",
       savedToArchive: "Saved to archive",
       archiveFull:
         "Archive is full — delete older handkerchiefs to save new ones.",
@@ -83,12 +87,11 @@
         [
           { t: "text", v: "My name is " },
           { t: "nameMode", size: "medium" },
-          { t: "text", v: "." },
         ],
         [
           { t: "text", v: "I'm " },
           { t: "blank", id: "age", size: "short", placeholder: "age" },
-          { t: "text", v: " years old." },
+          { t: "text", v: " years old" },
         ],
         [
           { t: "text", v: "I lived in Iran for " },
@@ -97,19 +100,16 @@
         [
           { t: "text", v: "until " },
           { t: "blank", id: "leavingYear", size: "short", placeholder: "year" },
-          { t: "text", v: "." },
         ],
         [
           { t: "text", v: "I came from " },
           { t: "blank", id: "from", size: "medium", placeholder: "city / state" },
           { t: "text", v: " to " },
           { t: "blank", id: "nowIn", size: "medium", placeholder: "city / state" },
-          { t: "text", v: "." },
         ],
         [
           { t: "text", v: "I feel most at home " },
           { t: "blank", id: "homeAt", size: "medium", kind: "select" },
-          { t: "text", v: "." },
         ],
       ],
     },
@@ -178,9 +178,9 @@
       },
       octagonsN: {
         label:
-          "How much do you feel part of an Iranian community around you (physical or online)?",
+          "How much do you feel part of an Iranian community?",
         ariaLabel:
-          "How much do you feel part of an Iranian community around you (physical or online)? Barely part to very much part.",
+          "How much do you feel part of an Iranian community? Barely part to very much part.",
         rangeLabels: ["Barely part", "Very much part"],
       },
       innerScale: {
@@ -191,8 +191,8 @@
         rangeLabels: ["in the background", "very central"],
       },
       palette: {
-        label: "choose your palette",
-        ariaLabel: "Switch between palettes 1 to 12",
+        label: "Choose your palette",
+        ariaLabel: "Switch between palettes 1 to 9",
       },
       borderFrameDivisions: {
         label: "Frame divisions",
@@ -241,8 +241,8 @@
         ariaLabel: "Vertical line length",
       },
       anxietyVerticalStroke: {
-        label: "Fear — Anxiety / Tension",
-        ariaLabel: "Anxiety / Tension — vertical line thickness",
+        label: "Fear — Anxiety",
+        ariaLabel: "Anxiety — vertical line thickness",
       },
       angerTriangleDensity: {
         label: "Anger",
@@ -271,8 +271,8 @@
         ariaLabel: "Grief circle density",
       },
       strengthDensity: {
-        label: "Strength / Power",
-        ariaLabel: "Strength / Power circle-in-square density",
+        label: "Strength",
+        ariaLabel: "Strength circle-in-square density",
       },
       autoMergeIntensity: {
         label: "Pride",
@@ -283,8 +283,8 @@
         ariaLabel: "Pain diamond fill amount",
       },
       guiltShameFillPercent: {
-        label: "Guilt / Shame",
-        ariaLabel: "Guilt / Shame hollow diamond fill amount",
+        label: "Guilt",
+        ariaLabel: "Guilt hollow diamond fill amount",
       },
       helplessnessPercent: {
         label: "Helplessness",
@@ -307,19 +307,19 @@
       intro:
         "وقتی به ایران فکر می‌کنید، این احساسات را تا چه حد تجربه می‌کنید؟",
       hopeIntro:
-        "امید چیزی است که می‌سازید. روی بوم بکشید تا خط‌ها را ادغام کنید و آن را آشکار کنید.",
+        "امید چیزی است که می‌سازید. روی بوم بکשید تا آن را آشکار کنید.",
       hopeHeading: "امید",
       tableRows: [
         { label: "ترس", stepId: "angerVerticalLength" },
-        { label: "اضطراب / تنش", stepId: "anxietyVerticalStroke" },
+        { label: "اضطراب", stepId: "anxietyVerticalStroke" },
         { label: "خشم", stepId: "angerTriangleDensity" },
         { label: "غم", stepId: "circleDensity" },
         { label: "اشتیاق", stepId: "longingCircleDensity" },
         { label: "سوگ", stepId: "griefCircleDensity" },
-        { label: "قدرت / نیرو", stepId: "strengthDensity" },
+        { label: "قدرت", stepId: "strengthDensity" },
         { label: "افتخار", stepId: "autoMergeIntensity" },
         { label: "درد", stepId: "prideFillPercent" },
-        { label: "احساس گناه / شرم", stepId: "guiltShameFillPercent" },
+        { label: "گناه", stepId: "guiltShameFillPercent" },
         { label: "درماندگی", stepId: "helplessnessPercent" },
       ],
       scaleLabels: [
@@ -339,6 +339,10 @@
       shuffleLayoutAria:
         "جای احساسات روی بوم را بدون تغییر شدت، تصادفی کنید",
       submitOrder: "سفارش",
+      goToArchive: "خرید",
+      completionPreviewHeading: "ممنون!",
+      completionPreviewCopy:
+        "پرسشنامه را تکمیل کردی و منسوج خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای خودمختاری بر بدن خود مبارزه می‌کنند.",
       savedToArchive: "در آرشیو ذخیره شد",
       archiveFull:
         "آرشیو پر است — برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",
@@ -367,31 +371,31 @@
         [
           { t: "text", v: "نام من " },
           { t: "nameMode", size: "medium" },
-          { t: "text", v: " است." },
+          { t: "text", v: " است" },
         ],
         [
           { t: "text", v: "من " },
           { t: "blank", id: "age", size: "short", placeholder: "سن" },
-          { t: "text", v: " سال دارم." },
+          { t: "text", v: " سال دارم" },
         ],
         [
           { t: "text", v: "من در ایران " },
           { t: "blank", id: "livingDuration", size: "medium", kind: "select" },
           { t: "text", v: " تا " },
           { t: "blank", id: "leavingYear", size: "short", placeholder: "سال" },
-          { t: "text", v: " زندگی کردم." },
+          { t: "text", v: " زندگی کردم" },
         ],
         [
           { t: "text", v: "من از " },
           { t: "blank", id: "from", size: "medium", placeholder: "شهر / استان" },
           { t: "text", v: " به " },
           { t: "blank", id: "nowIn", size: "medium", placeholder: "شهر / استان" },
-          { t: "text", v: " آمدم." },
+          { t: "text", v: " آمدم" },
         ],
         [
           { t: "text", v: "امروز بیشتر " },
           { t: "blank", id: "homeAt", size: "medium", kind: "select" },
-          { t: "text", v: " احساس خانه بودن دارم." },
+          { t: "text", v: " احساس خانه بودن دارم" },
         ],
       ],
     },
@@ -460,7 +464,7 @@
       },
       octagonsN: {
         label:
-          "تا چه حد خود را بخشی از یک جامعه ایرانی (حضوری یا آنلاین) می‌دانید؟",
+          "تا چه حد خود را بخشی از یک جامعه ایرانی می‌دانید؟",
         ariaLabel:
           "تا چه حد خود را بخشی از یک جامعه ایرانی می‌دانید؟ از خیلی کم تا کاملاً، خیلی زیاد.",
         rangeLabels: ["خیلی کم", "کاملاً، خیلی زیاد"],
@@ -523,8 +527,8 @@
         ariaLabel: "طول خط عمودی",
       },
       anxietyVerticalStroke: {
-        label: "ترس — اضطراب / تنش",
-        ariaLabel: "اضطراب / تنش — ضخامت خط عمودی",
+        label: "ترس — اضطراب",
+        ariaLabel: "اضطراب — ضخامت خط عمودی",
       },
       angerTriangleDensity: {
         label: "خشم",
@@ -553,8 +557,8 @@
         ariaLabel: "تراکم دایره‌های سوگ",
       },
       strengthDensity: {
-        label: "قدرت / نیرو",
-        ariaLabel: "تراکم دایره در مربع — قدرت / نیرو",
+        label: "قدرت",
+        ariaLabel: "تراکم دایره در مربع — قدرت",
       },
       autoMergeIntensity: {
         label: "افتخار",
@@ -565,8 +569,8 @@
         ariaLabel: "میزان پر شدن لوزی درد",
       },
       guiltShameFillPercent: {
-        label: "احساس گناه / شرم",
-        ariaLabel: "میزان پر شدن لوزی توخالی گناه / شرم",
+        label: "گناه",
+        ariaLabel: "میزان پر شدن لوزی توخالی گناه",
       },
       helplessnessPercent: {
         label: "درماندگی",

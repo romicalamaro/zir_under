@@ -181,6 +181,14 @@
     });
   }
 
+  function isCustomDesignItem(item) {
+    return !!(
+      item &&
+      typeof item.id === "string" &&
+      item.id.indexOf("archive:") === 0
+    );
+  }
+
   function applyThumbStyle(el, item) {
     if (!el || !item) return;
     // Handkerchiefs designed through the questionnaire are saved to the archive
@@ -188,8 +196,7 @@
     // tall image, so cropping it to fill the little square (the default "cover"
     // behaviour) hides most of the design. We flag those thumbnails so the CSS
     // can show the whole scarf, in proportion, on a white background instead.
-    var isCustomDesign =
-      typeof item.id === "string" && item.id.indexOf("archive:") === 0;
+    var isCustomDesign = isCustomDesignItem(item);
     el.classList.toggle("page2-cart-drawer__item-thumb--contain", isCustomDesign);
     if (item.imageUrl) {
       el.style.backgroundImage = "url('" + item.imageUrl + "')";
@@ -359,8 +366,7 @@
     });
   }
 
-  // The cart is allowed to stay open in the shop AND on the archive page (the
-  // archive page opens the cart after a questionnaire "submit & order"). Any
+  // The cart is allowed to stay open in the shop AND on the archive page. Any
   // other section should never show the cart.
   function isCartSection() {
     return (

@@ -56,6 +56,10 @@ const DEFAULT_CONFIG = {
   ambientIntensity: 200,
   doubleSided: true,
   showWireframe: false,
+  textureRotation: 0,
+  textureFill: false,
+  colorFidelity: false,
+  enableShadows: true,
 };
 
 const DEFAULT_TEXTURE_URL = "website/design/headscarf-3d-texture.png";
@@ -117,12 +121,20 @@ export function initHeadscarf3d(root, options) {
     return controls.get("flagWidth") * (controls.get("meshScale") || 1);
   }
 
+  function getEffectiveFlagHeight() {
+    return controls.get("flagHeight") * (controls.get("meshScale") || 1);
+  }
+
   function applyFitToWidth() {
     if (!controls.get("fitToWidth")) return;
     const aspect = getAreaAspect();
     const fovRad = ((controls.get("cameraFov") || 50) * Math.PI) / 180;
     const scale = controls.get("fitToWidthScale") || 1;
-    const camZ = (getEffectiveFlagWidth() / (2 * Math.tan(fovRad / 2) * aspect)) * scale;
+    const halfTan = Math.tan(fovRad / 2);
+    const camZForWidth =
+      getEffectiveFlagWidth() / (2 * halfTan * aspect);
+    const camZForHeight = getEffectiveFlagHeight() / (2 * halfTan);
+    const camZ = Math.max(camZForWidth, camZForHeight) * scale;
     controls.set("camZ", camZ);
     camera.position.set(controls.get("camX"), controls.get("camY"), camZ);
   }
@@ -159,7 +171,12 @@ export function initHeadscarf3d(root, options) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(area.clientWidth, area.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  if (controls.get("colorFidelity")) {
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1;
+  }
+  renderer.shadowMap.enabled = controls.get("enableShadows") !== false && !controls.get("colorFidelity");
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.style.display = "block";
   renderer.domElement.style.width = "100%";
@@ -176,7 +193,7 @@ export function initHeadscarf3d(root, options) {
 
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
   dirLight.position.set(3, 4, 5);
-  dirLight.castShadow = true;
+  dirLight.castShadow = controls.get("enableShadows") !== false && !controls.get("colorFidelity");
   dirLight.shadow.mapSize.set(1024, 1024);
   scene.add(dirLight);
 
@@ -579,18 +596,100 @@ export function initHeadscarf3d(root, options) {
     return { r, g, b };
   }
 
+  function drawExternalTextureImage(ctx, img, canvasW, canvasH) {
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    const rotation = Number(controls.get("textureRotation")) || 0;
+    const normalized = ((rotation % 360) + 360) % 360;
+    const fill = controls.get("textureFill") === true;
+
+    ctx.save();
+    ctx.translate(canvasW / 2, canvasH / 2);
+
+    if (normalized === 90) {
+      ctx.rotate(Math.PI / 2);
+      if (fill) {
+        ctx.drawImage(img, -canvasH / 2, -canvasW / 2, canvasH, canvasW);
+      } else {
+        const scale = Math.min(canvasW / ih, canvasH / iw);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      }
+    } else if (normalized === 180) {
+      ctx.rotate(Math.PI);
+      if (fill) {
+        ctx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
+      } else {
+        const scale = Math.min(canvasW / iw, canvasH / ih);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      }
+    } else if (normalized === 270) {
+      ctx.rotate(-Math.PI / 2);
+      if (fill) {
+        ctx.drawImage(img, -canvasH / 2, -canvasW / 2, canvasH, canvasW);
+      } else {
+        const scale = Math.min(canvasW / ih, canvasH / iw);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      }
+    } else if (fill) {
+      ctx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
+    } else {
+      const scale = Math.min(canvasW / iw, canvasH / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+    }
+
+    ctx.restore();
+  }
+
+  function prepareExternalTextureCanvas(img) {
+    const rotation = Number(controls.get("textureRotation")) || 0;
+    const normalized = ((rotation % 360) + 360) % 360;
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    let canvasW = iw;
+    let canvasH = ih;
+
+    if (normalized === 90 || normalized === 270) {
+      canvasW = ih;
+      canvasH = iw;
+    }
+
+    const maxDim = TEX_SIZE;
+    const scale = maxDim / Math.max(canvasW, canvasH);
+    canvasW = Math.max(1, Math.round(canvasW * scale));
+    canvasH = Math.max(1, Math.round(canvasH * scale));
+    designCanvas.width = canvasW;
+    designCanvas.height = canvasH;
+    return { width: canvasW, height: canvasH };
+  }
+
   function renderDesignTexture() {
-    const w = TEX_SIZE, h = TEX_SIZE;
     const textureImg = controls.get('texture');
 
     // External texture only — skip Brik procedural fallback (blue + diamond flash)
     if (textureImg) {
-      dctx.clearRect(0, 0, w, h);
       if (uploadedImage && uploadedImage.complete && uploadedImage.naturalWidth > 0) {
-        dctx.drawImage(uploadedImage, 0, 0, w, h);
+        const size = prepareExternalTextureCanvas(uploadedImage);
+        dctx.clearRect(0, 0, size.width, size.height);
+        drawExternalTextureImage(dctx, uploadedImage, size.width, size.height);
+      } else {
+        designCanvas.width = TEX_SIZE;
+        designCanvas.height = TEX_SIZE;
+        dctx.clearRect(0, 0, TEX_SIZE, TEX_SIZE);
       }
       return designCanvas;
     }
+
+    const w = TEX_SIZE, h = TEX_SIZE;
+    designCanvas.width = w;
+    designCanvas.height = h;
 
     const baseColor = controls.get('baseColor');
     const accentColor = controls.get('accentColor');
@@ -994,8 +1093,9 @@ export function initHeadscarf3d(root, options) {
     flagMat = createMaterial(canvasTexture);
   
     flagMesh = new THREE.Mesh(flagGeo, flagMat);
-    flagMesh.castShadow = true;
-    flagMesh.receiveShadow = true;
+    const useShadows = controls.get("enableShadows") !== false && !controls.get("colorFidelity");
+    flagMesh.castShadow = useShadows;
+    flagMesh.receiveShadow = useShadows;
     const meshScale = controls.get("meshScale") || 1;
     if (meshScale !== 1) flagMesh.scale.set(meshScale, meshScale, meshScale);
     scene.add(flagMesh);
@@ -1024,7 +1124,7 @@ export function initHeadscarf3d(root, options) {
       });
     }
   
-    if (mode === '2D') {
+    if (mode === '2D' || controls.get('colorFidelity')) {
       return new THREE.MeshLambertMaterial({
         map: texture,
         side,
@@ -1091,6 +1191,12 @@ export function initHeadscarf3d(root, options) {
   function revealCanvas() {
     if (destroyed || !renderer.domElement) return;
     renderer.domElement.style.opacity = "1";
+    if (typeof options.onReady === "function") {
+      options.onReady();
+    }
+    root.dispatchEvent(
+      new CustomEvent("headscarf3d:ready", { bubbles: false })
+    );
   }
 
   function loadTextureImage() {
@@ -1101,7 +1207,13 @@ export function initHeadscarf3d(root, options) {
       revealCanvas();
     } else {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (
+        src &&
+        src.indexOf("blob:") !== 0 &&
+        src.indexOf("data:") !== 0
+      ) {
+        img.crossOrigin = "anonymous";
+      }
       img.onload = () => {
         if (destroyed) return;
         uploadedImage = img;
@@ -1176,17 +1288,22 @@ export function initHeadscarf3d(root, options) {
   
     // Main light
     dirLight.position.set(Math.cos(angle) * 5, 4, Math.sin(angle) * 5);
-    dirLight.intensity = intensity * 1.5;
-  
-    // Fill light (opposite to main)
-    fillLight.position.set(Math.cos(angle + Math.PI) * 5, -2, Math.sin(angle + Math.PI) * 5);
-    fillLight.intensity = intensity * 0.5;
+    if (controls.get('colorFidelity')) {
+      dirLight.intensity = intensity * 0.55;
+      fillLight.position.set(Math.cos(angle + Math.PI) * 5, 2, Math.sin(angle + Math.PI) * 5);
+      fillLight.intensity = intensity * 0.55;
+      rimLight.intensity = intensity * 0.15;
+      ambientLight.intensity = ambientStr * 1.15;
+    } else {
+      dirLight.intensity = intensity * 1.5;
+      fillLight.position.set(Math.cos(angle + Math.PI) * 5, -2, Math.sin(angle + Math.PI) * 5);
+      fillLight.intensity = intensity * 0.5;
+      rimLight.intensity = intensity * 0.3;
+      ambientLight.intensity = ambientStr;
+    }
   
     // Rim light (top-back)
     rimLight.position.set(0, 5, -5);
-    rimLight.intensity = intensity * 0.3;
-  
-    ambientLight.intensity = ambientStr;
   }
 
   function animate() {

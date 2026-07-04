@@ -23,7 +23,7 @@ var GRID_BOUNDARY_STROKE_WIDTH = 5;
 var VIEW_MARGIN = 24;
 
 /** Grid + circle stroke (shared color picker) — RGB(255, 60, 60) */
-var PATTERN_STROKE_COLOR_DEFAULT = "#ff3c3c";
+var PATTERN_STROKE_COLOR_DEFAULT = "#ec2f1e";
 /** Sadness circles fill (color picker default) */
 var CIRCLE_FILL_COLOR_DEFAULT = "#ffffff";
 var GRID_STROKE_WIDTH_DEFAULT = 1;
@@ -510,7 +510,7 @@ var AUTO_MERGE_SEED_BOUNDS_INSET_PX = 40;
 var AUTO_MERGE_OUTLINE_COLOR = "#3c06a7";
 /** Outline stroke = grid stroke × this multiplier */
 var AUTO_MERGE_OUTLINE_WIDTH_GRID_MULTIPLIER = 3;
-var AUTO_MERGE_SHADOW_COLOR = "#ff3c3c";
+var AUTO_MERGE_SHADOW_COLOR = "#ec2f1e";
 /** Softens cast shadow (direction still from offset below) */
 var AUTO_MERGE_SHADOW_BLUR_PX = 8;
 /** Negative dx = shadow to the left; positive dy = shadow downward */
@@ -759,7 +759,7 @@ var FAN_BOTTOM_STAR_POINT_COUNT = 5;
 /** Alternating fills in left/right margin cells (top cell = brown) */
 var BORDER_SIDE_CELL_COLOR_BROWN = "#685450";
 /** Was blue (#a5bcc0); default RGB(255, 60, 60) — same as diamond fill */
-var BORDER_SIDE_CELL_COLOR_BLUE = "#ff3c3c";
+var BORDER_SIDE_CELL_COLOR_BLUE = "#ec2f1e";
 
 /** Four triangles inside the X on each brown margin cell */
 var BORDER_SIDE_X_FILL_TOP = "#655551";
@@ -778,8 +778,8 @@ var BORDER_SIDE_CELL_COLOR_GREY = "#f7cecd";
 /** Empty margin row after outside */
 var BORDER_SIDE_CELL_COLOR_BEIGE = "#655551";
 
-/** Default fill for pride diamonds — #FF3C3C */
-var DIAMOND_FILL_COLOR_DEFAULT = "#ff3c3c";
+/** Default fill for pride diamonds — #EC2F1E */
+var DIAMOND_FILL_COLOR_DEFAULT = "#ec2f1e";
 
 /** Pride: filled inner diamonds (% of diamond catalog on canvas) */
 var PRIDE_FILL_PERCENT_MIN = 0;
@@ -792,7 +792,7 @@ var GUILT_SHAME_FILL_PERCENT_MAX = 30;
 var GUILT_SHAME_FILL_PERCENT_DEFAULT = 0;
 /** Inner hole scale relative to outer diamond (0.5 = half size) */
 var GUILT_SHAME_INNER_DIAMOND_SCALE = 0.5;
-var GUILT_SHAME_DIAMOND_FILL_COLOR_DEFAULT = "#ff3c3c";
+var GUILT_SHAME_DIAMOND_FILL_COLOR_DEFAULT = "#ec2f1e";
 
 /** Helplessness: X marks at inner-diagonal crossings in each octagon cell (% of catalog) */
 var HELPLESSNESS_PERCENT_MIN = 0;
@@ -937,13 +937,13 @@ var COLOR_PALETTE = [
 ];
 var COLOR_PALETTE_PICK_COUNT = 5;
 
-/** Sheet palette on first load and pre-selected in the questionnaire (1–12). */
-var DEFAULT_SHEET_PALETTE_NUM = 11;
+/** Sheet palette on first load and pre-selected in the questionnaire (1–9). */
+var DEFAULT_SHEET_PALETTE_NUM = 9;
 
 /** Default 5-color session shown on first load (Active palette row). */
 var DEFAULT_ACTIVE_PALETTE = [
   "#fffce8",
-  "#ff3c3c",
+  "#ec2f1e",
   "#685450",
   "#b2ff00",
   "#ffc9e2",
@@ -952,8 +952,8 @@ var DEFAULT_ACTIVE_PALETTE = [
 /** Default role colors on first load (matches Colors & export pickers). */
 var DEFAULT_COLOR_ASSIGNMENTS = {
   canvasBackground: "#fffce8",
-  patternStroke: "#ff3c3c",
-  diamondFill: "#ff3c3c",
+  patternStroke: "#ec2f1e",
+  diamondFill: "#ec2f1e",
   labelBarBackground: "#685450",
   labelBarContent: "#b2ff00",
   borderSideGrey: "#f7cecd",

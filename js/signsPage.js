@@ -24,6 +24,20 @@
   };
 
   /**
+   * Fan / feelings / star palette slots — whatever color the active sheet
+   * palette assigns here should read as white on the Signs page icons.
+   */
+  var SIGN_REMAP_PALETTE_SLOTS = [
+    "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11",
+    "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10",
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
+    "F11", "F12", "F13", "F14", "F15", "F16", "F17",
+  ];
+
+  var signWhiteRemapCache = null;
+  var signWhiteRemapCacheKey = "";
+
+  /**
    * On the Signs page only, the project purple fill (#3c06a7) should read as a
    * light grey instead — distinct from white. This recolour is scoped to the
    * sign-icon SVGs here and does NOT touch the shared product palette.
@@ -54,10 +68,62 @@
     return !!hex && !!SIGN_BROWN_HEX[hex];
   }
 
+  function getSignWhiteRemapHexSet() {
+    var paletteKey =
+      window.SheetPalettes &&
+      typeof window.SheetPalettes.getActivePaletteKey === "function"
+        ? window.SheetPalettes.getActivePaletteKey()
+        : "";
+    if (signWhiteRemapCache && signWhiteRemapCacheKey === paletteKey) {
+      return signWhiteRemapCache;
+    }
+
+    var set = {};
+    var hex;
+    for (hex in SIGN_BROWN_HEX) {
+      if (SIGN_BROWN_HEX[hex]) set[hex] = true;
+    }
+    for (hex in SIGN_FRAME_LINE_ACCENT_HEX) {
+      if (SIGN_FRAME_LINE_ACCENT_HEX[hex]) set[hex] = true;
+    }
+    if (
+      window.SheetPalettes &&
+      typeof window.SheetPalettes.getColor === "function"
+    ) {
+      var i;
+      for (i = 0; i < SIGN_REMAP_PALETTE_SLOTS.length; i++) {
+        hex = normalizeHexColor(
+          window.SheetPalettes.getColor(SIGN_REMAP_PALETTE_SLOTS[i])
+        );
+        if (!hex || hex === "ffffff" || hex === SIGN_PURPLE_HEX) continue;
+        set[hex] = true;
+      }
+    }
+
+    signWhiteRemapCache = set;
+    signWhiteRemapCacheKey = paletteKey;
+    return set;
+  }
+
+  function isSignWhiteRemapColor(value) {
+    var hex = normalizeHexColor(value);
+    return !!hex && !!getSignWhiteRemapHexSet()[hex];
+  }
+
+  function replaceHexesInCssText(cssText) {
+    if (!cssText) return cssText;
+    var hexSet = getSignWhiteRemapHexSet();
+    return cssText.replace(/#([0-9a-f]{3,6})/gi, function (match, hexPart) {
+      var normalized = normalizeHexColor("#" + hexPart);
+      if (normalized && hexSet[normalized]) return "#fff";
+      return match;
+    });
+  }
+
   function remapBrownPaintAttribute(el, attr) {
     if (!el || !el.getAttribute) return;
     var value = el.getAttribute(attr);
-    if (isSignBrownColor(value)) {
+    if (isSignWhiteRemapColor(value)) {
       el.setAttribute(attr, "#fff");
     }
   }
@@ -65,16 +131,9 @@
   function remapBrownInInlineStyle(el) {
     if (!el || !el.getAttribute) return;
     var style = el.getAttribute("style");
-    if (!style || style.indexOf("685450") < 0 && style.indexOf("8B7355") < 0 && style.indexOf("8b7355") < 0 && style.indexOf("5C4033") < 0 && style.indexOf("5c4033") < 0) {
-      return;
-    }
-    el.setAttribute(
-      "style",
-      style
-        .replace(/#685450/gi, "#fff")
-        .replace(/#8[bB]7355/gi, "#fff")
-        .replace(/#5[cC]4033/gi, "#fff")
-    );
+    if (!style) return;
+    var next = replaceHexesInCssText(style);
+    if (next !== style) el.setAttribute("style", next);
   }
 
   function remapBrownToWhiteInSvg(root) {
@@ -98,10 +157,7 @@
     for (i = 0; i < styles.length; i++) {
       var cssText = styles[i].textContent || "";
       if (!cssText) continue;
-      styles[i].textContent = cssText
-        .replace(/#685450/gi, "#fff")
-        .replace(/#8[bB]7355/gi, "#fff")
-        .replace(/#5[cC]4033/gi, "#fff");
+      styles[i].textContent = replaceHexesInCssText(cssText);
     }
   }
 

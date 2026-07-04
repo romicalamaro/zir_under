@@ -9,7 +9,7 @@
     "/export?format=csv&gid=" +
     SHEET_GID;
   var LOCAL_CSV_URL = "data/sheet-palette-colors.csv";
-  /** Local proxy (npm run serve) — Palette 8–12 need full Google CSV; file:// blocks direct fetch. */
+  /** Local proxy (npm run serve) — Palette 8–9 need full Google CSV; file:// blocks direct fetch. */
   var SHEET_CSV_PROXY_URL = "http://127.0.0.1:8080/api/google-sheet-palette.csv";
 
   var PALETTE_KEYS = [
@@ -22,17 +22,11 @@
     "palette7",
     "palette8",
     "palette9",
-    "palette10",
-    "palette11",
-    "palette12",
   ];
   /** gviz returns these columns as numbers — hex text is null; load only from CSV export. */
   var GVIZ_CSV_ONLY_PALETTE_KEYS = [
     "palette8",
     "palette9",
-    "palette10",
-    "palette11",
-    "palette12",
   ];
 
   /**
@@ -85,25 +79,25 @@
   /** Offline fallback — matches Google Sheet Palette 1 column. */
   var FALLBACK_DEFAULTS = {
     A1: "#fffce8",
-    A2: "#fffce8",
-    A3: "#685450",
-    B1: "#ff3c3c",
-    B2: "#ff3c3c",
-    C1: "#ff3c3c",
-    C2: "#685450",
-    C3: "#3c06a7",
-    C4: "#ff3c3c",
+    A2: "#f7cecd",
+    A3: "#d9d9d9",
+    B1: "#ec2f1e",
+    B2: "#b5d0ff",
+    C1: "#685450",
+    C2: "#ec2f1e",
+    C3: "#b5d0ff",
+    C4: "#685450",
     C5: "#f7cecd",
-    C6: "#655551",
-    C7: "#655551",
-    C8: "#f7cecd",
-    C9: "#ff3c3c",
-    C10: "#f7cecd",
-    D1: "#ff3c3c",
-    D2: "#ff3c3c",
-    D3: "#ff3c3c",
-    D4: "#ff3c3c",
-    D5: "#ff3c3c",
+    C6: "#685450",
+    C7: "#685450",
+    C8: "#b5d0ff",
+    C9: "#ec2f1e",
+    C10: "#fffce8",
+    D1: "#685450",
+    D2: "#685450",
+    D3: "#685450",
+    D4: "#685450",
+    D5: "#685450",
     D6: "#685450",
     D7: "#685450",
     D8: "#685450",
@@ -111,39 +105,39 @@
     D10: "#685450",
     D11: "#685450",
     E1: "#685450",
-    E2: "#ff3c3c",
+    E2: "#ec2f1e",
     E3: "#ffffff",
-    E4: "#ff3c3c",
+    E4: "#ec2f1e",
     E5: "#ffffff",
-    E6: "#ff3c3c",
+    E6: "#ec2f1e",
     E7: "#ffffff",
-    E8: "#ff3c3c",
+    E8: "#ec2f1e",
     E9: "#685450",
-    E10: "#ff3c3c",
-    F1: "#3c06a7",
-    F2: "#3c06a7",
-    F3: "#3c06a7",
-    F4: "#ff3c3c",
-    F5: "#ff3c3c",
-    F6: "#3c06a7",
-    F7: "#ff3c3c",
-    F8: "#3c06a7",
-    F9: "#ff3c3c",
-    F10: "#ff3c3c",
-    F11: "#ff3c3c",
-    F12: "#3c06a7",
-    F13: "#3c06a7",
-    F14: "#3c06a7",
-    F15: "#ff3c3c",
-    F16: "#3c06a7",
-    F17: "#ff3c3c",
-    G1: "#ff3c3c",
-    G2: "#ff3c3c",
-    G3: "#3c06a7",
-    G4: "#3c06a7",
-    G5: "#3c06a7",
+    E10: "#ec2f1e",
+    F1: "#685450",
+    F2: "#ec2f1e",
+    F3: "#b5d0ff",
+    F4: "#685450",
+    F5: "#ec2f1e",
+    F6: "#b5d0ff",
+    F7: "#ec2f1e",
+    F8: "#ec2f1e",
+    F9: "#b5d0ff",
+    F10: "#685450",
+    F11: "#b5d0ff",
+    F12: "#f7cecd",
+    F13: "#685450",
+    F14: "#ec2f1e",
+    F15: "#685450",
+    F16: "#b5d0ff",
+    F17: "#685450",
+    G1: "#ec2f1e",
+    G2: "#ec2f1e",
+    G3: "#b5d0ff",
+    G4: "#b5d0ff",
+    G5: "#685450",
     H1: "#00ff89",
-    H2: "#b2ff00",
+    H2: "#fffce8",
     H3: "#00fff9",
     H4: "#000000",
     H5: "#303030",
@@ -176,9 +170,6 @@
       palette7: {},
       palette8: {},
       palette9: {},
-      palette10: {},
-      palette11: {},
-      palette12: {},
     };
   }
 
@@ -205,9 +196,6 @@
       palette7: Object.assign({}, palettes.palette7 || {}),
       palette8: Object.assign({}, palettes.palette8 || {}),
       palette9: Object.assign({}, palettes.palette9 || {}),
-      palette10: Object.assign({}, palettes.palette10 || {}),
-      palette11: Object.assign({}, palettes.palette11 || {}),
-      palette12: Object.assign({}, palettes.palette12 || {}),
     };
     return syncPaletteFallbacks(copy);
   }
@@ -217,7 +205,7 @@
   }
 
   /**
-   * Palette 8–12 need CSV export (gviz omits hex text). Fill from embedded/local authority.
+   * Palette 8–9 need CSV export (gviz omits hex text). Fill from embedded/local authority.
    * @param {{ force?: boolean }} [options]
    */
   function ensureCsvOnlyPalettesFromAuthority(options) {
@@ -526,9 +514,6 @@
         palette7: {},
         palette8: {},
         palette9: {},
-        palette10: {},
-        palette11: {},
-        palette12: {},
       });
     }
     var layout = getPaletteCsvLayout(records[0]);
@@ -544,9 +529,6 @@
       palette7: {},
       palette8: {},
       palette9: {},
-      palette10: {},
-      palette11: {},
-      palette12: {},
     };
     var ri;
     for (ri = 1; ri < records.length; ri++) {
@@ -949,7 +931,7 @@
     return syncPaletteFallbacks(into);
   }
 
-  /** Palettes 8–12 from CSV export — gviz omits text hex when sheet columns are numeric. */
+  /** Palettes 8–9 from CSV export — gviz omits text hex when sheet columns are numeric. */
   function supplementCsvOnlyPalettesFromAuthority(merged, authority) {
     if (!merged || !authority) return merged;
     var patch = {};
@@ -967,7 +949,7 @@
     return merged;
   }
 
-  /** Live sync: fill empty 8–12 slots only — never overwrite fresh gviz values with stale CSV/embedded. */
+  /** Live sync: fill empty 8–9 slots only — never overwrite fresh gviz values with stale CSV/embedded. */
   function fillCsvOnlyPaletteGapsFromAuthority(into, authority) {
     if (!into || !authority) return into;
     var ki;
@@ -1004,7 +986,7 @@
   }
 
   /**
-   * Palette 8–12 in Google columns L–P often lag — embedded/local CSV wins.
+   * Palette 8–9 in Google columns L–M often lag — embedded/local CSV wins.
    * Keeps csv-only palettes in sync after `npm run embed:palette-csv` without waiting on the sheet.
    */
   function overlayEmbeddedCsvOnlyPalettesAuthority(into) {
@@ -1046,7 +1028,7 @@
       }
       return Promise.resolve(supplementCsvOnlyPalettesFromAuthority(merged, csvParsed));
     }
-    /** Live poll without CSV: gviz carries palette 8–12 as numeric hex; embedded fills gaps only. */
+    /** Live poll without CSV: gviz carries palette 8–9 as numeric hex; embedded fills gaps only. */
     if (options.livePoll && !csvParsed) {
       var embeddedLive = getEmbeddedLocalPaletteCsvText();
       var embeddedLiveParsed = embeddedLive ? tryParsePaletteCsv(embeddedLive) : null;
@@ -1133,7 +1115,7 @@
         }
         toApply = parsed;
       }
-      /** Live poll: gviz is fresh — embedded/CSV only fill gaps, never overwrite palette 8–12. */
+      /** Live poll: gviz is fresh — embedded/CSV only fill gaps, never overwrite palette 8–9. */
       if (options.livePoll) {
         var embeddedLive = getEmbeddedLocalPaletteCsvText();
         var embeddedLiveParsed = embeddedLive ? tryParsePaletteCsv(embeddedLive) : null;
@@ -1233,7 +1215,7 @@
     ) {
       if (typeof console !== "undefined" && console.warn) {
         console.warn(
-          "SheetPalettes: skipped update — palette8–12 would lose colors (partial sheet response)."
+          "SheetPalettes: skipped update — palette8–9 would lose colors (partial sheet response)."
         );
       }
       return palettes;
@@ -1413,7 +1395,7 @@
   }
 
   /**
-   * Live sync: gviz updates all palettes immediately (8–12 as numeric hex).
+   * Live sync: gviz updates all palettes immediately (8–9 as numeric hex).
    * Stale CSV export only fills empty slots — never overwrites fresh gviz edits.
    */
   function mergeGoogleSheetSourcesLive(csvParsed, gvizParsed) {
@@ -1723,7 +1705,7 @@
   }
 
   /**
-   * Live poll: gviz for palettes 1–7 (instant), CSV for palettes 8–12 (full hex text).
+   * Live poll: gviz for palettes 1–7 (instant), CSV for palettes 8–9 (full hex text).
    */
   function pollGoogleSheetLive() {
     return Promise.allSettled([

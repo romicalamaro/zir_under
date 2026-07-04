@@ -417,13 +417,10 @@
   // cart open, so the cart appears just AFTER the page transition settles.
   var CART_OPEN_AFTER_ARCHIVE_MS = 450;
 
-  // Turn the freshly-saved archive entry into a cart item and open the cart on
-  // the archive page. We build the snapshot from the entry's own `profile`
-  // (name/age/city), which is unaffected by the questionnaire reset, and reuse
-  // ProductComboSpec so the cart item looks identical to a shop gallery item.
-  function addSavedDesignToCart(entry) {
-    if (!entry) return;
-    if (!window.Page2Cart || typeof window.Page2Cart.add !== "function") return;
+  // Build a cart snapshot from a saved archive entry. Uses the entry's own
+  // `profile` (name/age/city), which is unaffected by the questionnaire reset.
+  function buildCartSnapshotFromEntry(entry) {
+    if (!entry) return null;
 
     var profile = entry.profile || {};
     var name = String(profile.name || entry.title || "").trim();
@@ -446,7 +443,7 @@
       imageUrl = entry.imagePng;
     }
 
-    var snapshot = {
+    return {
       id: "archive:" + entry.id,
       folder: "",
       name: name,
@@ -455,10 +452,88 @@
       imageUrl: imageUrl,
       color: "",
     };
+  }
 
-    window.setTimeout(function () {
-      window.Page2Cart.add(snapshot, { open: true });
-    }, CART_OPEN_AFTER_ARCHIVE_MS);
+  function openSavedDesignPreview(entry) {
+    var snapshot = buildCartSnapshotFromEntry(entry);
+    if (!snapshot || !snapshot.imageUrl) return false;
+    if (
+      !window.BuyPreview3d ||
+      typeof window.BuyPreview3d.open !== "function"
+    ) {
+      return false;
+    }
+    return window.BuyPreview3d.open({
+      textureUrl: snapshot.imageUrl,
+      title: snapshot.name || "Designed handkerchief",
+      showGoToArchive: true,
+      onClose: resumeQuestionnaireAfterPreviewClose,
+    });
+  }
+
+  function resumeQuestionnaireAfterPreviewClose() {
+    questionnaireStarted = true;
+
+    var sectionDesign = document.getElementById("section-design");
+    var designStart = document.getElementById("design-start");
+    var questionnairePanel = document.getElementById("questionnaire-panel");
+
+    if (sectionDesign) {
+      sectionDesign.classList.add("section-design--questionnaire-started");
+      clearIntroSlideClasses(sectionDesign);
+    }
+    if (designStart) {
+      designStart.hidden = true;
+    }
+    if (questionnairePanel) {
+      questionnairePanel.hidden = false;
+    }
+
+    mountCanvasToQuestionnaireHost();
+
+    var stepEl = document.querySelector(
+      '.questionnaire-step[data-step-id="' + SUBMIT_ORDER_STEP_ID + '"]'
+    );
+    if (!stepEl) return;
+
+    var saveBtn = stepEl.querySelector(".questionnaire-archive-btn");
+    var confirmEl = stepEl.querySelector(".questionnaire-archive-confirm");
+
+    if (saveBtn) {
+      saveBtn.disabled = false;
+    }
+    if (confirmEl) {
+      confirmEl.hidden = true;
+    }
+
+    updateCardAccessibility(SUBMIT_ORDER_STEP_ID);
+
+    if (typeof window.layoutStage === "function") {
+      window.layoutStage();
+    }
+  }
+
+  // Turn the freshly-saved archive entry into a cart item. By default opens
+  // the cart after a short delay (for archive navigation). After submit on
+  // Design, pass `{ open: false }` so only the 3D preview appears first.
+  function addSavedDesignToCart(entry, options) {
+    options = options || {};
+    var shouldOpen = options.open !== false;
+    if (!entry) return;
+    if (!window.Page2Cart || typeof window.Page2Cart.add !== "function") return;
+
+    var snapshot = buildCartSnapshotFromEntry(entry);
+    if (!snapshot) return;
+
+    function doAdd() {
+      window.Page2Cart.add(snapshot, { open: shouldOpen });
+    }
+
+    if (shouldOpen) {
+      window.setTimeout(doAdd, CART_OPEN_AFTER_ARCHIVE_MS);
+    } else {
+      doAdd();
+    }
   }
 
   var PROFILE_STEP_ORDER = [
@@ -523,7 +598,7 @@
       heading: "Fear",
       controls: [
         { stepId: "angerVerticalLength" },
-        { stepId: "anxietyVerticalStroke", subLabel: "Anxiety / Tension" },
+        { stepId: "anxietyVerticalStroke", subLabel: "Anxiety" },
       ],
     },
     {
@@ -547,7 +622,7 @@
       controls: [{ stepId: "griefCircleDensity" }],
     },
     {
-      heading: "Strength / Power",
+      heading: "Strength",
       controls: [{ stepId: "strengthDensity" }],
     },
     {
@@ -559,7 +634,7 @@
       controls: [{ stepId: "prideFillPercent" }],
     },
     {
-      heading: "Guilt / Shame",
+      heading: "Guilt",
       controls: [{ stepId: "guiltShameFillPercent" }],
     },
     {
@@ -1325,7 +1400,7 @@
         return (
           Number.isFinite(Number(answers.palette)) &&
           Number(answers.palette) >= 1 &&
-          Number(answers.palette) <= 12
+          Number(answers.palette) <= 9
         );
       case "borderFrameDivisions":
         return (
@@ -1705,7 +1780,7 @@
 
   function syncPaletteToPanel(paletteNum) {
     var num = Number(paletteNum);
-    if (!Number.isFinite(num) || num < 1 || num > 12) return;
+    if (!Number.isFinite(num) || num < 1 || num > 9) return;
     var key = "palette" + num;
     var btn = document.querySelector('[data-palette-key="' + key + '"]');
     if (btn) {
@@ -2041,6 +2116,7 @@
     card._openingTimer = window.setTimeout(function () {
       card.classList.remove("is-opening");
       card._openingTimer = null;
+      syncQuestionnaireCanvasZoomFromScroll();
     }, SCROLL_SNAP_ANIM_MS + 60);
   }
 
@@ -2060,6 +2136,12 @@
       card.classList.remove("is-locked");
       if (isExpanded && !wasExpanded && !prefersReducedMotion()) {
         markCardOpening(card);
+      }
+      if (isExpanded && !wasExpanded) {
+        var expandedKey = card.getAttribute("data-section-key");
+        if (expandedKey === "feelings") {
+          scheduleFeelingsSpiderLabelFontSync(card);
+        }
       }
 
       var body = card.querySelector(".questionnaire-card__body");
@@ -2083,6 +2165,12 @@
       card.classList.toggle("is-expanded", isExpanded);
       if (isExpanded && !wasExpanded && !prefersReducedMotion()) {
         markCardOpening(card);
+      }
+      if (isExpanded && !wasExpanded) {
+        var expandedSectionKey = card.getAttribute("data-section-key");
+        if (expandedSectionKey === "feelings") {
+          scheduleFeelingsSpiderLabelFontSync(card);
+        }
       }
       var header = card.querySelector(".questionnaire-card__header");
       var body = card.querySelector(".questionnaire-card__body");
@@ -2472,6 +2560,9 @@
   // rectangles: the measured content height is grown by this factor, split
   // evenly above/below the centered text. 1.2 = 20% taller folders.
   var QUESTIONNAIRE_COLLAPSED_HEADER_SCALE = 1.2;
+  // When the feelings spider is display-fixed, coupled measurement understates
+  // title shrink — blend toward header-only budget fit (see sync below).
+  var QUESTIONNAIRE_FEELINGS_TITLE_BLEND = 0.55;
 
   // Measure a single card body's natural height at the current panel scale.
   // The body is moved offscreen so measuring never flashes on screen.
@@ -2497,6 +2588,65 @@
     return h;
   }
 
+  /** Measure collapsed/expanded header heights and widest section number. */
+  function measureQuestionnaireHeaderMetrics(cards) {
+    var maxCollapsedHeaderPx = 0;
+    var maxExpandedHeaderPx = 0;
+    var maxNumWidthPx = 0;
+    var i;
+    for (i = 0; i < cards.length; i++) {
+      var header = cards[i].querySelector(".questionnaire-card__header");
+      if (!header) continue;
+      var num = header.querySelector(".questionnaire-card__num");
+      var title = header.querySelector(".questionnaire-card__title");
+      if (num) {
+        num.style.setProperty(
+          "--questionnaire-card-title-scale",
+          String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+        );
+      }
+      if (title) {
+        title.style.setProperty(
+          "--questionnaire-card-title-scale",
+          String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+        );
+      }
+      if (num) {
+        maxNumWidthPx = Math.max(
+          maxNumWidthPx,
+          Math.ceil(num.getBoundingClientRect().width)
+        );
+      }
+      maxCollapsedHeaderPx = Math.max(
+        maxCollapsedHeaderPx,
+        Math.ceil(header.getBoundingClientRect().height)
+      );
+      if (num) {
+        num.style.setProperty(
+          "--questionnaire-card-title-scale",
+          String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+        );
+      }
+      if (title) {
+        title.style.setProperty(
+          "--questionnaire-card-title-scale",
+          String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
+        );
+      }
+      maxExpandedHeaderPx = Math.max(
+        maxExpandedHeaderPx,
+        Math.ceil(header.getBoundingClientRect().height)
+      );
+      if (num) num.style.removeProperty("--questionnaire-card-title-scale");
+      if (title) title.style.removeProperty("--questionnaire-card-title-scale");
+    }
+    return {
+      maxCollapsedHeaderPx: maxCollapsedHeaderPx,
+      maxExpandedHeaderPx: maxExpandedHeaderPx,
+      maxNumWidthPx: maxNumWidthPx,
+    };
+  }
+
   function syncQuestionnaireCardHeights() {
     if (!panelEl || !stackEl) return;
 
@@ -2511,73 +2661,23 @@
     var i;
 
     panelEl.classList.add("questionnaire-panel--measuring");
+    panelEl.classList.add("questionnaire-panel--measure-spider-coupled");
 
     // --- Pass 1: measure headers + each body height at BASE scale. ---
     panelEl.style.setProperty("--questionnaire-text-scale", String(base));
+    panelEl.style.setProperty("--questionnaire-card-title-text-scale", String(base));
 
-    var maxCollapsedHeaderPx = 0;
-    var maxExpandedHeaderPx = 0;
-    var maxNumWidthPx = 0;
+    var headerMetrics = measureQuestionnaireHeaderMetrics(cards);
+    var maxCollapsedHeaderPx = headerMetrics.maxCollapsedHeaderPx;
+    var maxExpandedHeaderPx = headerMetrics.maxExpandedHeaderPx;
+    var maxNumWidthPx = headerMetrics.maxNumWidthPx;
     var bodies = [];
     // Card element paired with each measured body, so the per-section height
     // below can be written back onto the correct card (some cards could lack a
     // body and be skipped, which would break a plain index match).
     var bodyCards = [];
     var hBase = [];
-
     for (i = 0; i < cards.length; i++) {
-      var header = cards[i].querySelector(".questionnaire-card__header");
-      if (header) {
-        var num = header.querySelector(".questionnaire-card__num");
-        var title = header.querySelector(".questionnaire-card__title");
-        // Closed folders now show their title at the SAME size as an open
-        // section (see the CSS below), so the collapsed baseline is measured at
-        // that same expanded scale — otherwise the rectangle would be sized for
-        // smaller text and clip the larger title.
-        if (num) {
-          num.style.setProperty(
-            "--questionnaire-card-title-scale",
-            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
-          );
-        }
-        if (title) {
-          title.style.setProperty(
-            "--questionnaire-card-title-scale",
-            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
-          );
-        }
-        if (num) {
-          maxNumWidthPx = Math.max(
-            maxNumWidthPx,
-            Math.ceil(num.getBoundingClientRect().width)
-          );
-        }
-        maxCollapsedHeaderPx = Math.max(
-          maxCollapsedHeaderPx,
-          Math.ceil(header.getBoundingClientRect().height)
-        );
-        if (num) {
-          num.style.setProperty(
-            "--questionnaire-card-title-scale",
-            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
-          );
-        }
-        if (title) {
-          title.style.setProperty(
-            "--questionnaire-card-title-scale",
-            String(QUESTIONNAIRE_EXPANDED_TITLE_SCALE)
-          );
-        }
-        maxExpandedHeaderPx = Math.max(
-          maxExpandedHeaderPx,
-          Math.ceil(header.getBoundingClientRect().height)
-        );
-        if (num) num.style.removeProperty("--questionnaire-card-title-scale");
-        if (title) title.style.removeProperty("--questionnaire-card-title-scale");
-      }
-      // The spider chart / palette / grid-type used to be excluded from this
-      // measurement. They are now included so a section's TRUE height drives
-      // the fit-to-screen scale below — that is what removes the inner scroll.
       var body = cards[i].querySelector(".questionnaire-card__body");
       if (!body) continue;
       bodies.push(body);
@@ -2591,6 +2691,11 @@
     maxCollapsedHeaderPx = Math.ceil(
       maxCollapsedHeaderPx * QUESTIONNAIRE_COLLAPSED_HEADER_SCALE
     );
+    // Folder bar height stays at this base measurement; title font scale shrinks
+    // independently (see fitScaleForTitles below).
+    var folderBarCollapsedHeaderPx = maxCollapsedHeaderPx;
+    var folderBarExpandedHeaderPx = maxExpandedHeaderPx;
+    var folderBarNumWidthPx = maxNumWidthPx;
 
     // --- Pass 2: measure each body height at the PROBE scale. ---
     // Two sample points let us model height(scale) = A*scale + B per section,
@@ -2603,6 +2708,7 @@
       hProbe.push(measureQuestionnaireBodyHeight(bodies[i], measureWidth));
     }
 
+    panelEl.classList.remove("questionnaire-panel--measure-spider-coupled");
     panelEl.classList.remove("questionnaire-panel--measuring");
 
     var maxBodyPx = 0;
@@ -2617,7 +2723,10 @@
     // scroll and no list scroll. A single global scale keeps every question the
     // same size (visual uniformity across sections).
     var fitScale = base;
+    var fitScaleForTitles = base;
+    var headerTitleScaleEstimate = null;
     var availableBodyPx = 0;
+    var target = 0;
 
     if (scrollEl && maxCollapsedHeaderPx > 0 && maxBodyPx > 0) {
       var scrollStyles = window.getComputedStyle(scrollEl);
@@ -2636,7 +2745,7 @@
         expandedHeaderPx -
         stackPadBottom;
 
-      var target = availableBodyPx - QUESTIONNAIRE_FIT_SAFETY_PX;
+      target = availableBodyPx - QUESTIONNAIRE_FIT_SAFETY_PX;
 
       if (target > 0) {
         for (i = 0; i < hBase.length; i++) {
@@ -2652,17 +2761,86 @@
             // Section height barely responds to scale; can't shrink it.
             requiredScale = base;
           }
+          if (requiredScale < fitScaleForTitles) {
+            fitScaleForTitles = requiredScale;
+          }
+          // Feelings spider chart is intentionally larger and must not shrink
+          // global question text to compensate (see CSS max-width).
+          if (
+            bodyCards[i] &&
+            bodyCards[i].getAttribute("data-section-key") === "feelings"
+          ) {
+            continue;
+          }
           if (requiredScale < fitScale) fitScale = requiredScale;
         }
       }
 
       if (fitScale > base) fitScale = base;
+      if (fitScaleForTitles > base) fitScaleForTitles = base;
       if (fitScale < QUESTIONNAIRE_MIN_TEXT_SCALE) {
         fitScale = QUESTIONNAIRE_MIN_TEXT_SCALE;
+      }
+      if (fitScaleForTitles < QUESTIONNAIRE_MIN_TEXT_SCALE) {
+        fitScaleForTitles = QUESTIONNAIRE_MIN_TEXT_SCALE;
+      }
+
+      // Feelings body uses a fixed-size spider on screen, so shrinking section
+      // titles does not reduce its height. Derive a header-budget title scale and
+      // blend it with the coupled measurement (logs: coupled ≈1.03 → 22px, budget
+      // fit ≈0.83–0.9 → ~20px on this viewport).
+      if (scrollEl && target > 0) {
+        var feelingsTitleIdx = -1;
+        for (var fi = 0; fi < bodyCards.length; fi++) {
+          if (
+            bodyCards[fi] &&
+            bodyCards[fi].getAttribute("data-section-key") === "feelings"
+          ) {
+            feelingsTitleIdx = fi;
+            break;
+          }
+        }
+        if (feelingsTitleIdx >= 0) {
+          var scrollTotalPx =
+            scrollEl.clientHeight -
+            scrollPadTop -
+            scrollPadBottom -
+            stackPadBottom;
+          var feelingsBodyPx = hBase[feelingsTitleIdx];
+          var headerBudgetPx =
+            scrollTotalPx - feelingsBodyPx - QUESTIONNAIRE_FIT_SAFETY_PX;
+          var headersAtBasePx =
+            (cards.length - 1) *
+              headerMetrics.maxCollapsedHeaderPx *
+              QUESTIONNAIRE_COLLAPSED_HEADER_SCALE +
+            (headerMetrics.maxExpandedHeaderPx > 0
+              ? headerMetrics.maxExpandedHeaderPx
+              : headerMetrics.maxCollapsedHeaderPx);
+          if (headerBudgetPx > 0 && headersAtBasePx > headerBudgetPx) {
+            var headerTitleScale = base * (headerBudgetPx / headersAtBasePx);
+            headerTitleScaleEstimate = headerTitleScale;
+            if (headerTitleScale < fitScaleForTitles) {
+              fitScaleForTitles =
+                fitScaleForTitles +
+                (headerTitleScale - fitScaleForTitles) *
+                  QUESTIONNAIRE_FEELINGS_TITLE_BLEND;
+            }
+          }
+        }
       }
     }
 
     panelEl.style.setProperty("--questionnaire-text-scale", String(fitScale));
+    panelEl.style.setProperty(
+      "--questionnaire-card-title-text-scale",
+      String(fitScaleForTitles)
+    );
+
+    // Keep folder rectangle height from the base pass — do not re-measure after
+    // shrinking title font (that made the red bars too short).
+    maxCollapsedHeaderPx = folderBarCollapsedHeaderPx;
+    maxExpandedHeaderPx = folderBarExpandedHeaderPx;
+    maxNumWidthPx = folderBarNumWidthPx;
 
     // Header metrics stay uniform across all folders so the section number /
     // title line up whether a folder is open or closed.
@@ -2705,8 +2883,16 @@
       }
       bodyFitPx = Math.ceil(bodyFitPx);
       // Never taller than the space available for a body (keeps a shrunk tall
-      // section on-screen), and never negative.
-      if (availableBodyPx > 0 && bodyFitPx > availableBodyPx) {
+      // section on-screen), and never negative. Feelings may exceed available
+      // height so the enlarged spider chart is never clipped.
+      var isFeelingsCard =
+        bodyCards[i] &&
+        bodyCards[i].getAttribute("data-section-key") === "feelings";
+      if (
+        !isFeelingsCard &&
+        availableBodyPx > 0 &&
+        bodyFitPx > availableBodyPx
+      ) {
         bodyFitPx = availableBodyPx;
       }
       if (bodyFitPx < 0) bodyFitPx = 0;
@@ -2717,11 +2903,16 @@
         );
       }
     }
+
+    scheduleFeelingsSpiderLabelFontSync();
   }
 
   function scheduleQuestionnaireCardHeightSync() {
     requestAnimationFrame(function () {
-      requestAnimationFrame(syncQuestionnaireCardHeights);
+      requestAnimationFrame(function () {
+        syncQuestionnaireCardHeights();
+        syncQuestionnaireCanvasZoomFromScroll();
+      });
     });
   }
 
@@ -2837,9 +3028,11 @@
       syncAllProfileMadlibsBlankWidths(profileMadlibs);
     }
 
+    syncQuestionnaireCardHeights();
     mountCanvasToQuestionnaireHost();
     sectionCanvasTransition = { fromIndex: 0, toIndex: 0, progress: 0 };
     activateSection(0, { deferFocus: true, skipFocus: true, behavior: "auto" });
+    syncQuestionnaireCanvasZoomFromScroll();
   }
 
   function createHeading(step) {
@@ -3454,45 +3647,25 @@
     parent.appendChild(sliderWrap);
   }
 
-  function appendFeelingsShuffleButton(parent) {
-    var actions = document.createElement("div");
-    actions.className = "questionnaire-feelings-actions";
-
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "questionnaire-feelings-shuffle-btn";
-    // Shuffle icon: two thick rounded strands crossing in an X, each ending in a
-    // solid arrowhead with softly rounded corners. Uses currentColor so it
-    // inverts together with the button's text color on hover/focus. Decorative
-    // markup is hidden from assistive tech; the accessible name comes from
-    // aria-label.
-    btn.innerHTML =
-      '<svg class="questionnaire-feelings-shuffle-btn__icon" viewBox="0 0 24 24"' +
-      ' fill="none" stroke="currentColor" stroke-width="1.3"' +
-      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
-      ' focusable="false">' +
-      // Top-left → bottom-right strand
-      '<path d="M3.5 8 H6.5 Q11 8 12 12 Q13 16 16.5 16"></path>' +
-      // Bottom-left → top-right strand
-      '<path d="M3.5 16 H6.5 Q11 16 12 12 Q13 8 16.5 8"></path>' +
-      // Filled arrowheads (rounded corners via matching round stroke join)
-      '<path fill="currentColor" stroke-width="0.7" d="M16.2 6 L20.5 8 L16.2 10 Z"></path>' +
-      '<path fill="currentColor" stroke-width="0.7" d="M16.2 14 L20.5 16 L16.2 18 Z"></path>' +
-      "</svg>";
-    btn.setAttribute("aria-label", getUiString("shuffleLayoutAria"));
-    btn.setAttribute("title", getUiString("shuffleLayoutAria"));
-    btn.addEventListener("click", function () {
-      if (
-        window.UnderCoverComboBridge &&
-        typeof window.UnderCoverComboBridge.randomizeFeelingsPlacement ===
-          "function"
-      ) {
-        window.UnderCoverComboBridge.randomizeFeelingsPlacement();
+  function syncFeelingsSpiderLabelFontSizes(scopeEl) {
+    var root = scopeEl || panelEl;
+    if (!root) return;
+    var wraps = root.querySelectorAll(".questionnaire-feelings-spider");
+    var i;
+    for (i = 0; i < wraps.length; i++) {
+      var chart = wraps[i]._feelingsSpiderChart;
+      if (chart && typeof chart.syncLabelFontSize === "function") {
+        chart.syncLabelFontSize();
       }
-    });
+    }
+  }
 
-    actions.appendChild(btn);
-    parent.appendChild(actions);
+  function scheduleFeelingsSpiderLabelFontSync(scopeEl) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        syncFeelingsSpiderLabelFontSizes(scopeEl);
+      });
+    });
   }
 
   function appendFeelingsSpiderChart(parent, onChange) {
@@ -3507,7 +3680,7 @@
       return;
     }
 
-    window.FeelingsSpiderChart.create(wrap, {
+    wrap._feelingsSpiderChart = window.FeelingsSpiderChart.create(wrap, {
       rows: getFeelingsTableRows(),
       scaleLabels: getFeelingsScaleLabels(),
       couplings: FEELINGS_COUPLINGS,
@@ -3549,14 +3722,17 @@
     // Inline pen glyph; strokes use currentColor so it inverts with the button
     // (brown pen on white when off, white pen on brown when on).
     btn.innerHTML =
-      '<svg class="questionnaire-feelings-hope-pen__icon" viewBox="0 0 24 24" ' +
-      'aria-hidden="true" focusable="false">' +
-      '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" fill="none" ' +
-      'stroke="currentColor" stroke-width="2" stroke-linejoin="round" ' +
+      '<span class="questionnaire-feelings-hope-btn__icon-wrap" aria-hidden="true">' +
+      '<svg class="questionnaire-feelings-hope-btn__icon" viewBox="0 0 24 24" ' +
+      'fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+      '<circle class="questionnaire-feelings-hope-btn__ring" cx="12" cy="12" r="11.65"/>' +
+      '<g class="questionnaire-feelings-hope-btn__glyph" transform="translate(12 12) scale(0.52) translate(-12 -12)">' +
+      '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" ' +
+      'stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" ' +
       'stroke-linecap="round"/>' +
-      '<path d="M15 5l4 4" fill="none" stroke="currentColor" stroke-width="2" ' +
+      '<path d="M15 5l4 4" stroke="currentColor" stroke-width="1.35" ' +
       'stroke-linecap="round"/>' +
-      "</svg>";
+      "</g></svg></span>";
 
     function applyPenState() {
       var on = answers[stepId] === "merge";
@@ -3588,13 +3764,16 @@
       stepConfig.resetAriaLabel || "Undo the drawing"
     );
     resetBtn.innerHTML =
-      '<svg class="questionnaire-feelings-hope-pen__icon" viewBox="0 0 24 24" ' +
-      'aria-hidden="true" focusable="false">' +
-      '<path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" ' +
-      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M4 9h11a5 5 0 0 1 0 10H9" fill="none" stroke="currentColor" ' +
-      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      "</svg>";
+      '<span class="questionnaire-feelings-hope-btn__icon-wrap" aria-hidden="true">' +
+      '<svg class="questionnaire-feelings-hope-btn__icon" viewBox="0 0 24 24" ' +
+      'fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+      '<circle class="questionnaire-feelings-hope-btn__ring" cx="12" cy="12" r="11.65"/>' +
+      '<g class="questionnaire-feelings-hope-btn__glyph" transform="translate(12 12) scale(0.52) translate(-12 -12)">' +
+      '<path d="M9 14 4 9l5-5" stroke="currentColor" ' +
+      'stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M4 9h11a5 5 0 0 1 0 10H9" stroke="currentColor" ' +
+      'stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>' +
+      "</g></svg></span>";
 
     resetBtn.addEventListener("click", function () {
       if (
@@ -3709,6 +3888,35 @@
     return width;
   }
 
+  function measureProfileMadlibsFilledWidthPx(measureEl, text) {
+    if (!measureEl) return 0;
+    var style = window.getComputedStyle(measureEl);
+    var padStart =
+      parseFloat(style.paddingInlineStart) ||
+      parseFloat(style.paddingLeft) ||
+      0;
+    var padEnd =
+      parseFloat(style.paddingInlineEnd) ||
+      parseFloat(style.paddingRight) ||
+      0;
+    var textWidth = text ? measureMadlibsTextPx(text, measureEl) : 0;
+    return textWidth + padStart + padEnd + 2;
+  }
+
+  function applyProfileMadlibsDropdownWidth(wrap, isEmpty, measureEl, text) {
+    if (!wrap) return;
+    setProfileMadlibsBlankEmptyState(wrap, isEmpty);
+    if (isEmpty) {
+      applyProfileMadlibsBlankWidth(wrap, true, measureEl || wrap);
+      return;
+    }
+    wrap.style.minWidth = "";
+    var widthPx = measureProfileMadlibsFilledWidthPx(measureEl, text);
+    if (widthPx > 0) {
+      wrap.style.width = Math.ceil(widthPx) + "px";
+    }
+  }
+
   function applyProfileMadlibsBlankWidth(el, isEmpty, naturalMeasureEl) {
     var gridColPx = getProfileMadlibsGridColMinWidthPx();
     setProfileMadlibsBlankEmptyState(el, isEmpty);
@@ -3757,6 +3965,15 @@
     var text = input.value || "";
     var isProfileBlank = input.closest(".questionnaire-profile-madlibs");
     if (isProfileBlank) {
+      if (input.closest(".questionnaire-madlibs-name-mode")) {
+        var nameModeWrap = input.closest(".questionnaire-madlibs-dropdown");
+        if (nameModeWrap) {
+          syncMadlibsDropdownWidth(
+            /** @type {HTMLElement} */ (nameModeWrap)
+          );
+        }
+        return;
+      }
       applyProfileMadlibsBlankWidth(input, !text, input);
       return;
     }
@@ -3795,14 +4012,17 @@
       var nameIsEmpty =
         !nameModeInput ||
         (!nameModeInput.value && !nameModeInput.readOnly);
-      if (nameModeInput) {
-        syncMadlibsTextInputWidth(/** @type {HTMLInputElement} */ (nameModeInput));
-      }
-      applyProfileMadlibsBlankWidth(
+      var nameMeasureText = nameModeInput ? nameModeInput.value || "" : "";
+      applyProfileMadlibsDropdownWidth(
         wrap,
         nameIsEmpty,
-        nameModeSurface || wrap
+        nameModeSurface || wrap,
+        nameMeasureText
       );
+      if (nameModeInput) {
+        nameModeInput.style.width = "";
+        nameModeInput.style.minWidth = "";
+      }
       return;
     }
     var trigger = wrap.querySelector(".questionnaire-madlibs-dropdown__trigger");
@@ -3813,7 +4033,7 @@
         ? ""
         : labelEl.textContent;
     var isEmpty = !labelText || !String(labelText).trim();
-    applyProfileMadlibsBlankWidth(wrap, isEmpty, trigger);
+    applyProfileMadlibsDropdownWidth(wrap, isEmpty, trigger, labelText);
   }
 
   function syncMadlibsDropdownWidthGeneric(wrap) {
@@ -3919,6 +4139,16 @@
     if (stepId === "livingDuration") {
       return getLivingDurationMadlibsIconFile(answers.livingDuration);
     }
+    // Questionnaire only: no icon on the "from" blank; the from arrow sits
+    // before the "now in" blank (where the old "to" / now-in sign was).
+    if (stepId === "from") {
+      return "";
+    }
+    if (stepId === "nowIn") {
+      return typeof LABEL_BAR_FROM_SVG !== "undefined"
+        ? LABEL_BAR_FROM_SVG
+        : "from.svg";
+    }
     var map =
       typeof PROFILE_MADLIBS_FIELD_ICONS !== "undefined"
         ? PROFILE_MADLIBS_FIELD_ICONS
@@ -3964,18 +4194,19 @@
     return { width: 1, height: 1 };
   }
 
-  // Profile madlibs "signs": give every field icon the SAME width, enlarged.
-  // Height is derived from each sign's aspect ratio so the artwork keeps its
-  // proportions (no stretching). Bump this single number to resize them all.
+  // Profile madlibs signs: height spans question line-height + underline band
+  // (top of question text → bottom of answer underline). Width keeps aspect ratio.
+  // Mirrors --profile-madlibs-icon-height in css/styles.css.
   // NOTE: only affects the questionnaire profile, not the label bar ("system").
-  var PROFILE_MADLIBS_ICON_WIDTH_EM = 1.6;
+  var PROFILE_MADLIBS_ICON_HEIGHT_EXPR =
+    "calc(1.2em + var(--madlibs-underline-gap) + var(--madlibs-underline-thickness))";
 
-  function applyProfileMadlibsIconSize(el, dims) {
+  function applyProfileMadlibsIconSize(el, dims, stepId) {
     if (!el || !dims || !dims.width || !dims.height) return;
-    var w = PROFILE_MADLIBS_ICON_WIDTH_EM;
-    var ratio = dims.width / dims.height;
-    el.style.width = w + "em";
-    el.style.height = "calc(" + w + "em / " + ratio + ")";
+    var aspect = dims.width / dims.height;
+    el.style.height = PROFILE_MADLIBS_ICON_HEIGHT_EXPR;
+    el.style.width =
+      "calc(" + PROFILE_MADLIBS_ICON_HEIGHT_EXPR + " * " + aspect + ")";
   }
 
   function createMadlibsFieldIcon(stepId) {
@@ -3998,7 +4229,7 @@
     svg.innerHTML = innerMarkup;
     icon.appendChild(svg);
 
-    applyProfileMadlibsIconSize(icon, dims);
+    applyProfileMadlibsIconSize(icon, dims, stepId);
     return icon;
   }
 
@@ -4023,7 +4254,7 @@
       "0 0 " + String(dims.width) + " " + String(dims.height)
     );
     svg.innerHTML = innerMarkup;
-    applyProfileMadlibsIconSize(iconWrap, dims);
+    applyProfileMadlibsIconSize(iconWrap, dims, stepId);
   }
 
   function wrapMadlibsFieldWithIcon(stepId, blankEl) {
@@ -5054,11 +5285,6 @@
       checkSectionCompletion("feelings");
     }
 
-    // Shuffle button is pinned (via CSS) to the top-right of the chart, so it
-    // lives inside the list — the chart's positioning context — rather than in
-    // the column flow above the chart.
-    appendFeelingsShuffleButton(list);
-
     appendFeelingsSpiderChart(list, syncSectionChange);
 
     var hopeBlock = document.createElement("div");
@@ -5399,7 +5625,7 @@
     group.setAttribute("aria-label", stepConfig.ariaLabel);
 
     var n;
-    for (n = 1; n <= 12; n++) {
+    for (n = 1; n <= 9; n++) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "questionnaire-palette-dot";
@@ -5435,10 +5661,8 @@
     }
 
     (function attachPaletteSpreadPersistence() {
-      // The hover "reveal" is done with translateX (not margins) so the row keeps
-      // a fixed total width and the first/last circles stay pinned. For the hovered
-      // circle at index i, we shift each other circle away from it by an amount that
-      // tapers to zero at both ends of the row.
+      // The hover "reveal" is done with translateX (not margins). EN pins the first
+      // circle and releases the last; FA is the mirror (last pinned, first released).
       var dots = Array.prototype.slice.call(
         group.querySelectorAll(".questionnaire-palette-dot")
       );
@@ -5462,14 +5686,25 @@
         if (hoveredIndex < 0) return;
         var n = dots.length;
         var g = getMaxShiftPx();
+        var isFa = questionnaireLocale === "fa";
         dots.forEach(function (dot, j) {
           var shift = 0;
           if (j < hoveredIndex && hoveredIndex > 0) {
-            // Circles to the left: move left, zero at the leftmost (j === 0).
-            shift = -g * (j / hoveredIndex);
+            if (isFa) {
+              // FA: first circle reaches full shift (mirror of EN right branch).
+              shift = -g * ((hoveredIndex - j) / hoveredIndex);
+            } else {
+              // EN: zero at the leftmost (j === 0).
+              shift = -g * (j / hoveredIndex);
+            }
           } else if (j > hoveredIndex && hoveredIndex < n - 1) {
-            // Circles to the right: move right, zero at the rightmost (j === n - 1).
-            shift = g * ((n - 1 - j) / (n - 1 - hoveredIndex));
+            if (isFa) {
+              // FA: last circle stays pinned (mirror of EN left branch).
+              shift = g * ((n - 1 - j) / (n - 1 - hoveredIndex));
+            } else {
+              // EN: last circle reaches full shift.
+              shift = g * ((j - hoveredIndex) / (n - 1 - hoveredIndex));
+            }
           }
           dot.style.transform = shift ? "translateX(" + shift + "px)" : "";
         });
@@ -5550,9 +5785,8 @@
             .then(function (savedEntry) {
               confirmEl.textContent = getUiString("savedToArchive");
               confirmEl.hidden = false;
-              resetQuestionnaireAfterSubmit();
-              navigateToArchiveAfterSubmit();
-              addSavedDesignToCart(savedEntry);
+              addSavedDesignToCart(savedEntry, { open: false });
+              openSavedDesignPreview(savedEntry);
             })
             .catch(function (err) {
               console.warn("[Questionnaire] Save failed:", err);
@@ -5563,7 +5797,9 @@
               confirmEl.hidden = false;
             })
             .finally(function () {
-              saveBtn.disabled = false;
+              if (confirmEl.hidden) {
+                saveBtn.disabled = false;
+              }
             });
         });
       });
@@ -5711,7 +5947,7 @@
       );
     }
     return stepEl.querySelector(
-      "input, button.questionnaire-option, button.questionnaire-archive-btn, button.questionnaire-feelings-shuffle-btn, input.questionnaire-slider"
+      "input, button.questionnaire-option, button.questionnaire-archive-btn, input.questionnaire-slider"
     );
   }
 
@@ -6256,9 +6492,7 @@
       if (typeof window.render === "function") {
         window.render();
       }
-      if (typeof window.layoutStage === "function") {
-        window.layoutStage();
-      }
+      syncQuestionnaireCanvasZoomFromScroll();
 
       attemptsLeft -= 1;
       if (isQuestionnaireCanvasHostReady() || attemptsLeft <= 0) {
@@ -6473,6 +6707,14 @@
       "#questionnaire-panel .questionnaire-panel__grid"
     );
     remainingEl = document.getElementById("questionnaire-remaining");
+    var buyPreviewRoot = document.getElementById("page2-buy-preview");
+    if (buyPreviewRoot) {
+      buyPreviewRoot.addEventListener(
+        "buyPreview3d:postSubmitClosed",
+        resumeQuestionnaireAfterPreviewClose
+      );
+    }
+
     var shopLink = document.getElementById("design-intro-shop-link");
     if (shopLink) {
       shopLink.addEventListener("click", function () {
@@ -6544,6 +6786,7 @@
     resetToIntro: function () {
       resetQuestionnaireAfterSubmit();
     },
+    resumeAfterPreviewClose: resumeQuestionnaireAfterPreviewClose,
     getAnswers: function () {
       return Object.assign({}, answers);
     },

@@ -5,15 +5,15 @@
  * 1. פתחי את גיליון הפלטות (1yMwNB7MopTJWDEH328VF0WiU2XXdPu5Cfs0I1YDyeDQ) → Extensions → Apps Script
  * 2. מחקי את התוכן הקיים והדביקי את הקובץ הזה
  * 3. שמרי (Ctrl/Cmd+S) → Run → colorPaletteHexCells (אישור הרשאות בפעם הראשונה)
- * 4. רענני את הגיליון — עמודות Palette 1–12 (E–P) יצבעו לפי ה-hex
+ * 4. רענני את הגיליון — עמודות Palette 1–9 (E–M) יצבעו לפי ה-hex
  *
  * אופציונלי: הרצה אוטומטית בכל פתיחה — הריצי פעם אחת createOpenTrigger()
  */
 
-// עמודות: A=Category B=Division C=Slot D=Element E–P = Palette 1–12
+// עמודות: A=Category B=Division C=Slot D=Element E–M = Palette 1–9
 var COLOR_COLUMN_START = 5; // עמודה E = Palette 1
-var COLOR_COLUMN_END = 16; // עמודה P = Palette 12
-var GVIZ_CSV_ONLY_COLUMN_START = 12; // L = Palette 8 … P = Palette 12
+var COLOR_COLUMN_END = 13; // עמודה M = Palette 9
+var GVIZ_CSV_ONLY_COLUMN_START = 12; // L = Palette 8 … M = Palette 9
 var SLOT_COLUMN = 3; // עמודה C = Slot
 var DATA_START_ROW = 2;
 
@@ -48,7 +48,7 @@ function contrastText_(hex) {
 }
 
 /**
- * Palette 8–12 (עמודות L–P) חייבות Plain Text — אחרת gviz מחזיר null ל-hex עם אותיות
+ * Palette 8–9 (עמודות L–M) חייבות Plain Text — אחרת gviz מחזיר null ל-hex עם אותיות
  * והעדכון החי בקנבס לא עובד.
  */
 function ensureCsvOnlyPalettePlainTextColumns_(sheet) {
@@ -63,12 +63,12 @@ function ensureCsvOnlyPalettePlainTextColumns_(sheet) {
     .setNumberFormat("@");
 }
 
-/** הרצה חד-פעמית: תיקון פורמט עמודות Palette 8–12 */
+/** הרצה חד-פעמית: תיקון פורמט עמודות Palette 8–9 */
 function fixPalette8ColumnFormat() {
   var sheet = SpreadsheetApp.getActiveSheet();
   ensureCsvOnlyPalettePlainTextColumns_(sheet);
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    "עמודות Palette 8–12 הוגדרו כ-Plain Text",
+    "עמודות Palette 8–9 הוגדרו כ-Plain Text",
     "פלטות",
     4
   );
@@ -114,7 +114,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("פלטות צבע")
     .addItem("צבע תאי hex", "colorPaletteHexCells")
-    .addItem("תיקון פורמט Palette 8–12 (Plain Text)", "fixPalette8ColumnFormat")
+    .addItem("תיקון פורמט Palette 8–9 (Plain Text)", "fixPalette8ColumnFormat")
     .addToUi();
 }
 

@@ -205,8 +205,8 @@
     {
       id: "feelings-strength",
       section: "feelings",
-      label: "Strength / Power",
-      labelFa: "قدرت / نیرو",
+      label: "Strength",
+      labelFa: "قدرت",
       visual: { type: "canvasPreview", previewId: "strength" },
     },
     {
@@ -226,8 +226,8 @@
     {
       id: "feelings-guiltShame",
       section: "feelings",
-      label: "Guilt / Shame",
-      labelFa: "گناه / شرم",
+      label: "Guilt",
+      labelFa: "گناه",
       visual: { type: "canvasPreview", previewId: "guiltShame" },
     },
     {

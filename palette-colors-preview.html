@@ -174,13 +174,10 @@
           "http://127.0.0.1:8080/api/google-sheet-palette.csv";
         var GVIZ_SCRIPT_ATTR = "data-palette-preview-gviz";
         var gvizLoadGeneration = 0;
-        /** gviz returns Palette 8–12 as numbers — hex with letters is null; need CSV export. */
+        /** gviz returns Palette 8–9 as numbers — hex with letters is null; need CSV export. */
         var CSV_ONLY_PALETTE_LABELS = [
           "Palette 8",
           "Palette 9",
-          "Palette 10",
-          "Palette 11",
-          "Palette 12",
         ];
 
         var statusEl = document.getElementById("status");
@@ -735,7 +732,7 @@
           return gaps;
         }
 
-        /** Fill empty Palette 8–12 cells from authority CSV (embedded/local snapshot). */
+        /** Fill empty Palette 8–9 cells from authority CSV (embedded/local snapshot). */
         function supplementCsvOnlyPaletteColumns(liveText, authorityText) {
           if (!liveText || !authorityText) {
             return {
@@ -827,11 +824,11 @@
           var label =
             "נטען מ-Google Sheet (gviz · עדכון חי כל " + interval + " שניות)";
           if (supplementMeta.filled) {
-            label += " · Palette 8–12: " + supplementMeta.filled + " תאים מ-snapshot";
+            label += " · Palette 8–9: " + supplementMeta.filled + " תאים מ-snapshot";
           }
           if (supplementMeta.gapsRemaining) {
             label +=
-              " · הרץ npm run serve לעדכון מלא של Palette 8–12";
+              " · הרץ npm run serve לעדכון מלא של Palette 8–9";
           }
           return label;
         }

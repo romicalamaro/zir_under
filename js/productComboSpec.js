@@ -232,7 +232,7 @@
 
         var dd = document.createElement("dd");
         dd.className = "product-spec__value";
-        dd.textContent = formatValue(key, row[key]);
+        setTextWithThinNumbers(dd, formatValue(key, row[key]));
 
         var rowEl = document.createElement("div");
         rowEl.className = "product-spec__row";
@@ -362,7 +362,7 @@
 
   function renderShopCardPriceText(el, text) {
     el.textContent = "";
-    var priceMatch = text.match(/^(.*?)(\$)(\d+)(\.\d+)(.*)$/);
+    var priceMatch = text.match(/^(.*?)(\$\d+\.\d+)(.*)$/);
     if (!priceMatch) {
       setTextWithThinNumbers(el, text);
       return;
@@ -372,21 +372,13 @@
       el.appendChild(document.createTextNode(priceMatch[1]));
     }
 
-    el.appendChild(document.createTextNode(priceMatch[2]));
-
-    var dollarsEl = document.createElement("span");
-    dollarsEl.className = "shop-card__num";
-    dollarsEl.textContent = priceMatch[3];
-    el.appendChild(dollarsEl);
-
-    el.appendChild(document.createTextNode(priceMatch[4]));
-
-    if (priceMatch[5]) {
-      el.appendChild(document.createTextNode(priceMatch[5]));
-    }
+    var amountEl = document.createElement("span");
+    amountEl.className = "shop-card__price-amount";
+    amountEl.textContent = priceMatch[2] + priceMatch[3];
+    el.appendChild(amountEl);
   }
 
-  var SHOP_CARD_PRICE = "From $59.00 USD";
+  var SHOP_CARD_PRICE = "$59.00 USD";
   var PRODUCT_PAGE_PRICE = "$59.00 USD";
 
   function renderShopCardPrice(metaEl) {

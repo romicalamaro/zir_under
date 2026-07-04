@@ -18643,6 +18643,20 @@
   // (one entry per triangle) and self-updates when the geometry changes.
   var radialFanMiddleBandStippleCache = {};
 
+  /** Cross-product point-in-triangle (works before SVG is mounted; bboxPoints = 3 vertices). */
+  function isPointInRadialFanMiddleBandTriangle(px, py, trianglePoints) {
+    if (!trianglePoints || trianglePoints.length < 3) return false;
+    var a = trianglePoints[0];
+    var b = trianglePoints[1];
+    var c = trianglePoints[2];
+    var d1 = (px - c.x) * (b.y - c.y) - (b.x - c.x) * (py - c.y);
+    var d2 = (px - a.x) * (c.y - a.y) - (c.x - a.x) * (py - a.y);
+    var d3 = (px - b.x) * (a.y - b.y) - (a.x - b.x) * (py - b.y);
+    var hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+    var hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+    return !(hasNeg && hasPos);
+  }
+
   /** Random dots clipped to one middle-band triangle (seeded for stable re-renders). */
   function appendRadialFanMiddleBandTriangleStipple(
     parentGroup,
@@ -18656,6 +18670,7 @@
     var bbox = getRadialFanMiddleBandTriangleBbox(bboxPoints);
     var radius = getRadialFanMiddleBandDotRadius();
     var minDist = getRadialFanMiddleBandMinDotDistance();
+    var defs = designSvg && designSvg.querySelector("defs");
 
     var cacheKey =
       triangleId +
@@ -18676,12 +18691,19 @@
       "|" +
       dotColor +
       "|" +
-      seed;
+      seed +
+      "|triangleFilter";
 
     var cached = radialFanMiddleBandStippleCache[triangleId];
     if (cached && cached.key === cacheKey) {
-      parentGroup.appendChild(cached.clip.cloneNode(true));
-      parentGroup.appendChild(cached.group.cloneNode(true));
+      var cachedClip = cached.clip.cloneNode(true);
+      var cachedGroup = cached.group.cloneNode(true);
+      if (defs) {
+        defs.appendChild(cachedClip);
+      } else {
+        parentGroup.appendChild(cachedClip);
+      }
+      parentGroup.appendChild(cachedGroup);
       return;
     }
 
@@ -18690,7 +18712,11 @@
     var clipPath = elSvg("path");
     clipPath.setAttribute("d", pathD);
     clip.appendChild(clipPath);
-    parentGroup.appendChild(clip);
+    if (defs) {
+      defs.appendChild(clip);
+    } else {
+      parentGroup.appendChild(clip);
+    }
 
     var minDistSq = minDist * minDist;
     var padding = radius + 1;
@@ -18705,6 +18731,7 @@
       attempts++;
       var x = bbox.minX - padding + rng() * (bbox.width + padding * 2);
       var y = bbox.minY - padding + rng() * (bbox.height + padding * 2);
+      if (!isPointInRadialFanMiddleBandTriangle(x, y, bboxPoints)) continue;
       var ok = true;
       var di;
       for (di = 0; di < dots.length; di++) {
@@ -20724,6 +20751,19 @@
 
     while (layer.firstChild) layer.removeChild(layer.firstChild);
 
+    var defsForFanStipple = designSvg.querySelector("defs");
+    if (defsForFanStipple) {
+      var staleFanClips = defsForFanStipple.querySelectorAll(
+        '[id^="radial-fan-middle-band-clip-"]'
+      );
+      var sci;
+      for (sci = 0; sci < staleFanClips.length; sci++) {
+        if (staleFanClips[sci].parentNode) {
+          staleFanClips[sci].parentNode.removeChild(staleFanClips[sci]);
+        }
+      }
+    }
+
     var showTop = getHalfCircleVisible();
     var showBottom = getHalfCircleBottomVisible();
     if (!showTop && !showBottom) return;
@@ -21996,9 +22036,19 @@
       return page2QuestionnaireCanvasLayoutCache;
     }
 
-    var focusCenterOffset =
-      (focusRect.y + f + focusRect.height / 2) * profileScale;
-    var desiredSvgTop = getProfileLabelFocusCenterScreenYPx() - focusCenterOffset;
+    var totalH = CANVAS_H + 2 * f;
+    var svgHeight = totalH * profileScale;
+    var wrapTopAtRest = getWrapViewportTopAtRest(wrap);
+    var targetBottomInWrap = getProfileExpandedSectionBottomOffsetInWrap(wrap);
+    var desiredSvgTop;
+    if (targetBottomInWrap !== null) {
+      desiredSvgTop = wrapTopAtRest + targetBottomInWrap - svgHeight;
+    } else {
+      var focusCenterOffset =
+        (focusRect.y + f + focusRect.height / 2) * profileScale;
+      desiredSvgTop =
+        getProfileLabelFocusCenterScreenYPx() - focusCenterOffset;
+    }
     var extendUp =
       Math.max(0, naturalWrapTop - desiredSvgTop) +
       getProfileLabelFocusExtraExtendUpPx();
@@ -22116,13 +22166,21 @@
     if (!svg || !wrap || !cache) return;
     var scale = cache.profileScale;
     var framePx = getHandkerchiefOuterFramePx();
+    var totalH = CANVAS_H + 2 * framePx;
+    var svgHeight = totalH * scale;
+    var targetBottomInWrap = getProfileExpandedSectionBottomOffsetInWrap(wrap);
+
+    if (targetBottomInWrap !== null) {
+      svg.style.top = targetBottomInWrap - svgHeight + "px";
+      svg.style.bottom = "auto";
+      return;
+    }
+
+    var wrapTopAtRest = getWrapViewportTopAtRest(wrap);
     var focusRect = getProfileLabelFocusRect();
     var focusCenterOffsetInSvg =
       (focusRect.y + framePx + focusRect.height / 2) * scale;
     var targetFocusCenterY = getProfileLabelFocusCenterScreenYPx();
-
-    void svg.offsetHeight;
-    var wrapTopAtRest = getWrapViewportTopAtRest(wrap);
     var topInWrap = targetFocusCenterY - focusCenterOffsetInSvg - wrapTopAtRest;
 
     svg.style.top = topInWrap + "px";
@@ -22131,9 +22189,9 @@
     void svg.offsetHeight;
     var actualFocusCenterY =
       wrapTopAtRest + topInWrap + focusCenterOffsetInSvg;
-    var drift = actualFocusCenterY - targetFocusCenterY;
-    if (Math.abs(drift) > 0.5) {
-      svg.style.top = topInWrap - drift + "px";
+    var centerDrift = actualFocusCenterY - targetFocusCenterY;
+    if (Math.abs(centerDrift) > 0.5) {
+      svg.style.top = topInWrap - centerDrift + "px";
     }
   }
 
@@ -22710,7 +22768,20 @@
     return sectionIndex === 3;
   }
 
-  /** Profile: same zoom-in width, horizontal center, label band at viewport vertical center. */
+  /** Profile: zoom-in width, horizontal center; handkerchief bottom aligned to the open profile section bottom. */
+  function computeQuestionnaireProfileBottomAnchoredTop(wrap, scale, f) {
+    if (!wrap) return 0;
+    var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
+    var totalH = CANVAS_H + 2 * framePx;
+    var svgHeight = totalH * scale;
+    var targetBottomInWrap = getProfileExpandedSectionBottomOffsetInWrap(wrap);
+    if (targetBottomInWrap === null) {
+      return computeQuestionnaireProfileLabelCenteredTop(wrap, scale, f);
+    }
+    return targetBottomInWrap - svgHeight;
+  }
+
+  /** Fallback profile vertical anchor: label band at viewport vertical center. */
   function computeQuestionnaireProfileLabelCenteredTop(wrap, scale, f) {
     if (!wrap) return 0;
     var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
@@ -22752,6 +22823,42 @@
     return separatorViewportTop - wrapTop;
   }
 
+  /**
+   * Vertical offset (relative to the canvas stage-wrap) of the profile
+   * section's bottom edge when that section is open. Uses a live measurement
+   * while the card is expanded; during section transitions it falls back to
+   * separator top + the card's expanded height CSS variable.
+   */
+  function getProfileExpandedSectionBottomOffsetInWrap(wrap) {
+    if (!wrap) return null;
+    var stackEl = document.getElementById("questionnaire-stack");
+    if (!stackEl) return null;
+    var profileCard =
+      stackEl.querySelector('.questionnaire-card[data-section-key="profile"]') ||
+      stackEl.querySelector(".questionnaire-card:first-child");
+    if (!profileCard) return null;
+
+    var wrapTop = wrap.getBoundingClientRect().top;
+    var topInWrap = getProfileTopSeparatorOffsetInWrap(wrap);
+    var expandedHeight = parseFloat(
+      window.getComputedStyle(profileCard).getPropertyValue(
+        "--questionnaire-card-expanded-height"
+      )
+    );
+
+    // Prefer the synced expanded height: on first paint and during the folder
+    // drop animation the live rect still reflects a shorter in-flight height.
+    if (expandedHeight > 0) {
+      return topInWrap + expandedHeight;
+    }
+
+    if (profileCard.classList.contains("is-expanded")) {
+      return profileCard.getBoundingClientRect().bottom - wrapTop;
+    }
+
+    return null;
+  }
+
   /** Body autonomy: zoom-in width, horizontal center, focus band (top bar + fan) anchored to the profile section's top separator line. */
   function computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f) {
     if (!wrap) return 0;
@@ -22776,7 +22883,7 @@
     var center = getQuestionnaireHostCenter(wrap);
     var svgTop;
     if (isQuestionnaireProfileSection(sectionIndex)) {
-      svgTop = computeQuestionnaireProfileLabelCenteredTop(wrap, scale, f);
+      svgTop = computeQuestionnaireProfileBottomAnchoredTop(wrap, scale, f);
     } else if (isQuestionnaireBodyAutonomySection(sectionIndex)) {
       svgTop = computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f);
     } else {
