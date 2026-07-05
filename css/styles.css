@@ -1818,6 +1818,10 @@ button.sidebar__grid-btn {
      rectangle height or the font size (the JS measures the header element, not
      its transformed children). Tune to taste: larger = lower, 0 = off. */
   --questionnaire-card-title-optical-shift: 0.12em;
+  /* Extra downward nudge for closed red folders only (PROFILE, GRID, … at rest).
+     Open-section headers use --questionnaire-card-title-optical-shift alone.
+     Applied via transform on header children — does not affect measured height. */
+  --questionnaire-card-closed-title-optical-extra: 0.025em;
   /* The separator square is already perfectly centered by flexbox, but it rides
      the same downward optical shift as the (top-heavy) uppercase text, which
      leaves it sitting a touch LOW. This raises just the square back toward the
@@ -2130,7 +2134,8 @@ button.sidebar__grid-btn {
     calc(
       var(--questionnaire-card-header-height) *
         var(--questionnaire-card-overlap) / -2 +
-        var(--questionnaire-card-title-optical-shift, 0px)
+        var(--questionnaire-card-title-optical-shift, 0px) +
+        var(--questionnaire-card-closed-title-optical-extra, 0px)
     )
   );
 }
@@ -2145,7 +2150,12 @@ button.sidebar__grid-btn {
 .questionnaire-card:not(.is-expanded):first-child:focus-within .questionnaire-card__header > * {
   /* Hover grows the first folder back to full height, so drop the overlap
      re-centering but keep the optical nudge so the title stays consistent. */
-  transform: translateY(var(--questionnaire-card-title-optical-shift, 0));
+  transform: translateY(
+    calc(
+      var(--questionnaire-card-title-optical-shift, 0px) +
+        var(--questionnaire-card-closed-title-optical-extra, 0px)
+    )
+  );
 }
 
 /* Respect reduced-motion: keep the static overlap/size but drop the animation. */
@@ -2326,7 +2336,8 @@ button.sidebar__grid-btn {
   transform: translateY(
     calc(
       var(--questionnaire-card-header-height) * var(--questionnaire-card-overlap) / 2 +
-        var(--questionnaire-card-title-optical-shift, 0px)
+        var(--questionnaire-card-title-optical-shift, 0px) +
+        var(--questionnaire-card-closed-title-optical-extra, 0px)
     )
   );
 }
