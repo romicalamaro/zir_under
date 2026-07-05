@@ -32,6 +32,9 @@
   /** Coarse octagon/square cells for star-grid Hope merge detection. */
   var cachedStarCoarseMergeCells = null;
   var cachedStarCoarseMergeCellsSig = "";
+  /** Uniform spatial hash over the coarse cells (see getStarCoarseCellSpatialIndex). */
+  var cachedStarCellSpatialIndex = null;
+  var cachedStarCellSpatialIndexSig = "";
   /** @type {{ id: string, cx: number, cy: number, r: number }[]} */
   var cachedStructuralCircles = [];
   /** Chord keys for structural ellipse outlines (Circles grid merge hit-test). */
@@ -1495,6 +1498,19 @@
   }
 
   var autoMergeRunScheduled = false;
+
+  /**
+   * True while the user is actively dragging the Pride (auto-merge intensity)
+   * slider. Used to defer the heavy recompute until release.
+   */
+  var autoMergeIntensityDragging = false;
+
+  /**
+   * True while a grid-density drag is in progress with Pride regions on screen.
+   * While set, the Pride fills render without their (expensive to composite)
+   * blur shadow; the shadow is restored on release so the final result matches.
+   */
+  var prideDragShadowSuppressed = false;
 
   /** Coalesced idle run — keeps slider drags responsive on dense grids. */
   function scheduleRunAutoMerge() {
@@ -3135,6 +3151,40 @@
    * @param {SVGElement} defs
    * @param {{ points: { x: number, y: number }[] }[]} mergedRegions
    */
+  /**
+   * Build an SVG "x,y ..." points string for a merge region with a CONSISTENT
+   * winding direction (always positive signed area). traceFaces returns some
+   * faces clockwise and some counter-clockwise; when opposite-wound polygons
+   * overlap inside a single clipPath/mask, SVG's default nonzero rule cancels the
+   * overlap and punches a spurious hole (dots vanished near the grid edges).
+   * Forcing one winding keeps every polygon's filled area identical while making
+   * the union render correctly.
+   * @param {{ x: number, y: number }[]} pts
+   * @returns {string}
+   */
+  function mergeRegionPointsAttr(pts) {
+    var signedArea = 0;
+    var k;
+    for (k = 0; k < pts.length; k++) {
+      var n = (k + 1) % pts.length;
+      signedArea += pts[k].x * pts[n].y - pts[n].x * pts[k].y;
+    }
+    var attr = "";
+    if (signedArea < 0) {
+      // Reversed order flips the winding to positive; same enclosed area.
+      for (k = pts.length - 1; k >= 0; k--) {
+        if (k < pts.length - 1) attr += " ";
+        attr += pts[k].x + "," + pts[k].y;
+      }
+    } else {
+      for (k = 0; k < pts.length; k++) {
+        if (k) attr += " ";
+        attr += pts[k].x + "," + pts[k].y;
+      }
+    }
+    return attr;
+  }
+
   function updateMergeRegionsClipPath(defs, mergedRegions) {
     var existing = defs.querySelector("#" + MERGE_REGIONS_CLIP_ID);
     if (existing) defs.removeChild(existing);
@@ -3152,11 +3202,7 @@
     for (i = 0; i < mergedRegions.length; i++) {
       pts = mergedRegions[i].points;
       if (!pts.length) continue;
-      pointsAttr = "";
-      for (p = 0; p < pts.length; p++) {
-        if (p) pointsAttr += " ";
-        pointsAttr += pts[p].x + "," + pts[p].y;
-      }
+      pointsAttr = mergeRegionPointsAttr(pts);
       poly = elSvg("polygon");
       poly.setAttribute("points", pointsAttr);
       clip.appendChild(poly);
@@ -3187,13 +3233,8 @@
     for (var i = 0; i < mergedRegions.length; i++) {
       var pts = mergedRegions[i].points;
       if (!pts.length) continue;
-      var pointsAttr = "";
-      for (var p = 0; p < pts.length; p++) {
-        if (p) pointsAttr += " ";
-        pointsAttr += pts[p].x + "," + pts[p].y;
-      }
       var hole = elSvg("polygon");
-      hole.setAttribute("points", pointsAttr);
+      hole.setAttribute("points", mergeRegionPointsAttr(pts));
       hole.setAttribute("fill", "black");
       mask.appendChild(hole);
     }
@@ -3217,6 +3258,44 @@
   }
 
   /**
+   * Bounding box of a merge region, cached on the (immutable) region object.
+   * Used to cheaply reject region pairs that cannot overlap before running the
+   * costly per-vertex point-in-polygon containment tests.
+   * @param {{ points: { x: number, y: number }[], _bbox?: Object }} region
+   */
+  function getMergeRegionBBox(region) {
+    if (region._bbox) return region._bbox;
+    var pts = region.points;
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    for (var i = 0; i < pts.length; i++) {
+      var px = pts[i].x;
+      var py = pts[i].y;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+    var bb = { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+    region._bbox = bb;
+    return bb;
+  }
+
+  /** True when the two region bounding boxes are fully disjoint (cannot overlap). */
+  function mergeRegionBBoxesDisjoint(a, b) {
+    var ba = getMergeRegionBBox(a);
+    var bb = getMergeRegionBBox(b);
+    return (
+      ba.maxX < bb.minX ||
+      ba.minX > bb.maxX ||
+      ba.maxY < bb.minY ||
+      ba.minY > bb.maxY
+    );
+  }
+
+  /**
    * True when inner lies inside outer (all vertices + smaller area).
    * @param {{ points: { x: number, y: number }[] }} inner
    * @param {{ points: { x: number, y: number }[] }} outer
@@ -3231,6 +3310,19 @@
     var innerArea = polygonAreaAbs(innerPts);
     var outerArea = polygonAreaAbs(outerPts);
     if (innerArea >= outerArea - 1e-3) return false;
+    // Fast reject: inner can only lie inside outer if inner's bbox is within
+    // outer's bbox. Skips the per-vertex point-in-polygon walk for the common
+    // case of spatially separated regions. Output is identical.
+    var innerBox = getMergeRegionBBox(inner);
+    var outerBox = getMergeRegionBBox(outer);
+    if (
+      innerBox.minX < outerBox.minX ||
+      innerBox.maxX > outerBox.maxX ||
+      innerBox.minY < outerBox.minY ||
+      innerBox.maxY > outerBox.maxY
+    ) {
+      return false;
+    }
     var i;
     for (i = 0; i < innerPts.length; i++) {
       if (
@@ -3254,6 +3346,9 @@
     var innerArea = polygonAreaAbs(inner.points);
     var outerArea = polygonAreaAbs(outer.points);
     if (innerArea >= outerArea - 1e-3) return false;
+    // Fast reject: if the boxes are fully disjoint the centroid cannot fall
+    // inside outer either, so skip the point-in-polygon test. Output identical.
+    if (mergeRegionBBoxesDisjoint(inner, outer)) return false;
     var c = getMergeRegionCentroid(inner.points);
     return hopePointInPolygon(c.x, c.y, outer.points);
   }
@@ -3263,6 +3358,46 @@
    * @param {{ points: { x: number, y: number }[] }[]} regions
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
+  /**
+   * Collapse merge regions that describe the same physical area. As a drag
+   * progresses the same enclosed area is re-detected every frame with a slightly
+   * different polygon, and the sticky logic hoards each copy — runtime logs showed
+   * ~1300 stored regions but only ~84 geometrically distinct ones (the rest were
+   * duplicates), which ballooned the O(n^2) sticky/dedupe cost and the number of
+   * clip polygons. Keying by rounded centroid + area keeps one representative per
+   * area, so the visible union (and every downstream mask/clip) is unchanged.
+   * @param {{ points: { x: number, y: number }[] }[]} regions
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function dedupeMergeRegionsBySignature(regions) {
+    if (!regions || regions.length <= 1) return regions || [];
+    var seen = Object.create(null);
+    var out = [];
+    for (var i = 0; i < regions.length; i++) {
+      var pts = regions[i].points;
+      if (!pts || !pts.length) {
+        out.push(regions[i]);
+        continue;
+      }
+      var sx = 0;
+      var sy = 0;
+      for (var k = 0; k < pts.length; k++) {
+        sx += pts[k].x;
+        sy += pts[k].y;
+      }
+      var sig =
+        Math.round(sx / pts.length) +
+        "," +
+        Math.round(sy / pts.length) +
+        "," +
+        Math.round(polygonAreaAbs(pts));
+      if (seen[sig]) continue;
+      seen[sig] = true;
+      out.push(regions[i]);
+    }
+    return out;
+  }
+
   function dedupeContainedMergeRegions(regions) {
     if (!regions || regions.length <= 1) return regions || [];
     var sorted = regions.slice().sort(function (a, b) {
@@ -3288,6 +3423,15 @@
     if (!previousSticky || !previousSticky.length) return freshRegions;
     if (!freshRegions.length) return previousSticky;
 
+    // Compute the "touches a removed edge" set ONCE for all previous sticky
+    // regions. The old code called filterMergeRegionsTouchingRemovedEdges([prev])
+    // per region, and each call rebuilt the removed-edge midpoint list by scanning
+    // every grid segment — O(regions x segments), which reached millions of ops
+    // once sticky grew large. Batching keeps output identical.
+    var touchingSet = new Set(
+      filterMergeRegionsTouchingRemovedEdges(previousSticky)
+    );
+
     var out = freshRegions.slice();
     var pi;
     for (pi = 0; pi < previousSticky.length; pi++) {
@@ -3305,7 +3449,7 @@
       }
       if (subsumed) continue;
       if (
-        filterMergeRegionsTouchingRemovedEdges([prev]).length &&
+        touchingSet.has(prev) &&
         out.indexOf(prev) < 0
       ) {
         out.push(prev);
@@ -3340,7 +3484,9 @@
       mergedRegions = freshRegions;
     } else if (freshRegions.length) {
       stickyMergedCutoutFaces = dedupeContainedMergeRegions(
-        mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+        dedupeMergeRegionsBySignature(
+          mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+        )
       );
       mergedRegions = stickyMergedCutoutFaces;
     } else if (
@@ -3352,6 +3498,12 @@
     } else {
       mergedRegions = stickyMergedCutoutFaces || [];
     }
+
+    // These are the authoritative merged regions for this render. getMergedRegionsForMask()
+    // (used by hasActiveMergeCutouts, the fill layer, clip paths, etc.) would otherwise
+    // recompute the same O(n^2) sticky-dedupe from scratch on its first call this frame,
+    // costing hundreds of ms on dense merges. Prime its memo with the value we just built.
+    mergedRegionsForMaskCache = mergedRegions;
 
     updateGridWhiteMaskDef(defs, mergedRegions, bounds);
     updateMergeRegionsClipPath(defs, mergedRegions);
@@ -3370,17 +3522,49 @@
     applyMergeReveal();
   }
 
+  /**
+   * Cached child-node refs for the Hope reveal hot path. `designSvg.querySelector("#id")`
+   * walks the whole SVG subtree; during a merge drag the stipple dots layer holds a
+   * ~1.6MB parsed SVG, so each lookup cost hundreds of ms. These layers/defs are created
+   * once in createDesignSvg() and persist, so we resolve them once per design SVG and
+   * reuse. The cache self-invalidates when designSvg is rebuilt or a node detaches.
+   */
+  var revealDomCache = null;
+
+  function getRevealDom() {
+    var c = revealDomCache;
+    if (
+      c &&
+      c.svg === designSvg &&
+      c.dotsLayer &&
+      designSvg.contains(c.dotsLayer)
+    ) {
+      return c;
+    }
+    revealDomCache = {
+      svg: designSvg,
+      maskClipped: designSvg.querySelector("#inner-clipped-grid-mask"),
+      hopeFillClipped: designSvg.querySelector("#inner-clipped-hope-merge-fill"),
+      dotsClipped: designSvg.querySelector("#inner-clipped-stipple-dots"),
+      hopeFillLayer: designSvg.querySelector("#layer-hope-merge-fill"),
+      dotsLayer: designSvg.querySelector("#layer-stipple-dots"),
+      defs: designSvg.querySelector("defs"),
+    };
+    return revealDomCache;
+  }
+
   function applyMergeReveal() {
     if (!designSvg) return;
 
     var active = hasActiveMergeCutouts();
     var showHope = isEmotionLayerActive("hope");
-    var maskClipped = designSvg.querySelector("#inner-clipped-grid-mask");
-    var hopeFillClipped = designSvg.querySelector("#inner-clipped-hope-merge-fill");
-    var dotsClipped = designSvg.querySelector("#inner-clipped-stipple-dots");
-    var hopeFillLayer = designSvg.querySelector("#layer-hope-merge-fill");
-    var dotsLayer = designSvg.querySelector("#layer-stipple-dots");
-    var defs = designSvg.querySelector("defs");
+    var dom = getRevealDom();
+    var maskClipped = dom.maskClipped;
+    var hopeFillClipped = dom.hopeFillClipped;
+    var dotsClipped = dom.dotsClipped;
+    var hopeFillLayer = dom.hopeFillLayer;
+    var dotsLayer = dom.dotsLayer;
+    var defs = dom.defs;
     var hasClipDef = !!(
       defs && defs.querySelector("#" + MERGE_REGIONS_CLIP_ID)
     );
@@ -3436,7 +3620,9 @@
       result = freshRegions;
     } else if (freshRegions.length || stickyMergedCutoutFaces) {
       result = dedupeContainedMergeRegions(
-        mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+        dedupeMergeRegionsBySignature(
+          mergeHopeStickyCutoutFaces(freshRegions, stickyMergedCutoutFaces)
+        )
       );
     } else {
       result = freshRegions;
@@ -3955,6 +4141,19 @@
         : 6;
     var edgeIdx = 0;
 
+    // Resolve each polygon edge to its structural circle exactly once. The chain
+    // walk below re-inspects edges by index, so without this memo the same edge
+    // would be re-matched against every structural circle many times per region
+    // (O(edges^2 x circles)). Same inputs -> same result, just computed once.
+    var edgeCircles = new Array(n);
+    var ei;
+    for (ei = 0; ei < n; ei++) {
+      edgeCircles[ei] = getStructuralCircleForPrideEdge(
+        points[ei],
+        points[(ei + 1) % n]
+      );
+    }
+
     pathParts.push(
       "M" + prideOutlineCoord(points[0].x) + "," + prideOutlineCoord(points[0].y)
     );
@@ -3963,7 +4162,7 @@
       var from = points[edgeIdx];
       var toIdx = (edgeIdx + 1) % n;
       var to = points[toIdx];
-      var circle = getStructuralCircleForPrideEdge(from, to);
+      var circle = edgeCircles[edgeIdx];
 
       if (circle) {
         var endIdx = toIdx;
@@ -3971,12 +4170,7 @@
         while (chainGuard < n) {
           chainGuard++;
           var nextEnd = (endIdx + 1) % n;
-          if (
-            !structuralCirclesMatch(
-              circle,
-              getStructuralCircleForPrideEdge(points[endIdx], points[nextEnd])
-            )
-          ) {
+          if (!structuralCirclesMatch(circle, edgeCircles[endIdx])) {
             break;
           }
           endIdx = nextEnd;
@@ -4071,11 +4265,17 @@
    */
   function createAutoMergeRegionGroup(pts, fillColor) {
     var g = elSvg("g");
+    // While a grid-density drag is in progress we skip the blur-filtered shadow
+    // polygon (expensive for the browser to composite on dense grids). The
+    // shadow is re-added on release, so the committed result is identical.
+    var withShadow = !prideDragShadowSuppressed;
 
     if (isCirclesGrid()) {
       var outline = buildCirclesGridPrideOutline(pts);
       if (!outline.pathD) return g;
-      appendAutoMergeFilteredShadowPolygon(g, outline.shadowPoints);
+      if (withShadow) {
+        appendAutoMergeFilteredShadowPolygon(g, outline.shadowPoints);
+      }
       var smoothPath = elSvg("path");
       smoothPath.setAttribute("d", outline.pathD);
       smoothPath.setAttribute("fill", fillColor);
@@ -4088,7 +4288,9 @@
     }
 
     var pointsAttr = polygonPointsToAttr(pts);
-    appendAutoMergeFilteredShadowPolygon(g, pts);
+    if (withShadow) {
+      appendAutoMergeFilteredShadowPolygon(g, pts);
+    }
     var poly = elSvg("polygon");
     poly.setAttribute("points", pointsAttr);
     poly.setAttribute("fill", fillColor);
@@ -4249,7 +4451,7 @@
 
   function renderHopeMergeFillLayer() {
     if (!designSvg) return;
-    var layer = designSvg.querySelector("#layer-hope-merge-fill");
+    var layer = getRevealDom().hopeFillLayer;
     if (!layer) return;
 
     while (layer.firstChild) layer.removeChild(layer.firstChild);
@@ -4283,17 +4485,18 @@
 
   function renderStippleDotsLayer() {
     if (!designSvg) return;
-    var layer = designSvg.querySelector("#layer-stipple-dots");
-    var defs = designSvg.querySelector("defs");
+    var dom = getRevealDom();
+    var layer = dom.dotsLayer;
+    var defs = dom.defs;
     if (!layer) return;
-
-    while (layer.firstChild) layer.removeChild(layer.firstChild);
 
     if (
       !isEmotionLayerActive("hope") ||
       !hasActiveMergeCutouts() ||
       !hopeStippleImageReady
     ) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      layer.__stippleSig = "";
       layer.removeAttribute("clip-path");
       return;
     }
@@ -4302,6 +4505,8 @@
       defs && defs.querySelector("#" + MERGE_REGIONS_CLIP_ID)
     );
     if (!hasMergeClip) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      layer.__stippleSig = "";
       layer.removeAttribute("clip-path");
       return;
     }
@@ -4310,14 +4515,34 @@
     syncStippleContentClipPath(defs);
 
     if (hopeStippleSvgText) {
+      // The dots are a constant full-canvas pattern (depends only on dot color +
+      // canvas size). Between drag frames only the clip-path (set above) changes,
+      // so re-parsing the ~1.6MB stipple SVG every frame is pure waste. Reuse the
+      // already-mounted content when its signature is unchanged.
+      var stippleSig =
+        "svg|" +
+        getHopeDotsColor() +
+        "|" +
+        CANVAS_W +
+        "x" +
+        CANVAS_H +
+        "|" +
+        hopeStippleSvgText.length;
+      if (layer.__stippleSig === stippleSig && layer.firstChild) {
+        return;
+      }
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
       appendHopeStippleSvgToLayer(
         layer,
         hopeStippleSvgText,
         getHopeDotsColor()
       );
+      layer.__stippleSig = stippleSig;
       return;
     }
 
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+    layer.__stippleSig = "";
     ensureHopeDotsMaskDef(defs);
     var rect = elSvg("rect");
     rect.setAttribute("data-hope-dots-rect", "1");
@@ -5091,6 +5316,33 @@
   }
 
   /**
+   * Called when a grid-density drag starts. If Pride regions are on screen, drop
+   * their blur shadow for the duration of the drag (cheaper to composite) and
+   * repaint the fills once. No-op when there are no Pride regions.
+   */
+  function beginPrideDragShadowSuppression() {
+    if (prideDragShadowSuppressed) return;
+    if (!hasActivePrideAutoMergeRegions()) return;
+    prideDragShadowSuppressed = true;
+    renderAutoMergeFillsLayer();
+  }
+
+  /** Called on grid-density drag release — restores the Pride shadow. */
+  function endPrideDragShadowSuppression() {
+    if (!prideDragShadowSuppressed) return;
+    prideDragShadowSuppressed = false;
+    renderAutoMergeFillsLayer();
+  }
+
+  /** Wire begin/end shadow suppression to a grid-density slider's drag. */
+  function attachPrideDragShadowSuppression(slider) {
+    if (!slider) return;
+    slider.addEventListener("pointerdown", beginPrideDragShadowSuppression);
+    slider.addEventListener("pointerup", endPrideDragShadowSuppression);
+    slider.addEventListener("pointercancel", endPrideDragShadowSuppression);
+  }
+
+  /**
    * @returns {{ cx: number, cy: number, r: number }[]}
    */
   function getActiveCircles() {
@@ -5567,15 +5819,41 @@
   /** How many structural circle blocks overlap a Pride auto-merge region. */
   function countStructuralCirclesInsideMergeRegion(region) {
     if (!cachedStructuralCircles.length || !region.points.length) return 0;
+    var pts = region.points;
+    // Compute the region's bounding box once, then skip the expensive overlap
+    // test for any circle whose (slightly expanded) bounding box cannot touch
+    // it. The 1.05 margin safely covers the enlarged ellipse test (1.08 ~=
+    // 1.039x radius) used inside structuralCircleOverlapsMergeRegion, so the
+    // count is identical — just far fewer full checks on dense grids.
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var k;
+    for (k = 0; k < pts.length; k++) {
+      if (pts[k].x < minX) minX = pts[k].x;
+      if (pts[k].x > maxX) maxX = pts[k].x;
+      if (pts[k].y < minY) minY = pts[k].y;
+      if (pts[k].y > maxY) maxY = pts[k].y;
+    }
     var count = 0;
     var i;
+    var c;
+    var ex;
+    var ey;
     for (i = 0; i < cachedStructuralCircles.length; i++) {
+      c = cachedStructuralCircles[i];
+      ex = c.rx * 1.05;
+      ey = c.ry * 1.05;
       if (
-        structuralCircleOverlapsMergeRegion(
-          cachedStructuralCircles[i],
-          region.points
-        )
+        c.cx + ex < minX ||
+        c.cx - ex > maxX ||
+        c.cy + ey < minY ||
+        c.cy - ey > maxY
       ) {
+        continue;
+      }
+      if (structuralCircleOverlapsMergeRegion(c, pts)) {
         count++;
       }
     }
@@ -6991,6 +7269,86 @@
    * hit-test, so the visual hole stays clean.
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
+  /**
+   * Uniform spatial hash over the (layout-stable) coarse merge cells. Each cell
+   * index is registered into every bucket its bounding box overlaps, so a point
+   * lookup only tests the handful of cells sharing that point's bucket instead
+   * of every cell. Cached alongside the cells cache (same layout signature), so
+   * it is built once per layout and reused for every drag frame.
+   * @param {{ points: { x: number, y: number }[] }[]} cells
+   * @returns {{ bucketSize: number, buckets: Object }}
+   */
+  function getStarCoarseCellSpatialIndex(cells) {
+    if (
+      cachedStarCellSpatialIndex !== null &&
+      cachedStarCellSpatialIndexSig === cachedStarCoarseMergeCellsSig
+    ) {
+      return cachedStarCellSpatialIndex;
+    }
+
+    var i;
+    var totalSize = 0;
+    for (i = 0; i < cells.length; i++) {
+      var bbox = ensureStarCellBBox(cells[i]);
+      totalSize += bbox.maxX - bbox.minX + (bbox.maxY - bbox.minY);
+    }
+    // Bucket ~one average cell wide, so most points land in a bucket holding a
+    // small constant number of candidate cells.
+    var bucketSize = Math.max(
+      cells.length ? totalSize / (cells.length * 2) : 1,
+      1
+    );
+
+    var buckets = {};
+    for (i = 0; i < cells.length; i++) {
+      var bb = cells[i]._mergeBBox;
+      var c0 = Math.floor(bb.minX / bucketSize);
+      var c1 = Math.floor(bb.maxX / bucketSize);
+      var r0 = Math.floor(bb.minY / bucketSize);
+      var r1 = Math.floor(bb.maxY / bucketSize);
+      for (var cc = c0; cc <= c1; cc++) {
+        for (var rr = r0; rr <= r1; rr++) {
+          var key = cc + "," + rr;
+          if (buckets[key]) {
+            buckets[key].push(i);
+          } else {
+            buckets[key] = [i];
+          }
+        }
+      }
+    }
+
+    cachedStarCellSpatialIndex = { bucketSize: bucketSize, buckets: buckets };
+    cachedStarCellSpatialIndexSig = cachedStarCoarseMergeCellsSig;
+    return cachedStarCellSpatialIndex;
+  }
+
+  /**
+   * Compute (and cache) a cell's bounding box. Cached on the layout-stable cell
+   * object, so it is only walked once per cell per layout.
+   * @param {{ points: { x: number, y: number }[], _mergeBBox?: Object }} cell
+   */
+  function ensureStarCellBBox(cell) {
+    var bbox = cell._mergeBBox;
+    if (bbox) return bbox;
+    var pts = cell.points;
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    for (var bi = 0; bi < pts.length; bi++) {
+      var px = pts[bi].x;
+      var py = pts[bi].y;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+    bbox = { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+    cell._mergeBBox = bbox;
+    return bbox;
+  }
+
   function getStarGridRevealedMergeCells() {
     if (!removedEdges.size) return [];
     var cells = getStarGridCoarseMergeCells();
@@ -7009,17 +7367,46 @@
     }
     if (!mids.length) return [];
 
-    var out = [];
-    var ci;
+    // Instead of testing every cell against every midpoint (O(cells x mids)),
+    // route each midpoint through a uniform spatial hash so it only checks the
+    // few cells sharing its bucket. Output is identical: a cell is revealed iff
+    // at least one midpoint falls inside it, emitted in original cell order.
+    var index = getStarCoarseCellSpatialIndex(cells);
+    var bucketSize = index.bucketSize;
+    var buckets = index.buckets;
+    var revealed = null;
     var mi;
-    for (ci = 0; ci < cells.length; ci++) {
-      for (mi = 0; mi < mids.length; mi++) {
-        if (hopePointInPolygon(mids[mi].x, mids[mi].y, cells[ci].points)) {
-          out.push(cells[ci]);
-          break;
+    for (mi = 0; mi < mids.length; mi++) {
+      var m = mids[mi];
+      var bucket = buckets[Math.floor(m.x / bucketSize) + "," + Math.floor(m.y / bucketSize)];
+      if (!bucket) continue;
+      for (var bj = 0; bj < bucket.length; bj++) {
+        var ci = bucket[bj];
+        if (revealed && revealed.has(ci)) continue;
+        var cell = cells[ci];
+        var bbox = cell._mergeBBox;
+        if (
+          m.x < bbox.minX ||
+          m.x > bbox.maxX ||
+          m.y < bbox.minY ||
+          m.y > bbox.maxY
+        ) {
+          continue;
+        }
+        if (hopePointInPolygon(m.x, m.y, cell.points)) {
+          if (!revealed) revealed = new Set();
+          revealed.add(ci);
         }
       }
     }
+
+    var out = [];
+    if (revealed) {
+      for (var oi = 0; oi < cells.length; oi++) {
+        if (revealed.has(oi)) out.push(cells[oi]);
+      }
+    }
+
     return out;
   }
 
@@ -7250,14 +7637,20 @@
     updateHopeResetButton();
   }
 
-  function clearAutoMergeState(resetIntensityTracking) {
+  function clearAutoMergeState(resetIntensityTracking, skipRender) {
     autoMergeEdgeKeys.clear();
     autoMergeFillRegions = null;
     if (resetIntensityTracking !== false) {
       lastAppliedAutoMergeIntensity = -1;
     }
     updateHopeResetButton();
-    renderAutoMergeFillsLayer();
+    // runAutoMerge() clears state as a first step but always re-renders the
+    // fills layer afterwards (either the early return below or at the end), so
+    // it passes skipRender=true to avoid a redundant full teardown/rebuild of
+    // the SVG layer on every Pride slider step.
+    if (skipRender !== true) {
+      renderAutoMergeFillsLayer();
+    }
   }
 
   function updateHopeResetButton() {
@@ -7310,7 +7703,7 @@
     var prideSegments = getSegmentsForPrideAutoMerge();
     if (!prideSegments.length) return;
 
-    clearAutoMergeState(false);
+    clearAutoMergeState(false, true);
 
     if (intensity <= 0) {
       lastAppliedAutoMergeIntensity = 0;
@@ -21007,11 +21400,9 @@
       if (visibleStarFills.length) {
         patternLayer.appendChild(starFillsToGroup(visibleStarFills));
       }
-      patternLayer.appendChild(
-        buildCachedGridSegmentsGroup(
-          getVisibleSegments(getAllSegmentsForTracing())
-        )
-      );
+      var allStarSegs = getAllSegmentsForTracing();
+      var visStarSegs = getVisibleSegments(allStarSegs);
+      patternLayer.appendChild(buildCachedGridSegmentsGroup(visStarSegs));
       renderJunctionCircleEmotionMarkers();
       renderAngerDiamondTrianglesLayer();
       return;
@@ -21663,6 +22054,9 @@
 
   /** Final commit when the user releases a main grid slider. */
   function renderAfterSliderRelease() {
+    // Safety net: guarantee the Pride shadow is restored on release even if a
+    // pointerup/pointercancel was missed. The full render below reflects it.
+    prideDragShadowSuppressed = false;
     sliderRenderGeneration++;
     var hadPreview = sliderPreviewRendered;
     var previewWasInFlight = sliderRenderPending || sliderRenderScheduled;
@@ -24355,6 +24749,7 @@
       slider.value = String(octagonsNStepFromValue(OCTAGONS_N_DEFAULT));
       slider.addEventListener("input", scheduleSliderRender);
       slider.addEventListener("change", renderAfterSliderRelease);
+      attachPrideDragShadowSuppression(slider);
     }
 
     var innerSlider = document.getElementById("inner-scale");
@@ -24366,6 +24761,7 @@
       innerSlider.value = String(innerScaleStepFromValue(INNER_SCALE_DEFAULT));
       innerSlider.addEventListener("input", scheduleSliderRender);
       innerSlider.addEventListener("change", renderAfterSliderRelease);
+      attachPrideDragShadowSuppression(innerSlider);
     }
 
     lastCommittedGridStructureSignature = getGridStructureSignature();
@@ -24733,7 +25129,19 @@
         typeof AUTO_MERGE_INTENSITY_DEFAULT !== "undefined"
           ? AUTO_MERGE_INTENSITY_DEFAULT
           : 0;
-      function onAutoMergeIntensityInteract() {
+      // While the user actively drags the Pride slider we only update the
+      // slider's own value readout (cheap) and DEFER the heavy runAutoMerge()
+      // recompute until the drag is released (pointerup / pointercancel /
+      // change). On dense grids the merge computation blocks the main thread,
+      // so running it once on release keeps the drag smooth. The final merged
+      // result is identical to running it on every step.
+      function onAutoMergeIntensityInput() {
+        syncAllFeelingsSliderOutputs();
+        if (autoMergeIntensityDragging) return;
+        scheduleRunAutoMerge();
+      }
+      function commitAutoMergeIntensity() {
+        autoMergeIntensityDragging = false;
         syncAllFeelingsSliderOutputs();
         scheduleRunAutoMerge();
       }
@@ -24742,13 +25150,26 @@
         autoMergeMin,
         autoMergeMax,
         autoMergeDefault,
-        onAutoMergeIntensityInteract
+        onAutoMergeIntensityInput
       );
       var autoMergeIntensitySlider = document.getElementById("auto-merge-intensity");
       if (autoMergeIntensitySlider) {
+        autoMergeIntensitySlider.addEventListener("pointerdown", function () {
+          autoMergeIntensityDragging = true;
+        });
         autoMergeIntensitySlider.addEventListener(
-          "pointerdown",
-          onAutoMergeIntensityInteract
+          "pointerup",
+          commitAutoMergeIntensity
+        );
+        autoMergeIntensitySlider.addEventListener(
+          "pointercancel",
+          commitAutoMergeIntensity
+        );
+        // change fires on release for both pointer and keyboard, and doubles as
+        // a safety net if pointerup is missed (guard resets the drag flag).
+        autoMergeIntensitySlider.addEventListener(
+          "change",
+          commitAutoMergeIntensity
         );
       }
     })();

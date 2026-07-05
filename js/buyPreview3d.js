@@ -95,7 +95,7 @@
     var fallbackHeading = locale === "fa" ? "ممنون!" : "Thank you!";
     var fallbackCopy =
       locale === "fa"
-        ? "پرسشنامه را تکمیل کردی و منسوج خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای خودمختاری بر بدن خود مبارزه می‌کنند."
+        ? "پرسشنامه را تکمیل کردی و طرح پارچه‌ی انتخابی خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند."
         : "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.";
 
     return {

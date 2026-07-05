@@ -194,8 +194,6 @@
     buildUniformLineLayout: Circles.buildUniformLineLayout,
     buildUniformVerticalLineXs: Circles.buildUniformVerticalLineXs,
     buildSplitGridSegments: Circles.buildSplitGridSegments,
-    buildCoarseCircleBlockBoundarySegments:
-      Circles.buildCoarseCircleBlockBoundarySegments,
     buildPatternSegments: Circles.buildPatternSegments,
     buildBleedPatternSegments: Circles.buildBleedPatternSegments,
     buildBleedStructuralCircles: Circles.buildBleedStructuralCircles,

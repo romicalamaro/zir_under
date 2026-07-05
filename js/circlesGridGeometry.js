@@ -509,74 +509,6 @@
   }
 
   /**
-   * Coarse 2×2 circle-block mesh for Pride auto-merge (block outer boundaries only).
-   * @param {number} n
-   * @param {number} canvasW
-   * @param {number} canvasH
-   * @returns {{ x1: number, y1: number, x2: number, y2: number }[]}
-   */
-  function buildCoarseCircleBlockBoundarySegments(n, canvasW, canvasH) {
-    var layout = computeLayout(n, canvasW, canvasH);
-    var S = layout.tileSize;
-    var verticalXs = [];
-    var horizontalYs = [];
-    var segments = [];
-    var seen = {};
-    var col;
-    var row;
-    var i;
-    var j;
-    var x;
-    var y;
-
-    function segmentKey(x1, y1, x2, y2) {
-      x1 = roundCoord(x1);
-      y1 = roundCoord(y1);
-      x2 = roundCoord(x2);
-      y2 = roundCoord(y2);
-      if (x1 > x2 || (x1 === x2 && y1 > y2)) {
-        return x2 + "," + y2 + "," + x1 + "," + y1;
-      }
-      return x1 + "," + y1 + "," + x2 + "," + y2;
-    }
-
-    function addSegment(x1, y1, x2, y2) {
-      var key = segmentKey(x1, y1, x2, y2);
-      if (seen[key]) return;
-      seen[key] = true;
-      segments.push({
-        x1: roundCoord(x1),
-        y1: roundCoord(y1),
-        x2: roundCoord(x2),
-        y2: roundCoord(y2),
-      });
-    }
-
-    for (col = 0; col <= layout.cols; col += 2) {
-      verticalXs.push(roundCoord(col * S));
-    }
-    for (row = 0; row <= layout.rows; row += 2) {
-      horizontalYs.push(roundCoord(layout.offsetY + row * S));
-    }
-
-    // Split at every crossing so traceFaces can walk enclosed block cells.
-    for (i = 0; i < verticalXs.length; i++) {
-      x = verticalXs[i];
-      for (j = 0; j < horizontalYs.length - 1; j++) {
-        addSegment(x, horizontalYs[j], x, horizontalYs[j + 1]);
-      }
-    }
-    for (j = 0; j < horizontalYs.length; j++) {
-      y = horizontalYs[j];
-      for (i = 0; i < verticalXs.length - 1; i++) {
-        addSegment(verticalXs[i], y, verticalXs[i + 1], y);
-      }
-    }
-
-    return segments;
-  }
-
-  /**
    * @param {number} tileSize
    * @param {number} canvasW
    * @param {number} canvasH
@@ -949,7 +881,6 @@
     buildEllipseBoundarySegments: buildEllipseBoundarySegments,
     buildPrideCircleTessellationSegments: buildPrideCircleTessellationSegments,
     buildHopeMergeTessellationSegments: buildHopeMergeTessellationSegments,
-    buildCoarseCircleBlockBoundarySegments: buildCoarseCircleBlockBoundarySegments,
     buildPatternSegments: buildPatternSegments,
     buildBleedPatternSegments: buildBleedPatternSegments,
     buildBleedStructuralCircles: buildBleedStructuralCircles,

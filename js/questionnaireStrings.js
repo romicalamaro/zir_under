@@ -171,7 +171,7 @@
         },
       },
       gridType: {
-        label: "choose your grid",
+        label: "choose your base",
         ariaLabel: "Grid type",
         options: {
           octagon: "Octagons",
@@ -302,7 +302,7 @@
       profile: { num: 1, name: "پروفایل" },
       grid: { num: 2, name: "جامعه" },
       family: { num: 3, name: "خانواده" },
-      bodyAutonomy: { num: 4, name: "خودمختاری بدن" },
+      bodyAutonomy: { num: 4, name: "آزادی پوشش" },
       feelings: { num: 5, name: "احساسات" },
       colors: { num: 6, name: "رنگ‌ها" },
       submitOrder: { num: 7, name: "ثبت و سفارش" },
@@ -311,7 +311,7 @@
       intro:
         "وقتی به ایران فکر می‌کنید، این احساسات را تا چه حد تجربه می‌کنید؟",
       hopeIntro:
-        "امید چیزی است که می‌سازید. روی بوم بکשید تا آن را آشکار کنید.",
+        "امید چیزی است که می‌سازید. روی بوم بکشید تا آن را آشکار کنید.",
       hopeHeading: "امید",
       tableRows: [
         { label: "ترس", stepId: "angerVerticalLength" },
@@ -350,7 +350,7 @@
       goToArchive: "خرید",
       completionPreviewHeading: "ممنون!",
       completionPreviewCopy:
-        "پرسشنامه را تکمیل کردی و منسوج خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای خودمختاری بر بدن خود مبارزه می‌کنند.",
+        "پرسشنامه را تکمیل کردی و طرح پارچه‌ی انتخابی خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند.",
       savedToArchive: "در آرشیو ذخیره شد",
       archiveFull:
         "آرشیو پر است - برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",
@@ -461,7 +461,7 @@
         },
       },
       gridType: {
-        label: "شبکه خود را انتخاب کنید",
+        label: "پایهٔ خود را انتخاب کنید",
         ariaLabel: "نوع شبکه",
         options: {
           octagon: "هشت‌ضلعی‌ها",

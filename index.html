@@ -435,8 +435,8 @@
                   lang="fa"
                   dir="rtl"
                 >
-                  منسوجات مدولار که همبستگی با مبارزهٔ زنان ایرانی برای
-                  خودمختاری بر بدنشان ابراز می&zwnj;کند
+                  پارچه های چند منظوره که همبستگی با مبارزهٔ زنان ایرانی برای
+                  خودمختاری بر بدنشان ابراز می&zwnj;کند.
                 </p>
               </div>
             </div>
@@ -461,12 +461,12 @@
                     lang="fa"
                     dir="rtl"
                   >
-                    زیر یک سامانهٔ منسوجات مدولار است که شال‌ها، پوشش‌ها و
-                    روسری‌هایی خلق
+                    "زیر" سامانهٔ بافت پارچه های چند منظوره است که شال‌ها،
+                    پوشش‌ها و روسری‌هایی خلق
                     می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند.
-                    طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات
+                    طراحی‌های آن بر پایهٔ یک زبان اشاره است که حالات
                     عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران
-                    بخشی از هویتشان است، صدا می‌دهد.
+                    بخشی از هویتشان است، اشاره می‌کند.
                   </p>
                 </div>
               </div>
@@ -571,9 +571,9 @@
                       lang="fa"
                       dir="rtl"
                     >
-                      طراحی منسوجات زیر از طومار توپقاپی الهام گرفته شده است؛
-                      مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که
-                      به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و
+                      طراحی پارچه های "زیر" از طومار توپقاپی الهام گرفته شده
+                      است؛ مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و
+                      شانزدهم که به‌عنوان تاریخچه از نقشه‌ها برای معماران و
                       هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.
                     </p>
                     <p class="page2-home-topkapi__body">
@@ -680,7 +680,7 @@
                       <span class="page2-footer__subheading"
                         >Translate to Persian</span
                       >
-                      <span class="page2-footer__note">Liraz Ten</span>
+                      <span class="page2-footer__note">Jozef Yer<br />Liraz Ten</span>
                     </div>
                   </div>
                   <div class="page2-footer__col">
@@ -1064,8 +1064,8 @@
                       lang="fa"
                       dir="rtl"
                     >
-                      پارچهٔ مدولار خود را طراحی کنید و به این اعتراض برای حق زنان
-                      بر بدن خود بپیوندید
+                      طرح پارچهٔ خود را طراحی کنید و به این اعتراض برای حق زنان
+                      بر بدن خود بپیوندید.
                     </p>
                   </div>
                   <div class="design-intro__scroll-hint">
@@ -2140,15 +2140,14 @@
       }
 
       /* Copyright — sits on the logo row (row 2) to the right of the zin.under
-         wordmark. grid-column 10 / -1 starts it AFTER the wordmark (which fills
-         cols 1–9), so the text clears the logo instead of sitting on its right
-         edge, while spanning to the grid's right edge gives the line enough
-         width to stay on ONE row (© + year included). The text is left-aligned,
-         so it still visually begins under the Bezalel logo (second column block
-         from the right). align-self/margin pin its baseline to the bottom
-         alongside the lifted logo. */
+         wordmark. grid-column 8 / -1 is the default for 16″ and 21.5″ screens:
+         two columns left of the wordmark's right edge (cols 1–9), closer to
+         the logo. Spanning to the grid's right edge gives the line enough width
+         to stay on ONE row (© + year included). The text is left-aligned, so it
+         still visually begins under the Bezalel logo block. align-self/margin pin
+         its baseline to the bottom alongside the lifted logo. */
       #page2 .page2-footer__copyright {
-        grid-column: 10 / -1;
+        grid-column: 8 / -1;
         grid-row: 2;
         white-space: nowrap;
         align-self: end;
@@ -2168,15 +2167,12 @@
         color: #fff;
       }
 
-      /* Copyright nudge — 21.5″ screens only (viewport ≈ 1920px wide).
-         On this specific screen class the © line sits a bit too far from the
-         zin.under wordmark, so we pull it two grid columns to the LEFT (start
-         at column 8 instead of 10), moving it toward the logo. The range is
-         kept between the 16″ reference (1728) and 27″ displays (2560) so the
-         base layout on every other screen size is untouched. */
-      @media (min-width: 1825px) and (max-width: 2000px) {
+      /* Copyright — 27″ screens only (viewport ≳ 2560px wide): on very wide
+         displays the © line can sit two grid columns further RIGHT (start at
+         column 10 instead of the 16″/21.5″ default of 8). */
+      @media (min-width: 2001px) {
         #page2 .page2-footer__copyright {
-          grid-column: 8 / -1;
+          grid-column: 10 / -1;
         }
       }
 

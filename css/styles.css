@@ -1117,11 +1117,6 @@ button.sidebar__grid-btn {
   mix-blend-mode: color-dodge;
 }
 
-#design-svg.is-pride-brush-mode {
-  cursor: crosshair;
-  touch-action: none;
-}
-
 /* Hope drawing mode: the pointer becomes a pen while the "pen" toggle is on.
    Inline SVG data-URI cursor (white body, black outline) with the hotspot at
    the pen tip (bottom-left, 2 22). Falls back to crosshair if unsupported. */

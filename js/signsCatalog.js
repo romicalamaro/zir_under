@@ -14,9 +14,9 @@
       label: "profile",
       labelFa: "پروفایل",
       description:
-        "This layer holds the personal details: name, age, and the country where the woman currently lives. It is the most technical and neutral layer, forming the basic context of her story.",
+        "This layer holds the personal details: name, age, and the country where the woman currently lives. It is the most neutral layer, forming the basic context of her story.",
       descriptionFa:
-        "این لایه جزئیات شخصی - نام، سن و کشوری که زن در آن زندگی می‌کند - را در بر می‌گیرد. فنی‌ترین و خنثی‌ترین لایه است و زمینهٔ پایهٔ داستان او را می‌سازد.",
+        "این قسمت جزئیات شخصی - نام، سن و کشوری که زن در آن زندگی می‌کند - را در بر می‌گیرد. خنثی‌ترین لایه است و زمینهٔ پایهٔ داستان او را می‌سازد.",
     },
     {
       id: "grid",
@@ -25,7 +25,7 @@
       description:
         "This layer focuses on her sense of belonging to the Iranian community and how present her Iranian identity is in her everyday life. It maps how strongly Iran still shapes who she is.",
       descriptionFa:
-        "این لایه بر حس تعلق او به جامعهٔ ایرانی و حضور هویت ایرانی‌اش در زندگی روزمره تمرکز دارد. نشان می‌دهد ایران تا چه اندازه همچنان شکل‌دهندهٔ هویت اوست.",
+        "این قسمت بر حس تعلق او به جامعهٔ ایرانی و حضور هویت ایرانی‌اش در زندگی روزمره تمرکز دارد. نشان می‌دهد ایران تا چه اندازه همچنان شکل‌دهندهٔ هویت اوست.",
     },
     {
       id: "family",
@@ -34,7 +34,7 @@
       description:
         "This layer speaks about the family and friends who remain in Iran, and the loss, distance, or longing she experiences in relation to them. It marks the emotional borders between the life she left and the people who stayed.",
       descriptionFa:
-        "این لایه دربارهٔ خانواده و دوستانی است که در ایران مانده‌اند و فقدان، فاصله یا اشتیاقی که در رابطه با آن‌ها تجربه می‌کند. مرزهای عاطفی بین زندگی‌ای که رها کرده و کسانی که مانده‌اند را ترسیم می‌کند.",
+        "این قسمت دربارهٔ خانواده و دوستانی است که در ایران مانده‌اند و فقدان، فاصله یا اشتیاقی که در رابطه با آن‌ها تجربه می‌کنند. مرزهای عاطفی بین زندگی‌ای که رها کرده و کسانی که مانده‌اند را ترسیم می‌کند.",
     },
     {
       id: "bodyAutonomy",
@@ -42,11 +42,11 @@
          "autonomy" drops to the line below on the Signs page. The Signs title
          renders newlines via `white-space: pre-line`. */
       label: "Body\nautonomy",
-      labelFa: "خودمختاری بدن",
+      labelFa: "آزادی پوشش",
       description:
         "This layer reflects how much autonomy and ownership she felt over her own body while living in Iran. It captures her experience of control, restriction, or freedom in relation to her physical self.",
       descriptionFa:
-        "این لایه منعکس‌کنندهٔ میزان خودمختاری و مالکیتی است که در ایران بر بدن خود احساس می‌کرد. تجربهٔ کنترل، محدودیت یا آزادی در رابطه با جسم خود را ثبت\u00A0می‌کند.",
+        "این قسمت منعکس‌کنندهٔ میزان خودمختاری و مالکیتی است که در ایران بر بدن خود احساس می‌کرد. تجربهٔ کنترل، محدودیت یا آزادی بر پوشش و رابطه با جسم خود را ثبت\u00A0می‌کند.",
     },
     {
       id: "feelings",
@@ -55,7 +55,7 @@
       description:
         "This final layer holds the most significant feelings that arise when she thinks about Iran. It translates her emotional landscape into visual form - from grief and anger to hope and connection.",
       descriptionFa:
-        "این لایه نهایی مهم‌ترین احساساتی را در بر می‌گیرد که با فکر کردن به ایران به وجود می‌آیند. منظر عاطفی او را به فرم بصری ترجمه می‌کند - از سوگ و خشم تا امید\u00A0و\u00A0پیوند.",
+        "قسمت نهایی مهم‌ترین احساساتی را در بر می‌گیرد که با فکر کردن به ایران به وجود می‌آیند. منظر عاطفی او را به فرم بصری ترجمه می‌کند - از سوگ و خشم تا امید\u00A0و\u00A0پیوند.",
     },
   ];
 
