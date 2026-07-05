@@ -38,6 +38,8 @@
     textureRotation: 90,
     textureFill: true,
     colorFidelity: true,
+    textureMaxSize: 2048,
+    maxPixelRatio: 3,
     enableShadows: false,
     ambientIntensity: 300,
     lightIntensity: 55,
@@ -160,13 +162,18 @@
     }, CART_OPEN_AFTER_ARCHIVE_MS);
   }
 
-  function getHeadscarf3dModuleUrl() {
-    var scriptEl = document.querySelector('script[src*="buyPreview3d.js"]');
-    var version = "headscarf3d.js?v=20260704-color-fidelity";
-    if (!scriptEl || !scriptEl.src) {
-      return new URL("js/" + version, window.location.href).href;
+  function getHeadscarf3dModule() {
+    return window.Headscarf3dModule || null;
+  }
+
+  function loadHeadscarf3dModule() {
+    var mod = getHeadscarf3dModule();
+    if (mod && typeof mod.initHeadscarf3d === "function") {
+      return Promise.resolve(mod);
     }
-    return new URL(version, scriptEl.src).href;
+    return Promise.reject(
+      new Error("Headscarf3dModule not loaded — check three.min.js and headscarf3d.js")
+    );
   }
 
   function clearReadyTimeout() {
@@ -189,7 +196,6 @@
 
   function shouldUse3dPreview() {
     if (prefersReducedMotionNow()) return false;
-    if (window.location.protocol === "file:") return false;
     return true;
   }
 
@@ -519,7 +525,7 @@
       root.classList.add("page2-buy-preview--loading-3d");
       headscarf3dInitPromise = preloadTexture(textureUrl)
         .then(function (textureInfo) {
-          return import(getHeadscarf3dModuleUrl()).then(function (mod) {
+          return loadHeadscarf3dModule().then(function (mod) {
             return { mod: mod, textureInfo: textureInfo };
           });
         })

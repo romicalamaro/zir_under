@@ -4,7 +4,8 @@
   "description": "",
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "linkedom": "^0.18.9"
+    "linkedom": "^0.18.9",
+    "three": "0.170.0"
   },
   "devDependencies": {
     "docx": "^9.5.0",
@@ -21,7 +22,8 @@
     "embed:stipple-assets": "node scripts/embed-stipple-assets.mjs",
     "rasterize:stipple": "node scripts/rasterize-stipple.mjs",
     "convert:shop-webp": "node scripts/convert-shop-webp.mjs",
-    "export:persian-translations": "node scripts/export-persian-translations.mjs"
+    "export:persian-translations": "node scripts/export-persian-translations.mjs",
+    "vendor:three": "node scripts/vendor-three.mjs"
   },
   "keywords": [],
   "author": "",

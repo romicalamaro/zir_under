@@ -326,6 +326,10 @@
     if (nextBtn) nextBtn.disabled = false;
   }
 
+  function isProductPageOpen() {
+    return !!(productSection && !productSection.hidden);
+  }
+
   function stopHoverAutoplay(album) {
     if (album._hoverAutoplayTimer) {
       window.clearInterval(album._hoverAutoplayTimer);
@@ -333,13 +337,22 @@
     }
   }
 
+  function stopAllHoverAutoplay() {
+    albums.forEach(stopHoverAutoplay);
+  }
+
   function startHoverAutoplay(album) {
     stopHoverAutoplay(album);
     var slides = getSlides(album);
     if (slides.length <= 1) return;
     if (prefersReducedMotion()) return;
+    if (isProductPageOpen()) return;
 
     album._hoverAutoplayTimer = window.setInterval(function () {
+      if (isProductPageOpen()) {
+        stopHoverAutoplay(album);
+        return;
+      }
       goTo(album, album._index + 1);
     }, SHOP_HOVER_AUTOPLAY_MS);
   }
@@ -702,7 +715,7 @@
     if (window.Page2Cart && typeof window.Page2Cart.close === "function") {
       window.Page2Cart.close();
     }
-    stopHoverAutoplay(album);
+    stopAllHoverAutoplay();
     var needsBuild = productGallery._album !== album;
     var card = album.closest(".shop-card");
     var nameEl = card && card.querySelector(".shop-card__name");

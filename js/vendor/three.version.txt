@@ -1,0 +1,2 @@
+module: 0.170.0 (three.module.js — optional, for npm vendor script)
+runtime: 0.160.1 (three.min.js — classic script for file:// and http)

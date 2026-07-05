@@ -8,6 +8,8 @@
 
   /** Fixed thumbnail width — sharp on archive cards (~240px card × 2 DPR). */
   var ARCHIVE_THUMB_STORAGE_WIDTH = 480;
+  /** 2× logical export width (~827px) for completion 3D preview texture. */
+  var PREVIEW_3D_CAPTURE_WIDTH = 1654;
   var ARCHIVE_WEBP_QUALITY = 0.92;
   var ARCHIVE_JPEG_QUALITY = 0.93;
 
@@ -318,14 +320,14 @@
     });
   }
 
-  function captureDesignPng() {
+  function captureDesignPngAtWidth(width) {
     return ensureDesignReadyForCapture().then(function () {
       if (typeof window.captureArchiveDesignPng !== "function") {
         return Promise.reject(new Error("Export capture unavailable"));
       }
 
       return window
-        .captureArchiveDesignPng(ARCHIVE_THUMB_STORAGE_WIDTH)
+        .captureArchiveDesignPng(width)
         .then(function (dataUrl) {
           return measurePngDataUrl(dataUrl).then(function (stats) {
             if (stats.uniqueColors <= 2) {
@@ -335,6 +337,14 @@
           });
         });
     });
+  }
+
+  function captureDesignPng() {
+    return captureDesignPngAtWidth(ARCHIVE_THUMB_STORAGE_WIDTH);
+  }
+
+  function captureDesignPngForPreview() {
+    return captureDesignPngAtWidth(PREVIEW_3D_CAPTURE_WIDTH);
   }
 
   function formatSavedDate(isoString) {
@@ -615,5 +625,6 @@
     renderArchiveGrid: renderArchiveGrid,
     revealDesignArchive: revealDesignArchive,
     getEntries: getAllEntries,
+    captureDesignPngForPreview: captureDesignPngForPreview,
   };
 })();

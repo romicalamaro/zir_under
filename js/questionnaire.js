@@ -460,19 +460,42 @@
 
   function openSavedDesignPreview(entry) {
     var snapshot = buildCartSnapshotFromEntry(entry);
-    if (!snapshot || !snapshot.imageUrl) return false;
+    if (!snapshot) return false;
     if (
       !window.BuyPreview3d ||
       typeof window.BuyPreview3d.open !== "function"
     ) {
       return false;
     }
-    return window.BuyPreview3d.open({
-      textureUrl: snapshot.imageUrl,
-      title: snapshot.name || "Designed handkerchief",
-      showGoToArchive: true,
-      onClose: resumeQuestionnaireAfterPreviewClose,
-    });
+
+    function openWithTexture(textureUrl) {
+      if (!textureUrl) return false;
+      return window.BuyPreview3d.open({
+        textureUrl: textureUrl,
+        title: snapshot.name || "Designed handkerchief",
+        showGoToArchive: true,
+        onClose: resumeQuestionnaireAfterPreviewClose,
+      });
+    }
+
+    if (
+      window.HandkerchiefArchive &&
+      typeof window.HandkerchiefArchive.captureDesignPngForPreview ===
+        "function"
+    ) {
+      return window.HandkerchiefArchive.captureDesignPngForPreview()
+        .then(openWithTexture)
+        .catch(function (err) {
+          console.warn(
+            "[Questionnaire] High-res preview capture failed, using archive image:",
+            err
+          );
+          return openWithTexture(snapshot.imageUrl);
+        });
+    }
+
+    if (!snapshot.imageUrl) return false;
+    return openWithTexture(snapshot.imageUrl);
   }
 
   function resumeQuestionnaireAfterPreviewClose() {

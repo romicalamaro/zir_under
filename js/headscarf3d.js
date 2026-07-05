@@ -2,7 +2,13 @@
  * 3D floating headscarf — cloth simulation from Brik export.
  * initHeadscarf3d(root, options) → { destroy, play, pause }
  */
-import * as THREE from 'https://esm.sh/three@0.170.0';
+const THREE = window.THREE;
+if (THREE && !THREE.SRGBColorSpace) {
+  THREE.SRGBColorSpace = "srgb";
+}
+if (THREE && !THREE.NoToneMapping) {
+  THREE.NoToneMapping = 0;
+}
 
 const DEFAULT_CONFIG = {
   playing: true,
@@ -59,6 +65,8 @@ const DEFAULT_CONFIG = {
   textureRotation: 0,
   textureFill: false,
   colorFidelity: false,
+  textureMaxSize: 2048,
+  maxPixelRatio: 2,
   enableShadows: true,
 };
 
@@ -78,7 +86,7 @@ function capMobileDpr() {
   }
 }
 
-export function initHeadscarf3d(root, options) {
+function initHeadscarf3d(root, options) {
   if (!root) return null;
   if (root.clientWidth <= 0 || root.clientHeight <= 0) return null;
   options = options || {};
@@ -170,7 +178,9 @@ export function initHeadscarf3d(root, options) {
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(area.clientWidth, area.clientHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, Number(state.maxPixelRatio) || 2)
+  );
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   if (controls.get("colorFidelity")) {
     renderer.toneMapping = THREE.NoToneMapping;
@@ -583,11 +593,18 @@ export function initHeadscarf3d(root, options) {
   // DESIGN ENGINE — 2D Canvas Texture Compositing
   // ============================================================
 
-  const TEX_SIZE = 1024;
+  const TEX_SIZE = Math.max(
+    512,
+    Math.min(Number(state.textureMaxSize) || 2048, 4096)
+  );
   const designCanvas = document.createElement('canvas');
   designCanvas.width = TEX_SIZE;
   designCanvas.height = TEX_SIZE;
   const dctx = designCanvas.getContext('2d');
+  dctx.imageSmoothingEnabled = true;
+  if (dctx.imageSmoothingQuality !== undefined) {
+    dctx.imageSmoothingQuality = 'high';
+  }
 
   function hexToRgb(hex) {
     const r = parseInt(hex.slice(1,3), 16);
@@ -1088,6 +1105,12 @@ export function initHeadscarf3d(root, options) {
     canvasTexture.wrapT = THREE.ClampToEdgeWrapping;
     canvasTexture.minFilter = THREE.LinearFilter;
     canvasTexture.magFilter = THREE.LinearFilter;
+    if (renderer.capabilities && typeof renderer.capabilities.getMaxAnisotropy === 'function') {
+      const maxAniso = renderer.capabilities.getMaxAnisotropy();
+      if (maxAniso > 1) {
+        canvasTexture.anisotropy = Math.min(8, maxAniso);
+      }
+    }
   
     // Material based on selection
     flagMat = createMaterial(canvasTexture);
@@ -1509,3 +1532,5 @@ export function initHeadscarf3d(root, options) {
     },
   };
 }
+
+window.Headscarf3dModule = { initHeadscarf3d: initHeadscarf3d };

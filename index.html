@@ -12,9 +12,39 @@
     <meta name="application-name" content="zin.under" />
     <meta property="og:title" content="zin.under" />
     <meta property="og:site_name" content="zin.under" />
-    <link rel="stylesheet" href="css/styles.css?v=20260704-feelings-legend" />
+    <!-- Header nav titles: fetch fonts before first paint (avoids FOUT on slow networks). -->
+    <link
+      rel="preload"
+      href="fonts/DIN%20Condensed%20Bold.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="fonts/Vazirmatn-VariableFont_wght.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
     <!-- Header grid must exist before body paints — JS refines track widths later. -->
     <style id="page2-header-critical">
+      @font-face {
+        font-family: "DIN Condensed";
+        src: url("fonts/DIN Condensed Bold.ttf") format("truetype");
+        font-weight: 700;
+        font-style: normal;
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: "Vazirmatn";
+        src: url("fonts/Vazirmatn-VariableFont_wght.ttf") format("truetype");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: block;
+      }
+
       #page2 {
         --page2-gutter: clamp(0.875rem, 1.157vw, 2.5rem);
         --page2-margin-inline: var(--page2-gutter);
@@ -121,7 +151,46 @@
       #page2 .page2-col-title__fa {
         font-family: "Vazirmatn", sans-serif;
       }
+
+      /* Hide nav titles until webfonts finish — prevents fallback flash on production. */
+      #page2:not(.page2--header-fonts-ready) .page2-col-title {
+        visibility: hidden;
+      }
     </style>
+    <script id="page2-header-fonts">
+      (function () {
+        var HEADER_FONT_TIMEOUT_MS = 2500;
+
+        function markHeaderFontsReady() {
+          var page2 = document.getElementById("page2");
+          if (page2) page2.classList.add("page2--header-fonts-ready");
+        }
+
+        function loadHeaderFonts() {
+          if (!document.fonts || !document.fonts.load) {
+            markHeaderFontsReady();
+            return;
+          }
+          Promise.all([
+            document.fonts.load('700 16px "DIN Condensed"'),
+            document.fonts.load('400 16px "Vazirmatn"'),
+          ])
+            .then(markHeaderFontsReady)
+            .catch(markHeaderFontsReady);
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", loadHeaderFonts, {
+            once: true,
+          });
+        } else {
+          loadHeaderFonts();
+        }
+
+        setTimeout(markHeaderFontsReady, HEADER_FONT_TIMEOUT_MS);
+      })();
+    </script>
+    <link rel="stylesheet" href="css/styles.css?v=20260704-feelings-legend" />
   </head>
   <body>
     <div id="page2" class="page2--section-home page2--scrollable">
@@ -502,14 +571,14 @@
                       lang="fa"
                       dir="rtl"
                     >
-                      طراحی منسوجات «زیر» از طومار توپقاپی الهام گرفته شده است؛
+                      طراحی منسوجات زیر از طومار توپقاپی الهام گرفته شده است؛
                       مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که
                       به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و
                       هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.
                     </p>
                     <p class="page2-home-topkapi__body">
                       The design of Under&rsquo;s textiles is inspired by the
-                      Topkapi Scroll - a fifteenth-sixteenth-century
+                      Topkapi Scroll, a fifteenth-sixteenth-century
                       compendium of geometric patterns that functioned as a
                       modular drawing library for Persian-Islamic architects and
                       artisans.
@@ -4050,6 +4119,15 @@
         background: var(--color-brown);
       }
 
+      /* 21.5″ screens only (viewport ≈ 1920px wide): enlarge separator
+         squares between question and answer by 1.5×. */
+      @media (min-width: 1825px) and (max-width: 2000px) {
+        #page2 #section-product .product-spec__square {
+          width: 0.315em;
+          height: 0.315em;
+        }
+      }
+
       #page2 #section-product .product-spec__value-row {
         display: inline-flex;
         align-items: center;
@@ -7462,7 +7540,9 @@
 
     <script defer src="js/shopAlbums.js?v=20260704-feelings-legend"></script>
     <script defer src="js/cartDrawer.js?v=20260701-full-deploy"></script>
-    <script defer src="js/buyPreview3d.js?v=20260704-no-vertical-flash"></script>
+    <script defer src="js/vendor/three.min.js"></script>
+    <script defer src="js/headscarf3d.js?v=20260705-texture-quality"></script>
+    <script defer src="js/buyPreview3d.js?v=20260705-texture-quality"></script>
     <script defer src="js/page2Units.js"></script>
     <script defer src="js/constants.js"></script>
     <script defer src="js/embeddedPaletteCsv.js?v=20260704-palette9-final"></script>

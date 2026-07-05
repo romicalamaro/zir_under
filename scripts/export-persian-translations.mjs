@@ -97,8 +97,8 @@ function collectSitePairs() {
     },
     { en: "Topkapı Scroll", fa: "طومار توپقاپی" },
     {
-      en: "The design of Under's textiles is inspired by the Topkapi Scroll - a fifteenth-sixteenth-century compendium of geometric patterns that functioned as a modular drawing library for Persian-Islamic architects and artisans.",
-      fa: "طراحی منسوجات «زیر» از طومار توپقاپی الهام گرفته شده است؛ مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.",
+      en: "The design of Under's textiles is inspired by the Topkapi Scroll, a fifteenth-sixteenth-century compendium of geometric patterns that functioned as a modular drawing library for Persian-Islamic architects and artisans.",
+      fa: "طراحی منسوجات زیر از طومار توپقاپی الهام گرفته شده است؛ مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.",
     },
     {
       en: "Design your own textile and join the protest for women's right to their own bodies",
