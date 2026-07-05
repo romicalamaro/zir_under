@@ -2276,14 +2276,10 @@
         left: calc(200% / 3);
       }
 
-      /* The rectangle fills its slot and slides in horizontally ("drawer"
-         motion), driven by scroll from JS via a translateX CSS variable (a
-         percentage of the rectangle's own width). 0% = resting, filling the
-         slot; -100% = pushed one full width to the left, clipped away by the
-         slot. Because the slot clips it, each rectangle emerges from its slot's
-         left edge — which is the right edge of the rectangle to its left (and
-         the screen's left edge for the first one). Default 0% keeps the
-         rectangles in place if JS is absent or motion is reduced. */
+      /* The rectangle fills its slot and is revealed horizontally by clip-path,
+         driven by scroll from JS. 0% right inset = fully open; 100% right inset =
+         closed. The image stays anchored while the visible rectangle expands
+         left-to-right, so the artwork does not appear to slide underneath. */
       #page2 #section-home .page2-home-topkapi__rect {
         position: absolute;
         top: 0;
@@ -2296,15 +2292,18 @@
       }
 
       #page2 #section-home .page2-home-topkapi__slot:nth-child(1) .page2-home-topkapi__rect {
-        transform: translateX(var(--page2-topkapi-drawer-1, 0%));
+        --page2-topkapi-drawer-current: var(--page2-topkapi-drawer-1, 0%);
+        clip-path: inset(0 var(--page2-topkapi-drawer-1, 0%) 0 0);
       }
 
       #page2 #section-home .page2-home-topkapi__slot:nth-child(2) .page2-home-topkapi__rect {
-        transform: translateX(var(--page2-topkapi-drawer-2, 0%));
+        --page2-topkapi-drawer-current: var(--page2-topkapi-drawer-2, 0%);
+        clip-path: inset(0 var(--page2-topkapi-drawer-2, 0%) 0 0);
       }
 
       #page2 #section-home .page2-home-topkapi__slot:nth-child(3) .page2-home-topkapi__rect {
-        transform: translateX(var(--page2-topkapi-drawer-3, 0%));
+        --page2-topkapi-drawer-current: var(--page2-topkapi-drawer-3, 0%);
+        clip-path: inset(0 var(--page2-topkapi-drawer-3, 0%) 0 0);
       }
 
       /* Image is wider than the rectangle; the rectangle clips it via overflow
@@ -2331,20 +2330,18 @@
         object-position: center top;
       }
 
-      /* Dark-brown divider lines: painted as a 2px overlay on each rectangle's OWN
-         right edge via ::after (instead of a border). An ::after sits ON TOP of the
-         image rather than insetting it (a border-box border would shrink the content
-         2px inward and expose a thin white gap between the image and the neighbour).
-         The image reaches the rectangle's right edge, flush against the line. This
-         draws three lines (at 1/3, 2/3 and the closing edge) with no line on the
-         far-left edge of the first rectangle. */
+      /* Dark-brown divider lines: painted as a 2px overlay on the MOVING reveal
+         edge. The line uses the same inset value as clip-path, so it stays flush
+         with the currently exposed rectangle edge instead of waiting at the final
+         right edge. */
       #page2 #section-home .page2-home-topkapi__rect::after {
         content: "";
         position: absolute;
         top: 0;
         bottom: 0;
-        right: 0;
+        left: calc(100% - var(--page2-topkapi-drawer-current, 0%));
         width: 2px;
+        transform: translateX(-100%);
         background-color: var(--page2-topkapi-fg);
         pointer-events: none;
       }
@@ -5437,6 +5434,7 @@
           "page2--section-design",
           "page2--section-archive",
         ];
+
         /* Scroll only when active section content exceeds the viewport. */
         function updatePage2Scrollability() {
           var layout = page2.querySelector(".page2-layout");
@@ -5689,6 +5687,15 @@
           var coverTopY = getSignsCoverTopY();
           var coverPx = Math.max(0, pageRect.bottom - coverTopY);
 
+          if (
+            !homeSignsCoverAnchor &&
+            page2.classList.contains("page2--signs-covering") &&
+            window.getComputedStyle(homeSignsEl).position === "fixed"
+          ) {
+            resetAboutExitAnimation();
+            return;
+          }
+
           /* Transition complete — release fixed curtain so signs list scrolls normally. */
           if (homeSignsCoverAnchor && coverTopY <= 0) {
             homeSignsCoverReleaseScroll = homeOverlay.scrollTop;
@@ -5787,11 +5794,14 @@
           page2.style.setProperty("--page2-topkapi-drawer-3", "0%");
         }
 
-        /* Slide the three Topkapı rectangles in like drawers as the section
-           scrolls into view: leftmost first, then middle, then right. Each whole
-           rectangle enters from the screen's left edge and glides right into its
-           slot. Scroll-linked (scrubbed) and reversible — scrolling back up
-           slides them back out in reverse. */
+        var TOPKAPI_DRAWER_SCROLL_SPAN = 0.75;
+        var TOPKAPI_DRAWER_WINDOW = 1 / 3;
+        var TOPKAPI_DRAWER_STAGGER = 1 / 3;
+
+        /* Reveal the three Topkapı rectangles like drawers as the section scrolls
+           into view. The image stays anchored; a clip-mask opens left-to-right so
+           the rectangle reads as expanding instead of the image sliding under it.
+           Each drawer starts only after the previous drawer has fully opened. */
         function updateTopkapiDrawers() {
           if (!topkapiEl || !topkapiRects.length) return;
           if (prefersReducedMotion || !isHomeScrollCol(scrollActiveIndex)) {
@@ -5808,33 +5818,25 @@
 
           var topkapiRect = topkapiEl.getBoundingClientRect();
           var topRel = topkapiRect.top - pageRect.top;
-          /* Overall progress: 0 when the section top is a full viewport below
-             (just entering from the bottom), 1 when it has risen near the top. */
-          var span = vh * 0.85;
+          var span = vh * TOPKAPI_DRAWER_SCROLL_SPAN;
           var p = (vh - topRel) / span;
           if (p < 0) p = 0;
           else if (p > 1) p = 1;
 
           var i;
           for (i = 0; i < topkapiRects.length && i < 3; i++) {
-            /* Sequential thirds: rect 0 slides in over [0, 1/3], rect 1 over
-               [1/3, 2/3], rect 2 over [2/3, 1]. */
-            var local = (p - i / 3) * 3;
+            var start = i * TOPKAPI_DRAWER_STAGGER;
+            var local = (p - start) / TOPKAPI_DRAWER_WINDOW;
             if (local < 0) local = 0;
             else if (local > 1) local = 1;
-            /* easeOutCubic for a softer drawer glide. */
-            var eased = 1 - Math.pow(1 - local, 3);
-            /* Closed offset (in the rectangle's own width): -100% pushes the
-               rectangle one full width to the left, entirely out of its slot, so
-               the slot's overflow:hidden clips it away until its turn. As its
-               stage runs the offset eases to 0 and it slides out from its slot's
-               left edge (the right edge of the rectangle to its left; the
-               screen's edge for the first one). */
-            var closedOffset = -100;
-            var translate = closedOffset * (1 - eased);
+            /* Smoothstep gives a soft edge without the aggressive jump of the
+               old easeOutCubic. The windows are sequential, so only one drawer
+               is actively opening at a time. */
+            var eased = local * local * (3 - 2 * local);
+            var revealInset = 100 * (1 - eased);
             page2.style.setProperty(
               "--page2-topkapi-drawer-" + (i + 1),
-              translate + "%"
+              revealInset + "%"
             );
           }
         }

@@ -92,14 +92,19 @@ function collectSitePairs() {
       fa: "منسوجات مدولار که همبستگی با مبارزهٔ زنان ایرانی برای خودمختاری بر بدنشان ابراز می‌کند.",
     },
     {
-      en: "Under is a modular textile system that creates adaptable scarves, wraps, and head coverings that express solidarity and support for Iranian women. Its designs are based on a visual sign language that translates emotional states into graphic patterns, giving voice to women for whom Iran is part of their identity.\nAll designs on this website were created by Iranian women living outside Iran.",
-      fa: "زیر یک سامانهٔ منسوجات مدولار است که شال‌ها، پوشش‌ها و روسری‌هایی خلق می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند. طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران بخشی از هویتشان است، صدا می‌دهد.\nهمهٔ طراحی‌های این وب‌سایت توسط زنان ایرانی ساکن خارج از ایران خلق شده‌اند.",
+      en: "Under is a modular textile system that creates scarves, wraps, and head coverings that express solidarity and support for Iranian women. Its designs are based on a visual sign language that translates emotional states into graphic patterns, giving voice to women for whom Iran is part of their identity.",
+      fa: "زیر یک سامانهٔ منسوجات مدولار است که شال‌ها، پوشش‌ها و روسری‌هایی خلق می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند. طراحی‌های آن بر پایهٔ یک زبان اشارهٔ دیداری است که حالات عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران بخشی از هویتشان است، صدا می‌دهد.",
+    },
+    { en: "Topkapı Scroll", fa: "طومار توپقاپی" },
+    {
+      en: "The design of Under's textiles is inspired by the Topkapi Scroll - a fifteenth-sixteenth-century compendium of geometric patterns that functioned as a modular drawing library for Persian-Islamic architects and artisans.",
+      fa: "طراحی منسوجات «زیر» از طومار توپقاپی الهام گرفته شده است؛ مجموعه‌ای از الگوهای هندسی از سده‌های پانزدهم و شانزدهم که به‌عنوان کتابخانه‌ای مدولار از نقشه‌ها برای معماران و هنرمندان جهان ایرانی-اسلامی عمل می‌کرد.",
     },
     {
-      en: "Design your own textile and join the protest for women's right to their own bodies.",
-      fa: "منسوجات خود را طراحی کنید و به اعتراض برای حق زنان بر بدن خود بپیوندید.",
+      en: "Design your own textile and join the protest for women's right to their own bodies",
+      fa: "پارچهٔ مدولار خود را طراحی کنید و به این اعتراض برای حق زنان بر بدن خود بپیوندید",
     },
-    { en: "Start in Persian", fa: "شروع به فارسی" },
+    { en: "Start", fa: "شروع" },
   ];
 }
 
@@ -115,17 +120,25 @@ const ACTIVE_UI_KEYS = [
   "yes",
   "no",
   "continue",
+  "next",
   "shuffleLayout",
   "shuffleLayoutAria",
   "submitOrder",
+  "goToArchive",
+  "completionPreviewHeading",
+  "completionPreviewCopy",
   "savedToArchive",
+  "archiveFull",
+  "archiveError",
   "sectionAriaPrefix",
+  "profileAria",
   "feelingsAria",
   "gridAria",
   "familyAria",
   "palettePrefix",
   "initialsPlaceholder",
   "namePlaceholder",
+  "stepsRemainingOne",
 ];
 
 /**
@@ -133,20 +146,35 @@ const ACTIVE_UI_KEYS = [
  * Steps omitted here are internal-only or replaced by another UI (e.g. spider chart).
  */
 const STEP_UI_FIELDS = {
-  livingDuration: ["options", "ariaLabel"],
-  leavingYear: ["ariaLabel"],
-  from: ["ariaLabel"],
-  nowIn: ["ariaLabel"],
-  name: ["ariaLabel", "placeholder", "modeAriaLabel"],
+  livingInIran: ["label", "ariaLabel"],
+  livingDuration: ["label", "options", "ariaLabel"],
+  leavingYear: ["label", "placeholder", "ariaLabel"],
+  from: ["label", "placeholder", "ariaLabel"],
+  nowIn: ["label", "placeholder", "ariaLabel"],
+  name: ["label", "placeholder", "ariaLabel", "modeAriaLabel", "modes"],
   age: ["ariaLabel"],
-  homeAt: ["options", "ariaLabel"],
-  gridType: ["ariaLabel", "options"],
+  homeAt: ["label", "options", "ariaLabel"],
+  gridType: ["label", "ariaLabel", "options"],
   octagonsN: ["label", "ariaLabel", "rangeLabels"],
   innerScale: ["label", "ariaLabel", "rangeLabels"],
+  palette: ["label", "ariaLabel"],
+  borderFrameDivisions: ["label", "ariaLabel"],
+  borderSideWhiteFill: ["label", "ariaLabel"],
   closeFamilyInIran: ["label", "ariaLabel", "options"],
   iranLossTypes: ["label", "ariaLabel", "options"],
   fanLeaves: ["label", "ariaLabel", "rangeLabels"],
-  hopeMode: ["ariaLabel", "options"],
+  angerVerticalLength: ["label", "ariaLabel"],
+  anxietyVerticalStroke: ["label", "ariaLabel"],
+  angerTriangleDensity: ["label", "ariaLabel"],
+  hopeMode: ["label", "ariaLabel", "penAriaLabel", "resetAriaLabel", "options"],
+  circleDensity: ["label", "ariaLabel"],
+  longingCircleDensity: ["label", "ariaLabel"],
+  griefCircleDensity: ["label", "ariaLabel"],
+  strengthDensity: ["label", "ariaLabel"],
+  autoMergeIntensity: ["label", "ariaLabel"],
+  prideFillPercent: ["label", "ariaLabel"],
+  guiltShameFillPercent: ["label", "ariaLabel"],
+  helplessnessPercent: ["label", "ariaLabel"],
 };
 
 /** @param {Pair[]} out @param {object} enStep @param {object} faStep @param {string} field */
@@ -159,9 +187,17 @@ function pushStepField(out, enStep, faStep, field) {
     pushPair(out, enStep.ariaLabel, faStep.ariaLabel);
   } else if (field === "modeAriaLabel" && enStep.modeAriaLabel) {
     pushPair(out, enStep.modeAriaLabel, faStep.modeAriaLabel);
+  } else if (field === "penAriaLabel" && enStep.penAriaLabel) {
+    pushPair(out, enStep.penAriaLabel, faStep.penAriaLabel);
+  } else if (field === "resetAriaLabel" && enStep.resetAriaLabel) {
+    pushPair(out, enStep.resetAriaLabel, faStep.resetAriaLabel);
   } else if (field === "options" && enStep.options) {
     for (const key of Object.keys(enStep.options)) {
       pushPair(out, enStep.options[key], faStep.options[key]);
+    }
+  } else if (field === "modes" && enStep.modes) {
+    for (const key of Object.keys(enStep.modes)) {
+      pushPair(out, enStep.modes[key], faStep.modes[key]);
     }
   } else if (field === "rangeLabels" && enStep.rangeLabels) {
     enStep.rangeLabels.forEach((label, i) => {
@@ -182,6 +218,7 @@ function collectQuestionnairePairs(en, fa) {
   for (const key of ACTIVE_UI_KEYS) {
     pushPair(pairs, en.ui[key], fa.ui[key]);
   }
+  pushPair(pairs, en.ui.stepsRemainingMany(3), fa.ui.stepsRemainingMany(3));
 
   pushPair(pairs, en.ui.nameModes.anonymous, fa.ui.nameModes.anonymous);
   pushPair(pairs, en.ui.nameModes.initials, fa.ui.nameModes.initials);
@@ -191,6 +228,7 @@ function collectQuestionnairePairs(en, fa) {
   pushPair(pairs, buildMadLibLines(en.madLibs.lines), buildMadLibLines(fa.madLibs.lines));
 
   pushPair(pairs, en.feelings.intro, fa.feelings.intro);
+  pushPair(pairs, en.feelings.hopeIntro, fa.feelings.hopeIntro);
   pushPair(pairs, en.feelings.hopeHeading, fa.feelings.hopeHeading);
   en.feelings.tableRows.forEach((row, i) => {
     pushPair(pairs, row.label, fa.feelings.tableRows[i].label);
@@ -198,6 +236,8 @@ function collectQuestionnairePairs(en, fa) {
   en.feelings.scaleLabels.forEach((label, i) => {
     pushPair(pairs, label, fa.feelings.scaleLabels[i]);
   });
+  pushPair(pairs, en.feelings.scaleShort.min, fa.feelings.scaleShort.min);
+  pushPair(pairs, en.feelings.scaleShort.max, fa.feelings.scaleShort.max);
 
   for (const stepId of Object.keys(STEP_UI_FIELDS)) {
     const enStep = en.steps[stepId];
