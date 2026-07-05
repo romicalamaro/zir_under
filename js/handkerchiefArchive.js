@@ -8,8 +8,8 @@
 
   /** Fixed thumbnail width — sharp on archive cards (~240px card × 2 DPR). */
   var ARCHIVE_THUMB_STORAGE_WIDTH = 480;
-  /** 2× logical export width (~827px) for completion 3D preview texture. */
-  var PREVIEW_3D_CAPTURE_WIDTH = 1654;
+  /** 3× logical export width (~827px) for completion 3D preview texture. */
+  var PREVIEW_3D_CAPTURE_WIDTH = 2481;
   var ARCHIVE_WEBP_QUALITY = 0.92;
   var ARCHIVE_JPEG_QUALITY = 0.93;
 
