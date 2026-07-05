@@ -491,19 +491,20 @@ function innerScaleStepFromValue(value) {
 var EDGE_HIT_THRESHOLD_PX = 5;
 
 /**
- * Auto Merge: 8 discrete steps (0–7). 0 = off; steps 1–7 → exactly 2–8 merged areas.
+ * Auto Merge: 8 discrete steps (0–7). 0 = off; steps 1–7 → 4–10 requested merged
+ * areas (after filtering the delivered count is lower, especially at low steps).
  * Edge budget scales with step so higher steps produce larger regions.
  */
 var AUTO_MERGE_INTENSITY_MIN = 0;
 var AUTO_MERGE_INTENSITY_MAX = 7;
 var AUTO_MERGE_INTENSITY_DEFAULT = 0;
 var AUTO_MERGE_INTENSITY_STEPS = 8;
-var AUTO_MERGE_AREA_COUNT_AT_MIN = 2;
-var AUTO_MERGE_AREA_COUNT_AT_MAX = 8;
-var AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MIN = 4;
-var AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MIN = 7;
-var AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MAX = 7;
-var AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MAX = 16;
+var AUTO_MERGE_AREA_COUNT_AT_MIN = 4;
+var AUTO_MERGE_AREA_COUNT_AT_MAX = 10;
+var AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MIN = 5;
+var AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MIN = 8;
+var AUTO_MERGE_EDGES_PER_AREA_MIN_AT_MAX = 9;
+var AUTO_MERGE_EDGES_PER_AREA_MAX_AT_MAX = 20;
 /** Extra seed tries per target area when forming clusters */
 var AUTO_MERGE_SEED_ATTEMPTS_PER_AREA = 12;
 /** Inset from grid content bounds when placing random seeds (px) */
@@ -860,6 +861,15 @@ var CIRCLES_GRID_PRIDE_FILL_PERCENT_MAX = 50;
 var CIRCLES_GRID_GUILT_SHAME_FILL_PERCENT_MAX = 50;
 /** Pride circles grid: keep merged fills that span at least this many structural circles */
 var CIRCLES_GRID_PRIDE_MIN_CIRCLES_INSIDE = 2;
+/**
+ * Pride circles grid: upper bound for the density-scaled "min circles inside"
+ * threshold. On the densest grids (min inner-scale) the density multiplier pushes
+ * the raw threshold up to ~16, which wipes out ALL marks at low Pride intensity
+ * (merged regions there only reach ~12-16 circles). Capping it keeps a few
+ * substantial marks visible. Diamonds keep the full threshold (their regions run
+ * larger), so this cap intentionally applies to the circles grid only.
+ */
+var CIRCLES_GRID_PRIDE_MAX_CIRCLES_INSIDE = 8;
 /** Reference density for Pride area compensation on circles grid */
 var CIRCLES_GRID_PRIDE_REFERENCE_N = CIRCLES_GRID_N_MIN;
 /** Pride circles grid: ellipse outline segments in tessellation (chord count) */

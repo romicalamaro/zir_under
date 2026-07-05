@@ -1488,10 +1488,43 @@
     var guard = 0;
     var maxGuard = adjacency.length * 4;
 
+    // Internal-edge count that joining face nb would ADD to the current cluster:
+    // the number of nb's edges shared (length===2) with a face already in the
+    // cluster. This exactly equals
+    //   collectInternalEdgeKeys(cluster+[nb]).length - currentCount
+    // but costs O(edges-of-nb) instead of re-scanning EVERY mesh edge per trial
+    // (collectInternalEdgeKeys loops all of edgeToFaces). Same values -> same
+    // candidate ordering/selection -> identical clusters.
+    function sharedInternalEdgeDelta(nb) {
+      var pts = faces[nb].points;
+      var d = 0;
+      var e;
+      var a;
+      var b;
+      var key;
+      var fl;
+      var other;
+      for (e = 0; e < pts.length; e++) {
+        a = pts[e];
+        b = pts[(e + 1) % pts.length];
+        key = segmentKey(a.x, a.y, b.x, b.y);
+        fl = edgeToFaces[key];
+        if (!fl || fl.length !== 2) continue;
+        other = fl[0] === nb ? fl[1] : fl[1] === nb ? fl[0] : -1;
+        if (other >= 0 && clusterSet[other]) d++;
+      }
+      return d;
+    }
+
+    // Internal-edge count of the current cluster (a lone seed face has 0).
+    // Tracked incrementally: adding face `best` increases it by exactly
+    // sharedInternalEdgeDelta(best) === best.edgeCount - currentCount, so we can
+    // avoid the O(all-mesh-edges) collectInternalEdgeKeys() scan that previously
+    // ran on EVERY growth iteration (the hot path on dense circles/diamonds
+    // meshes). Values are identical -> same candidate ordering -> same clusters.
+    var currentCount = 0;
     while (guard < maxGuard) {
       guard++;
-      var currentKeys = collectInternalEdgeKeys(cluster, edgeToFaces);
-      var currentCount = currentKeys.length;
 
       if (currentCount >= edgesMax) break;
 
@@ -1500,8 +1533,6 @@
       var neighbors;
       var n;
       var nb;
-      var trial;
-      var trialKeys;
       var trialCount;
 
       for (fi = 0; fi < cluster.length; fi++) {
@@ -1512,9 +1543,7 @@
           if (!canAddFaceToCluster(nb, clusterSet, claimedGlobal, adjacency)) {
             continue;
           }
-          trial = cluster.concat([nb]);
-          trialKeys = collectInternalEdgeKeys(trial, edgeToFaces);
-          trialCount = trialKeys.length;
+          trialCount = currentCount + sharedInternalEdgeDelta(nb);
           if (trialCount > edgesMax) continue;
           candidates.push({
             face: nb,
@@ -1558,6 +1587,7 @@
       if (clusterSet[best.face]) break;
       clusterSet[best.face] = true;
       cluster.push(best.face);
+      currentCount = best.edgeCount;
     }
 
     var finalCount = collectInternalEdgeKeys(cluster, edgeToFaces).length;

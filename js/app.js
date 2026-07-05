@@ -7511,13 +7511,22 @@
       baseMinCircles,
       Math.round(baseMinCircles * getPrideAutoMergeDensityAreaScale())
     );
+    // Circles grid only: cap the density-scaled threshold so low-intensity marks
+    // (merged regions of ~12-16 circles) are not wiped out on the densest grids.
+    // Diamonds keep the uncapped threshold (their merged regions run larger).
+    if (isCirclesGrid()) {
+      var circlesCap =
+        typeof CIRCLES_GRID_PRIDE_MAX_CIRCLES_INSIDE !== "undefined"
+          ? CIRCLES_GRID_PRIDE_MAX_CIRCLES_INSIDE
+          : 8;
+      if (minCircles > circlesCap) minCircles = circlesCap;
+    }
 
     var out = [];
     for (var i = 0; i < regions.length; i++) {
       var region = regions[i];
       var pts = region.points || [];
       if (pts.length < 3) continue;
-
       if (countStructuralCirclesInsideMergeRegion(region) < minCircles) continue;
       out.push(region);
     }
@@ -7701,7 +7710,9 @@
   function runAutoMerge() {
     var intensity = getAutoMergeIntensity();
     var prideSegments = getSegmentsForPrideAutoMerge();
-    if (!prideSegments.length) return;
+    if (!prideSegments.length) {
+      return;
+    }
 
     clearAutoMergeState(false, true);
 
@@ -7759,16 +7770,22 @@
       ? { skipOctagonSquareChecks: true }
       : null;
 
-    for (ci = 0; ci < clusters.length; ci++) {
-      fillRegion = TopkapiGeometry.getClusterFillRegion(
-        prideSegments,
-        baselineFaces,
-        clusters[ci].faceIndices,
-        clusters[ci].edgeKeys,
-        autoMergeEdgeKeys,
-        circlesPrideFillOptions
-      );
-      if (fillRegion) fillRegions.push(fillRegion);
+    // Circles grid never produces valid cluster fill regions (its merged fills
+    // come entirely from the orphan/block pass below), so running the expensive
+    // per-cluster getClusterFillRegion() here is pure wasted work. Skip it for
+    // circles; diamonds (same isCirclesLikeGrid path) DO use cluster fills.
+    if (!isCirclesGrid()) {
+      for (ci = 0; ci < clusters.length; ci++) {
+        fillRegion = TopkapiGeometry.getClusterFillRegion(
+          prideSegments,
+          baselineFaces,
+          clusters[ci].faceIndices,
+          clusters[ci].edgeKeys,
+          autoMergeEdgeKeys,
+          circlesPrideFillOptions
+        );
+        if (fillRegion) fillRegions.push(fillRegion);
+      }
     }
 
     // Star + octagon: square fills between octagons (coarse mesh).
