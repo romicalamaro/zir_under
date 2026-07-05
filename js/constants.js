@@ -96,6 +96,8 @@ var QUESTIONNAIRE_ZOOM_OUT_GRID_COL_START = 9;
 var QUESTIONNAIRE_ZOOM_OUT_GRID_COL_SPAN = 3;
 /** Extra inset so zoom-out handkerchief (incl. shadow) fits inside the canvas host */
 var QUESTIONNAIRE_ZOOM_OUT_EDGE_PAD_PX = 12;
+/** Fine-tune: outer handkerchief top vs questionnaire content top (CSS px; + = lower) */
+var QUESTIONNAIRE_HANDKERCHIEF_TOP_ANCHOR_OFFSET_PX = 0;
 var CANVAS_EDGE_BROWN_BAR_COLOR = "#685450";
 /** Label bar background (color picker default) */
 var LABEL_BAR_BACKGROUND_COLOR_DEFAULT = CANVAS_EDGE_BROWN_BAR_COLOR;

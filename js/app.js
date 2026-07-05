@@ -22869,8 +22869,17 @@
     return sectionIndex === 0;
   }
 
-  function isQuestionnaireBodyAutonomySection(sectionIndex) {
-    return sectionIndex === 3;
+  /** family, bodyAutonomy, feelings, colors, submitOrder — top-align handkerchief to questionnaire. */
+  function isQuestionnaireHandkerchiefTopAnchoredSection(sectionIndex) {
+    return sectionIndex >= 2 && sectionIndex <= 6;
+  }
+
+  function getQuestionnaireHandkerchiefTopAnchorOffsetPx() {
+    return scalePage2ScreenPx(
+      typeof QUESTIONNAIRE_HANDKERCHIEF_TOP_ANCHOR_OFFSET_PX !== "undefined"
+        ? QUESTIONNAIRE_HANDKERCHIEF_TOP_ANCHOR_OFFSET_PX
+        : 0
+    );
   }
 
   /** Profile: zoom-in width, horizontal center; handkerchief bottom aligned to the open profile section bottom. */
@@ -22964,14 +22973,13 @@
     return null;
   }
 
-  /** Body autonomy: zoom-in width, horizontal center, focus band (top bar + fan) anchored to the profile section's top separator line. */
-  function computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f) {
+  /** Align outer handkerchief frame top with questionnaire content top (family → submit). */
+  function computeQuestionnaireHandkerchiefTopAnchoredTop(wrap) {
     if (!wrap) return 0;
-    var framePx = typeof f === "number" ? f : getHandkerchiefOuterFramePx();
-    var focusRect = getBodyAutonomyTopFocusRect();
-    var focusTopOffsetInSvg = (focusRect.y + framePx) * scale;
-    var anchorTopInWrap = getProfileTopSeparatorOffsetInWrap(wrap);
-    return anchorTopInWrap - focusTopOffsetInSvg;
+    return (
+      getProfileTopSeparatorOffsetInWrap(wrap) +
+      getQuestionnaireHandkerchiefTopAnchorOffsetPx()
+    );
   }
 
   function computeQuestionnaireSectionLayout(sectionIndex) {
@@ -22989,8 +22997,8 @@
     var svgTop;
     if (isQuestionnaireProfileSection(sectionIndex)) {
       svgTop = computeQuestionnaireProfileBottomAnchoredTop(wrap, scale, f);
-    } else if (isQuestionnaireBodyAutonomySection(sectionIndex)) {
-      svgTop = computeQuestionnaireBodyAutonomyTopAnchoredTop(wrap, scale, f);
+    } else if (isQuestionnaireHandkerchiefTopAnchoredSection(sectionIndex)) {
+      svgTop = computeQuestionnaireHandkerchiefTopAnchoredTop(wrap);
     } else {
       svgTop = center.centerY - svgHeight / 2;
     }
