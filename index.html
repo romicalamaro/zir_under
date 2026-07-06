@@ -448,7 +448,7 @@
               <div class="page2-home-about">
                 <div class="page2-about-content">
                   <p class="page2-about-text">
-                    Under is a modular textile system that creates
+                    <span class="page2-about-text__name">Under</span> is a modular textile system that creates
                     scarves, wraps, and head coverings that express solidarity
                     and support for
                     Iranian women. Its designs are based on a visual sign
@@ -461,10 +461,10 @@
                     lang="fa"
                     dir="rtl"
                   >
-                    "زیر" سامانهٔ بافت پارچه های چند منظوره است که شال‌ها،
+                    <span class="page2-about-text__name">زیر</span> سامانهٔ بافت پارچه های چند منظوره است که شال‌ها،
                     پوشش‌ها و روسری‌هایی خلق
                     می‌کند که همبستگی و حمایت از زنان ایرانی ابراز می‌کند.
-                    طراحی‌های آن بر پایهٔ یک زبان اشاره است که حالات
+                    طراحی‌های آن بر پایهٔ زبان اشاره است که حالات
                     عاطفی را به الگوهای گرافیکی ترجمه می‌کند و به زنانی که ایران
                     بخشی از هویتشان است، اشاره می‌کند.
                   </p>
@@ -1448,10 +1448,20 @@
         unicode-range: U+0000-002F, U+003A-10FFFF;
       }
 
+      @font-face {
+        font-family: "Suisse Intl";
+        src: url("fonts/WOFF2/SuisseIntlTrial-Medium.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+
       #page2 {
         --page2-ref-width: 1728;
         --page2-ref-height: 1117;
         --page2-gutter: clamp(0.875rem, 1.157vw, 2.5rem); /* 20px @ ref; scales up on large screens */
+        --page2-panel-close-inset: var(--page2-gutter); /* equal top + side offset for panel close × */
+        --page2-cart-close-hit: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref — cart close + item-remove axis */
         --page2-margin-inline: var(--page2-gutter); /* horizontal grid margins = gutter */
         --page2-margin-block-end: clamp(2rem, 2.894vw, 4.5rem); /* 50px @ ref — bottom padding */
         --page2-space-20: var(--page2-gutter);
@@ -1651,21 +1661,6 @@
         pointer-events: none;
       }
 
-      /* Grid overlay above section content and product popup when toggled on */
-      #page2.page2--grid-lines-visible .page2-guides {
-        z-index: 3;
-      }
-
-      /* Fixed to viewport while popup is open so lines stay aligned with the panel */
-      #page2.page2--grid-lines-visible.page2--product-open .page2-guides {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        min-height: 100vh;
-      }
-
       #page2 .page2-col {
         min-height: 100%;
         background: transparent;
@@ -1833,6 +1828,16 @@
         font-weight: 400;
         font-size: var(--page2-about-text-size);
         text-align: right;
+      }
+
+      #page2 .page2-about-text__name {
+        /* Two steps above body (200): 400 then Medium (500). */
+        font-weight: 500;
+      }
+
+      #page2 .page2-about-text--fa .page2-about-text__name {
+        /* Two steps above body (400): 500 then 600. */
+        font-weight: 600;
       }
 
       #page2 .page2-about-media {
@@ -2140,12 +2145,12 @@
       }
 
       /* Copyright — sits on the logo row (row 2) to the right of the zin.under
-         wordmark. grid-column 8 / -1 is the default for 16″ and 21.5″ screens:
-         two columns left of the wordmark's right edge (cols 1–9), closer to
-         the logo. Spanning to the grid's right edge gives the line enough width
-         to stay on ONE row (© + year included). The text is left-aligned, so it
-         still visually begins under the Bezalel logo block. align-self/margin pin
-         its baseline to the bottom alongside the lifted logo. */
+         wordmark. grid-column 8 / -1 is the default for 21.5″ screens; 16″ uses
+         column 9 (one step right) via the max-width rule below. Spanning to the
+         grid's right edge gives the line enough width to stay on ONE row (© +
+         year included). The text is left-aligned, so it still visually begins
+         under the Bezalel logo block. align-self/margin pin its baseline to the
+         bottom alongside the lifted logo. */
       #page2 .page2-footer__copyright {
         grid-column: 8 / -1;
         grid-row: 2;
@@ -2167,10 +2172,20 @@
         color: #fff;
       }
 
+      /* Copyright — 16″ screens only (viewport ≲ 1728px, below the 21.5″ band):
+         nudge one grid column right (9 instead of 8). Larger breakpoints are
+         untouched — 21.5″ keeps column 8, 27″ keeps column 10. */
+      @media (max-width: 1824px) {
+        #page2 .page2-footer__copyright {
+          grid-column: 9 / -1;
+        }
+      }
+
       /* Copyright — 27″ screens only (viewport ≳ 2560px wide): on very wide
          displays the © line can sit two grid columns further RIGHT (start at
-         column 10 instead of the 16″/21.5″ default of 8). */
-      @media (min-width: 2001px) {
+         column 10 instead of the 16″/21.5″ default of 8). 21.5″ at 2048×1152
+         (1× dpr) is 2048 CSS px wide — must stay on column 8, not this rule. */
+      @media (min-width: 2560px) {
         #page2 .page2-footer__copyright {
           grid-column: 10 / -1;
         }
@@ -3779,11 +3794,14 @@
         }
       }
 
-      #page2 .page2-product-page__close {
+      /* Panel close × — shared inset + square hit target so top/side spacing matches
+         across product page, cart drawer, and buy-preview (questionnaire completion). */
+      #page2 .page2-product-page__close,
+      #page2 .page2-cart-drawer__close,
+      #page2 .page2-buy-preview__close {
         position: absolute;
-        top: calc(var(--page2-header-band-height) + var(--page2-gutter));
-        right: var(--page2-gutter);
-        z-index: 3;
+        top: var(--page2-panel-close-inset);
+        right: var(--page2-panel-close-inset);
         margin: 0;
         padding: 0;
         border: none;
@@ -3791,17 +3809,36 @@
         font-family: "Suisse Intl Light", sans-serif;
         font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
         line-height: 1;
-        color: var(--page2-header-cell-fill);
+        color: var(--page2-header-cell-fill, #1a1a1a);
         cursor: pointer;
+        width: 1em;
+        height: 1em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
       }
 
-      #page2 .page2-product-page__close:focus-visible {
-        outline: 2px solid var(--page2-header-cell-fill);
+      /* Product panel is full-height under the fixed header — nudge × below the band
+         so it lines up with cart / completion popups (same viewport Y, equal inset). */
+      #page2 .page2-product-page__close {
+        top: calc(
+          var(--page2-header-band-height) + var(--page2-panel-close-inset)
+        );
+        z-index: 3;
+      }
+
+      #page2 .page2-buy-preview__close {
+        z-index: 2;
+      }
+
+      #page2 .page2-product-page__close:focus-visible,
+      #page2 .page2-cart-drawer__close:focus-visible,
+      #page2 .page2-buy-preview__close:focus-visible {
+        outline: 2px solid var(--page2-header-cell-fill, #1a1a1a);
         outline-offset: 2px;
       }
 
-      /* Column guides for the product page — reuses .page2-col so it picks up
-         the same coloring when the header "show grid" toggle is active. */
       #page2 .page2-product-page .product-guides {
         display: none;
       }
@@ -4329,17 +4366,8 @@
       }
 
 
-      #page2.page2--grid-lines-visible .page2-col {
-        background: rgba(100, 120, 160, 0.07);
-        box-shadow: inset 0 0 0 1px rgba(100, 120, 160, 0.18);
-      }
-
       #page2 .page2-col:nth-child(even) {
         background: transparent;
-      }
-
-      #page2.page2--grid-lines-visible .page2-col:nth-child(even) {
-        background: rgba(100, 120, 160, 0.04);
       }
 
       #page2 .page2-header {
@@ -4442,12 +4470,6 @@
         box-shadow: none;
       }
 
-      #page2.page2--grid-lines-visible
-        .page2-header-col.is-hovered
-        .page2-header-cell {
-        box-shadow: inset 0 0 0 1px rgba(80, 70, 60, 0.45);
-      }
-
       #page2 .page2-header-cell {
         height: var(--page2-header-row-height);
         background: transparent;
@@ -4459,21 +4481,10 @@
         height: var(--page2-header-row-height-bottom);
       }
 
-      #page2.page2--grid-lines-visible
-        .page2-header-col.is-cell-hover-target
-        .page2-header-cell {
-        background: rgba(80, 70, 60, 0.14);
-      }
-
       @media (prefers-reduced-motion: reduce) {
         #page2 .page2-header-cell {
           transition: none;
         }
-      }
-
-      #page2.page2--grid-lines-visible .page2-header-cell {
-        background: rgba(80, 70, 60, 0.08);
-        box-shadow: inset 0 0 0 1px rgba(80, 70, 60, 0.28);
       }
 
       /* Edge columns: middle cell only (top/bottom stay default) */
@@ -4481,7 +4492,6 @@
       #page2 .page2-header-col--right-edge .page2-header-cell:nth-child(2) {
         background: var(--page2-header-cell-fill);
         box-shadow: none;
-        cursor: pointer;
       }
 
       /* Full-bleed side rectangles into viewport margins */
@@ -4825,29 +4835,6 @@
         transition-timing-function: var(--page2-panel-ease-out);
       }
 
-      #page2 .page2-cart-drawer__close {
-        position: absolute;
-        top: var(--page2-gutter);
-        right: var(--page2-gutter);
-        margin: 0;
-        padding: 0;
-        border: none;
-        background: transparent;
-        font-family: "Suisse Intl Light", sans-serif;
-        font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
-        line-height: 1;
-        color: var(--page2-header-cell-fill);
-        cursor: pointer;
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-      }
-
-      #page2 .page2-cart-drawer__close:focus-visible {
-        outline: 2px solid var(--page2-header-cell-fill);
-        outline-offset: 2px;
-      }
-
       #page2 .page2-cart-drawer__body {
         padding: calc(var(--page2-gutter) * 2.5) var(--page2-gutter)
           var(--page2-gutter);
@@ -4878,10 +4865,14 @@
       }
 
       #page2 .page2-cart-drawer__item {
+        position: relative;
         display: grid;
-        grid-template-columns: clamp(3.5rem, 4.63vw, 5rem) 1fr auto; /* 56–80px @ ref */
+        grid-template-columns: clamp(3.5rem, 4.63vw, 5rem) 1fr; /* 56–80px @ ref */
         gap: clamp(0.625rem, 0.926vw, 1rem);
         align-items: center;
+        /* Reserve the same hit target as .page2-cart-drawer__close so copy
+           does not run under the per-item remove ×. */
+        padding-right: var(--page2-cart-close-hit);
       }
 
       #page2 .page2-cart-drawer__item-thumb {
@@ -4968,10 +4959,14 @@
       }
 
       #page2 .page2-cart-drawer__item-remove {
-        justify-self: end;
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        width: var(--page2-cart-close-hit);
+        height: var(--page2-cart-close-hit);
         margin: 0;
-        padding-block: clamp(0.25rem, 0.347vw, 0.375rem);
-        padding-inline: clamp(0.25rem, 0.347vw, 0.375rem) 0;
+        padding: 0;
         border: none;
         background: transparent;
         color: var(--color-brown);
@@ -4979,9 +4974,10 @@
         font-size: clamp(1.125rem, 1.389vw, 1.5rem);
         line-height: 1;
         cursor: pointer;
-        display: flex;
-        justify-content: flex-end;
+        display: inline-flex;
         align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
       }
 
       #page2 .page2-cart-drawer__item-remove:hover {
@@ -5130,27 +5126,6 @@
 
       #page2.page2--buy-preview-open .page2-buy-preview__panel {
         transform: translate3d(0, 0, 0);
-      }
-
-      #page2 .page2-buy-preview__close {
-        position: absolute;
-        top: var(--page2-gutter);
-        right: var(--page2-gutter);
-        z-index: 2;
-        margin: 0;
-        padding: 0;
-        border: none;
-        background: transparent;
-        font-family: "Suisse Intl Light", sans-serif;
-        font-size: clamp(1.5rem, 1.736vw, 2rem); /* 24px @ ref */
-        line-height: 1;
-        color: var(--page2-header-cell-fill, #1a1a1a);
-        cursor: pointer;
-      }
-
-      #page2 .page2-buy-preview__close:focus-visible {
-        outline: 2px solid var(--page2-header-cell-fill, #1a1a1a);
-        outline-offset: 2px;
       }
 
       #page2 .page2-buy-preview__art {
@@ -5401,41 +5376,6 @@
         }
       }
     </style>
-
-    <script id="page-toggle-script">
-      (function () {
-        var page2 = document.getElementById("page2");
-        var gridLinesTrigger =
-          page2 &&
-          page2.querySelector(
-            ".page2-header-col--left-edge .page2-header-cell:nth-child(2)"
-          );
-        var gridLinesVisible = false;
-
-        function applyGridLinesView() {
-          if (!page2) return;
-          page2.classList.toggle("page2--grid-lines-visible", gridLinesVisible);
-        }
-
-        if (gridLinesTrigger) {
-          gridLinesTrigger.addEventListener("mouseenter", function () {
-            gridLinesVisible = true;
-            applyGridLinesView();
-          });
-          gridLinesTrigger.addEventListener("mouseleave", function () {
-            gridLinesVisible = false;
-            applyGridLinesView();
-          });
-        }
-
-        page2.addEventListener("page2:hide", function () {
-          gridLinesVisible = false;
-          applyGridLinesView();
-        });
-
-        applyGridLinesView();
-      })();
-    </script>
 
     <script src="js/page2Units.js"></script>
     <script id="page2-scroll-script">
@@ -6397,7 +6337,6 @@
           headerCols.forEach(function (col, i) {
             col.classList.toggle("is-hovered", i === index);
           });
-          updateHeaderHoverClasses();
           updateHeaderInvertState();
           updateDesignActiveState();
         }
@@ -6409,15 +6348,8 @@
           return -1;
         }
 
-        function updateHeaderHoverClasses() {
-          headerCols.forEach(function (col, i) {
-            col.classList.toggle("is-cell-hover-target", i === hoveredHeaderColIndex);
-          });
-        }
-
         function clearHeaderCellHover() {
           hoveredHeaderColIndex = -1;
-          updateHeaderHoverClasses();
         }
 
         function getHeaderHoverExpandPx() {
@@ -6827,7 +6759,6 @@
             if (index === scrollActiveIndex || isLockedColumn(index)) return;
             ensureLayoutReady();
             hoveredHeaderColIndex = index;
-            updateHeaderHoverClasses();
             refreshLayout(true);
           });
         });

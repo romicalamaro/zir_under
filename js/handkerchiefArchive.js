@@ -321,22 +321,31 @@
   }
 
   function captureDesignPngAtWidth(width) {
-    return ensureDesignReadyForCapture().then(function () {
-      if (typeof window.captureArchiveDesignPng !== "function") {
-        return Promise.reject(new Error("Export capture unavailable"));
-      }
+    if (typeof window.beginArchiveCapture === "function") {
+      window.beginArchiveCapture();
+    }
+    return ensureDesignReadyForCapture()
+      .then(function () {
+        if (typeof window.captureArchiveDesignPng !== "function") {
+          return Promise.reject(new Error("Export capture unavailable"));
+        }
 
-      return window
-        .captureArchiveDesignPng(width)
-        .then(function (dataUrl) {
-          return measurePngDataUrl(dataUrl).then(function (stats) {
-            if (stats.uniqueColors <= 2) {
-              throw new Error("Captured image appears blank");
-            }
-            return dataUrl;
+        return window
+          .captureArchiveDesignPng(width)
+          .then(function (dataUrl) {
+            return measurePngDataUrl(dataUrl).then(function (stats) {
+              if (stats.uniqueColors <= 2) {
+                throw new Error("Captured image appears blank");
+              }
+              return dataUrl;
+            });
           });
-        });
-    });
+      })
+      .finally(function () {
+        if (typeof window.endArchiveCapture === "function") {
+          window.endArchiveCapture();
+        }
+      });
   }
 
   function captureDesignPng() {
@@ -559,22 +568,24 @@
   }
 
   function saveCurrentDesign() {
-    return captureDesignPng()
-      .then(compressImageForStorage)
-      .then(function (encoded) {
-        var profile = getEntryProfile();
-        var entry = {
-          id: Date.now() + "-" + Math.random().toString(36).slice(2, 9),
-          savedAt: new Date().toISOString(),
-          title: profile.name,
-          profile: profile,
-          mimeType: encoded.mimeType,
-          image: encoded.blob,
-        };
-        return putEntry(entry).then(function (savedEntry) {
-          return getAllEntries().then(function (entries) {
-            renderArchiveGridWithEntries(entries);
-            return savedEntry;
+    return captureDesignPngAtWidth(PREVIEW_3D_CAPTURE_WIDTH)
+      .then(function (previewDataUrl) {
+        return compressImageForStorage(previewDataUrl).then(function (encoded) {
+          var profile = getEntryProfile();
+          var entry = {
+            id: Date.now() + "-" + Math.random().toString(36).slice(2, 9),
+            savedAt: new Date().toISOString(),
+            title: profile.name,
+            profile: profile,
+            mimeType: encoded.mimeType,
+            image: encoded.blob,
+          };
+          return putEntry(entry).then(function (savedEntry) {
+            return getAllEntries().then(function (entries) {
+              renderArchiveGridWithEntries(entries);
+              savedEntry.previewCaptureUrl = previewDataUrl;
+              return savedEntry;
+            });
           });
         });
       });

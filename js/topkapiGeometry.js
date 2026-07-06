@@ -1313,11 +1313,14 @@
    * @param {Set<string>} removedSet
    * @returns {{ points: { x: number, y: number }[] }[]}
    */
-  function getMergedPolygonRegions(allSegments, removedSet) {
+  function getMergedPolygonRegions(allSegments, removedSet, options) {
     if (!removedSet || !removedSet.size) return [];
 
-    var baselineFaces = traceFaces(allSegments);
-    var baselineCentroids = facesCentroids(baselineFaces);
+    options = options || {};
+    var baselineFaces =
+      options.baselineFaces || traceFaces(allSegments);
+    var baselineCentroids =
+      options.baselineCentroids || facesCentroids(baselineFaces);
     var visible = getVisibleSegmentsFromRemoved(allSegments, removedSet);
     var currentFaces = traceFaces(visible, {
       maxAreaRatio: MERGED_FACE_MAX_AREA_RATIO,

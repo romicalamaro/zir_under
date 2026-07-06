@@ -25,6 +25,16 @@
    * @type {{x1:number,y1:number,x2:number,y2:number}[] | null}
    */
   var cachedTracingSegments = null;
+  /** Circles/diamonds Hope merge: tessellation depends only on grid structure, not removed edges. */
+  var cachedHopeMergeTessellationSegments = null;
+  var cachedHopeMergeTessellationSignature = "";
+  /** Cached traceFaces() on the hope-merge tessellation — invariant while grid structure is fixed. */
+  var cachedHopeMergeBaselineFaces = null;
+  var cachedHopeMergeBaselineCentroids = null;
+  var cachedHopeMergeBaselineSignature = "";
+  /** Per-frame memo: circle id → "full" | "partial" | "none" for Hope merge outline rendering. */
+  var cachedCircleOutlineModeById = null;
+  var cachedCircleOutlineModeVersion = -1;
   /** @type {{ outline: {x:number,y:number}[] }[]} */
   var cachedStarFills = [];
   /** @type {{ outline: {x:number,y:number}[] }[]} */
@@ -68,6 +78,11 @@
   /** Hope merge drag: rAF-throttled grid-line preview only (full render on pointer up). */
   var hopeMergeDragRenderScheduled = false;
   var hopeMergeDragHadEdgeChanges = false;
+  /** Skip mask DOM rebuild during drag when merged hole geometry is unchanged. */
+  var hopeMergeDragLastMaskSig = "";
+  /** segmentKey → segment for O(removed) midpoint lookup in hope merge filter. */
+  var cachedHopeMergeSegmentByKey = null;
+  var cachedHopeMergeSegmentByKeySignature = "";
   /** Main grid sliders: rAF-throttled preview during drag; light commit on change. */
   var sliderRenderScheduled = false;
   var sliderRenderPending = false;
@@ -122,6 +137,10 @@
   /** Skip palette onLoaded → render() during startup (single consolidated render). */
   var appStartupBootstrapping = true;
   var deferredAutoMergeScheduled = false;
+  /** When runAutoMerge yields zero regions at this intensity, stop idle retries. */
+  var autoMergeExhaustedAtIntensity = null;
+  /** While archive/export capture runs, defer auto-merge retries that reshuffle marks. */
+  var archiveCaptureDepth = 0;
   /** Frame inset overlay (lines, caps, ellipses, diagonals); default hidden */
   var frameInsetOverlayVisible = false;
 
@@ -1479,10 +1498,24 @@
     return hopeStippleReadyPromise;
   }
 
+  function isArchiveCaptureActive() {
+    return archiveCaptureDepth > 0;
+  }
+
+  function beginArchiveCapture() {
+    archiveCaptureDepth += 1;
+  }
+
+  function endArchiveCapture() {
+    archiveCaptureDepth = Math.max(0, archiveCaptureDepth - 1);
+  }
+
   function scheduleDeferredAutoMerge() {
     if (deferredAutoMergeScheduled) return;
+    if (isArchiveCaptureActive()) return;
     if (getAutoMergeIntensity() <= 0) return;
     if (hasActivePrideAutoMergeRegions()) return;
+    if (autoMergeExhaustedAtIntensity === getAutoMergeIntensity()) return;
     deferredAutoMergeScheduled = true;
     var run = function () {
       deferredAutoMergeScheduled = false;
@@ -3470,7 +3503,7 @@
 
     var bounds = getGridContentBounds();
     var mergeSegments = getSegmentsForMergeRegionDetection();
-    var rawMergedRegions = TopkapiGeometry.getMergedPolygonRegions(
+    var rawMergedRegions = getHopeMergePolygonRegions(
       mergeSegments,
       removedEdges
     );
@@ -3499,11 +3532,17 @@
       mergedRegions = stickyMergedCutoutFaces || [];
     }
 
-    // These are the authoritative merged regions for this render. getMergedRegionsForMask()
-    // (used by hasActiveMergeCutouts, the fill layer, clip paths, etc.) would otherwise
-    // recompute the same O(n^2) sticky-dedupe from scratch on its first call this frame,
-    // costing hundreds of ms on dense merges. Prime its memo with the value we just built.
     mergedRegionsForMaskCache = mergedRegions;
+    hopeMergeRegionsRenderCache = mergedRegions.length ? mergedRegions : null;
+    hopeMergeRegionsCacheVersion = hopeMergeStateVersion;
+
+    if (isCirclesLikeGrid() && isHopeMergeDragActive() && trigger === "hope-merge-drag") {
+      var maskSig = hopeMergeMaskSignature(mergedRegions);
+      if (maskSig === hopeMergeDragLastMaskSig) {
+        return;
+      }
+      hopeMergeDragLastMaskSig = maskSig;
+    }
 
     updateGridWhiteMaskDef(defs, mergedRegions, bounds);
     updateMergeRegionsClipPath(defs, mergedRegions);
@@ -3610,7 +3649,7 @@
       return mergedRegionsForMaskCache;
     }
     var freshRegions = filterHopeMergeRegionsForGridType(
-      TopkapiGeometry.getMergedPolygonRegions(
+      getHopeMergePolygonRegions(
         getSegmentsForMergeRegionDetection(),
         removedEdges
       )
@@ -5975,7 +6014,159 @@
    * @param {{ points: { x: number, y: number }[] }[] | null} hopeMergeRegions
    * @returns {"full" | "partial" | "none"}
    */
-  function getStructuralCircleOutlineRenderMode(circle, hopeMergeRegions) {
+  function invalidateHopeMergeTessellationCache() {
+    cachedHopeMergeTessellationSegments = null;
+    cachedHopeMergeTessellationSignature = "";
+    cachedHopeMergeBaselineFaces = null;
+    cachedHopeMergeBaselineCentroids = null;
+    cachedHopeMergeBaselineSignature = "";
+    cachedHopeMergeSegmentByKey = null;
+    cachedHopeMergeSegmentByKeySignature = "";
+  }
+
+  function getHopeMergeSegmentByKey() {
+    var sig = getHopeMergeTessellationCacheSignature();
+    if (
+      cachedHopeMergeSegmentByKey &&
+      cachedHopeMergeSegmentByKeySignature === sig
+    ) {
+      return cachedHopeMergeSegmentByKey;
+    }
+    var map = new Map();
+    var segments = isCirclesLikeGrid()
+      ? getAllSegmentsForTracing()
+      : getSegmentsForHopeMerge();
+    var i;
+    var s;
+    var key;
+    for (i = 0; i < segments.length; i++) {
+      s = segments[i];
+      key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
+      if (!map.has(key)) map.set(key, s);
+    }
+    cachedHopeMergeSegmentByKey = map;
+    cachedHopeMergeSegmentByKeySignature = sig;
+    return map;
+  }
+
+  /**
+   * @param {{ points: { x: number, y: number }[] }[]} regions
+   * @returns {string}
+   */
+  function hopeMergeMaskSignature(regions) {
+    if (!regions || !regions.length) return "0";
+    var parts = [];
+    var i;
+    var pts;
+    var c;
+    for (i = 0; i < regions.length; i++) {
+      pts = regions[i].points;
+      if (!pts.length) continue;
+      c = getMergeRegionCentroid(pts);
+      parts.push(
+        Math.round(c.x) +
+          "," +
+          Math.round(c.y) +
+          ":" +
+          Math.round(polygonAreaAbs(pts))
+      );
+    }
+    parts.sort();
+    return parts.join(";");
+  }
+
+  /**
+   * Midpoints of removed edges — O(|removed|) on circles grid instead of scanning all segments.
+   * @returns {{ x: number, y: number }[]}
+   */
+  function collectRemovedEdgeMidpointsForHopeFilter() {
+    if (!removedEdges.size) return [];
+    if (isCirclesLikeGrid()) {
+      var byKey = getHopeMergeSegmentByKey();
+      var midpoints = [];
+      removedEdges.forEach(function (key) {
+        var s = byKey.get(key);
+        if (!s) return;
+        midpoints.push({ x: (s.x1 + s.x2) * 0.5, y: (s.y1 + s.y2) * 0.5 });
+      });
+      return midpoints;
+    }
+    var midpointsSlow = [];
+    var segments = getSegmentsForHopeMerge();
+    var si;
+    var sSlow;
+    var keySlow;
+    for (si = 0; si < segments.length; si++) {
+      sSlow = segments[si];
+      keySlow = TopkapiGeometry.segmentKey(
+        sSlow.x1,
+        sSlow.y1,
+        sSlow.x2,
+        sSlow.y2
+      );
+      if (!removedEdges.has(keySlow)) continue;
+      midpointsSlow.push({
+        x: (sSlow.x1 + sSlow.x2) * 0.5,
+        y: (sSlow.y1 + sSlow.y2) * 0.5,
+      });
+    }
+    return midpointsSlow;
+  }
+
+  /**
+   * Baseline faces for hope-merge region detection (tessellation mesh only changes with grid structure).
+   * @param {{x1:number,y1:number,x2:number,y2:number}[]} mergeSegments
+   * @returns {{ faces: { points: { x: number, y: number }[] }[], centroids: { x: number, y: number }[] }}
+   */
+  function getHopeMergeBaselineTrace(mergeSegments) {
+    var sig = getHopeMergeTessellationCacheSignature();
+    if (
+      cachedHopeMergeBaselineFaces &&
+      cachedHopeMergeBaselineSignature === sig
+    ) {
+      return {
+        faces: cachedHopeMergeBaselineFaces,
+        centroids: cachedHopeMergeBaselineCentroids,
+      };
+    }
+    var faces = TopkapiGeometry.traceFaces(mergeSegments);
+    var centroids = [];
+    var i;
+    for (i = 0; i < faces.length; i++) {
+      centroids.push(getMergeRegionCentroid(faces[i].points));
+    }
+    cachedHopeMergeBaselineFaces = faces;
+    cachedHopeMergeBaselineCentroids = centroids;
+    cachedHopeMergeBaselineSignature = sig;
+    return { faces: faces, centroids: centroids };
+  }
+
+  /**
+   * @param {{x1:number,y1:number,x2:number,y2:number}[]} mergeSegments
+   * @param {Set<string>} removedSet
+   * @returns {{ points: { x: number, y: number }[] }[]}
+   */
+  function getHopeMergePolygonRegions(mergeSegments, removedSet) {
+    if (isCirclesLikeGrid()) {
+      var baseline = getHopeMergeBaselineTrace(mergeSegments);
+      return TopkapiGeometry.getMergedPolygonRegions(mergeSegments, removedSet, {
+        baselineFaces: baseline.faces,
+        baselineCentroids: baseline.centroids,
+      });
+    }
+    return TopkapiGeometry.getMergedPolygonRegions(mergeSegments, removedSet);
+  }
+
+  function getHopeMergeTessellationCacheSignature() {
+    return gridType + "|" + lastOctagonsN + "|" + getInnerScale();
+  }
+
+  /**
+   * @param {{ id?: string, cx: number, cy: number, rx: number, ry: number }} circle
+   * @param {{ points: { x: number, y: number }[] }[] | null} hopeMergeRegions
+   * @returns {"full" | "partial" | "none"}
+   */
+  function computeStructuralCircleOutlineRenderMode(circle, hopeMergeRegions) {
     if (!circle) return "none";
     var chords = getCirclesLikeGridGeometry().buildEllipseBoundarySegments([circle]);
     if (!chords.length) return "none";
@@ -5989,6 +6180,35 @@
     if (visibleCount === 0) return "none";
     if (visibleCount === chords.length) return "full";
     return "partial";
+  }
+
+  /**
+   * One outline-mode lookup per structural circle per merge state (not per chord segment).
+   * @param {{ points: { x: number, y: number }[] }[] | null} hopeMergeRegions
+   * @returns {Object<string, "full" | "partial" | "none">}
+   */
+  function getStructuralCircleOutlineModeMap(hopeMergeRegions) {
+    if (
+      cachedCircleOutlineModeById !== null &&
+      cachedCircleOutlineModeVersion === hopeMergeStateVersion
+    ) {
+      return cachedCircleOutlineModeById;
+    }
+    var map = Object.create(null);
+    var i;
+    var c;
+    for (i = 0; i < cachedStructuralCircles.length; i++) {
+      c = cachedStructuralCircles[i];
+      map[c.id] = computeStructuralCircleOutlineRenderMode(c, hopeMergeRegions);
+    }
+    cachedCircleOutlineModeById = map;
+    cachedCircleOutlineModeVersion = hopeMergeStateVersion;
+    return map;
+  }
+
+  function getStructuralCircleOutlineRenderMode(circle, hopeMergeRegions) {
+    if (!circle) return "none";
+    return getStructuralCircleOutlineModeMap(hopeMergeRegions)[circle.id] || "none";
   }
 
   /**
@@ -6112,15 +6332,11 @@
   function getFullVisibleStructuralCirclesForPattern() {
     if (!cachedStructuralCircles.length) return [];
     var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var modeMap = getStructuralCircleOutlineModeMap(hopeMergeRegions);
     var out = [];
     var i;
     for (i = 0; i < cachedStructuralCircles.length; i++) {
-      if (
-        getStructuralCircleOutlineRenderMode(
-          cachedStructuralCircles[i],
-          hopeMergeRegions
-        ) === "full"
-      ) {
+      if (modeMap[cachedStructuralCircles[i].id] === "full") {
         out.push(cachedStructuralCircles[i]);
       }
     }
@@ -6130,15 +6346,11 @@
   function getPartialStructuralCirclesForPattern() {
     if (!isCirclesGrid() || !cachedStructuralCircles.length) return [];
     var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var modeMap = getStructuralCircleOutlineModeMap(hopeMergeRegions);
     var out = [];
     var i;
     for (i = 0; i < cachedStructuralCircles.length; i++) {
-      if (
-        getStructuralCircleOutlineRenderMode(
-          cachedStructuralCircles[i],
-          hopeMergeRegions
-        ) === "partial"
-      ) {
+      if (modeMap[cachedStructuralCircles[i].id] === "partial") {
         out.push(cachedStructuralCircles[i]);
       }
     }
@@ -6356,24 +6568,21 @@
    */
   function getVisibleCirclesGridPatternSegments() {
     var hopeMergeRegions = getHopeMergeCutoutRegionsForRendering();
+    var outlineModeByCircleId = getStructuralCircleOutlineModeMap(hopeMergeRegions);
     var tracing = getAllSegmentsForTracing();
     var visible = [];
     var i;
     var s;
     var key;
-    var circle;
+    var circleId;
+    var outlineMode;
     for (i = 0; i < tracing.length; i++) {
       s = tracing[i];
       key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
       if (isSegmentRemoved(key, s, hopeMergeRegions)) continue;
       if (isCirclesGridEllipseChordKey(key)) {
-        circle = getStructuralCircleById(
-          cachedCirclesGridChordKeyToCircleId[key]
-        );
-        var outlineMode = getStructuralCircleOutlineRenderMode(
-          circle,
-          hopeMergeRegions
-        );
+        circleId = cachedCirclesGridChordKeyToCircleId[key];
+        outlineMode = circleId ? outlineModeByCircleId[circleId] : "none";
         if (outlineMode === "full" || outlineMode === "partial") continue;
       }
       visible.push(s);
@@ -6465,12 +6674,22 @@
    */
   function getSegmentsForMergeRegionDetection() {
     if (isCirclesLikeGrid()) {
-      return getCirclesLikeGridGeometry().buildHopeMergeTessellationSegments(
-        lastOctagonsN,
-        CANVAS_W,
-        CANVAS_H,
-        getInnerScale()
-      );
+      var sig = getHopeMergeTessellationCacheSignature();
+      if (
+        cachedHopeMergeTessellationSegments !== null &&
+        cachedHopeMergeTessellationSignature === sig
+      ) {
+        return cachedHopeMergeTessellationSegments;
+      }
+      cachedHopeMergeTessellationSegments =
+        getCirclesLikeGridGeometry().buildHopeMergeTessellationSegments(
+          lastOctagonsN,
+          CANVAS_W,
+          CANVAS_H,
+          getInnerScale()
+        );
+      cachedHopeMergeTessellationSignature = sig;
+      return cachedHopeMergeTessellationSegments;
     }
     // Star grid reveals coarse cells directly (see getStarGridRevealedMergeCells)
     // and ignores the traced regions, so skip the costly full-pattern trace.
@@ -6874,14 +7093,18 @@
       hopeMergeDragRenderScheduled = false;
       if (!isHopeMergeDragActive()) return;
       bumpHopeMergeState();
-      updatePatternGridLinesOnly();
       renderGridMaskLayer("hope-merge-drag");
+      updatePatternGridLinesOnly();
     });
   }
 
   function finalizeHopeMergeDrag() {
     bumpHopeMergeState();
     if (applyDanglingPrune()) bumpHopeMergeState();
+    hopeMergeDragLastMaskSig = "";
+    mergedRegionsForMaskCache = null;
+    hopeMergeRegionsRenderCache = null;
+    hopeMergeRegionsCacheVersion = -1;
     renderPatternAndVerticalLayers();
   }
 
@@ -7064,17 +7287,7 @@
   function filterMergeRegionsTouchingRemovedEdges(regions) {
     if (!regions.length || !removedEdges.size) return regions;
 
-    var midpoints = [];
-    var segments = getSegmentsForHopeMerge();
-    var si;
-    var s;
-    var key;
-    for (si = 0; si < segments.length; si++) {
-      s = segments[si];
-      key = TopkapiGeometry.segmentKey(s.x1, s.y1, s.x2, s.y2);
-      if (!removedEdges.has(key)) continue;
-      midpoints.push({ x: (s.x1 + s.x2) * 0.5, y: (s.y1 + s.y2) * 0.5 });
-    }
+    var midpoints = collectRemovedEdgeMidpointsForHopeFilter();
     if (!midpoints.length) return regions;
 
     var out = [];
@@ -7709,6 +7922,12 @@
 
   function runAutoMerge() {
     var intensity = getAutoMergeIntensity();
+    if (
+      autoMergeExhaustedAtIntensity !== null &&
+      autoMergeExhaustedAtIntensity !== intensity
+    ) {
+      autoMergeExhaustedAtIntensity = null;
+    }
     var prideSegments = getSegmentsForPrideAutoMerge();
     if (!prideSegments.length) {
       return;
@@ -7820,6 +8039,11 @@
     renderPatternAndVerticalLayers();
     renderAutoMergeFillsLayer();
     updateHopeResetButton();
+    if (autoMergeFillRegions.length > 0) {
+      autoMergeExhaustedAtIntensity = null;
+    } else {
+      autoMergeExhaustedAtIntensity = intensity;
+    }
     lastAppliedAutoMergeIntensity = intensity;
   }
 
@@ -9017,8 +9241,12 @@
       renderBackgroundLayer();
     }
     renderVerticalGridLayer();
-    renderPatternLayer();
+    // Mask + merge regions must be computed before the pattern layer: pattern
+    // segment visibility reads getMergedRegionsForMask(), which renderGridMaskLayer
+    // primes. When circles Hope merge defers mask updates during drag, stale cache
+    // here would leave grid lines over stipple holes after pointer-up.
     renderGridMaskLayer("renderPatternAndVerticalLayers");
+    renderPatternLayer();
     renderAutoMergeFillsLayer();
     applyMergeReveal();
   }
@@ -21706,7 +21934,11 @@
     layoutStage();
     updateHopeResetButton();
 
-    if (getAutoMergeIntensity() > 0 && !hasActivePrideAutoMergeRegions()) {
+    if (
+      !isArchiveCaptureActive() &&
+      getAutoMergeIntensity() > 0 &&
+      !hasActivePrideAutoMergeRegions()
+    ) {
       scheduleDeferredAutoMerge();
     }
     applyGridContentVisibility();
@@ -21851,6 +22083,7 @@
 
     cachedAllSegments = buildAllSegments();
     cachedTracingSegments = null;
+    invalidateHopeMergeTessellationCache();
 
     if (isStarGrid()) {
       renderStarGrid();
@@ -21970,6 +22203,7 @@
 
     cachedAllSegments = buildAllSegments();
     cachedTracingSegments = null;
+    invalidateHopeMergeTessellationCache();
     updateInnerContentTransformForGridType();
 
     if (isStarGrid()) {
@@ -22231,10 +22465,11 @@
       var prideIntensity = getAutoMergeIntensity();
       var prideIntensityChanged =
         prideIntensity !== lastAppliedAutoMergeIntensity;
+      var prideNeedsMerge =
+        !hasActivePrideAutoMergeRegions() &&
+        autoMergeExhaustedAtIntensity !== prideIntensity;
       var shouldRunPrideMerge =
-        forceReshuffle ||
-        !hasActivePrideAutoMergeRegions() ||
-        prideIntensityChanged;
+        forceReshuffle || prideNeedsMerge || prideIntensityChanged;
       if (options.skipRender && shouldRunPrideMerge) {
         runAutoMerge();
       } else if (options.skipRender) {
@@ -24665,6 +24900,7 @@
   }
 
   function onHopeResetGrid() {
+    hopeMergeDragLastMaskSig = "";
     clearMergeState();
     clearAutoMergeState();
     renderPatternAndVerticalLayers();
@@ -26377,6 +26613,8 @@
     window.layoutQuestionnaireCanvasFromScroll =
       layoutQuestionnaireCanvasFromScroll;
     window.captureArchiveDesignPng = captureArchiveDesignPng;
+    window.beginArchiveCapture = beginArchiveCapture;
+    window.endArchiveCapture = endArchiveCapture;
 
     window.addEventListener("resize", function () {
       resetPage2QuestionnaireCanvasLayoutCache();

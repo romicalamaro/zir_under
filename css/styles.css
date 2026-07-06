@@ -1817,6 +1817,12 @@ button.sidebar__grid-btn {
      Open-section headers use --questionnaire-card-title-optical-shift alone.
      Applied via transform on header children — does not affect measured height. */
   --questionnaire-card-closed-title-optical-extra: 0.025em;
+  /* Persian (Vazirmatn) section titles: counter the Latin optical shift on the
+     title span only (numbers and square keep their existing nudge). Negative = up. */
+  --questionnaire-card-title-fa-optical-nudge: -0.12em;
+  --questionnaire-card-title-fa-closed-optical-extra: -0.025em;
+  /* Slight size trim so Persian folder titles sit comfortably in the red band. */
+  --questionnaire-card-title-fa-scale: 0.95;
   /* The separator square is already perfectly centered by flexbox, but it rides
      the same downward optical shift as the (top-heavy) uppercase text, which
      leaves it sitting a touch LOW. This raises just the square back toward the
@@ -4787,6 +4793,29 @@ button.sidebar__grid-btn {
   font-family: "DIN Condensed", sans-serif;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+/* Persian section folder titles: the shared header optical shift is tuned for
+   uppercase DIN Condensed and leaves Vazirmatn sitting low. Lift the title
+   only — numbers and the square marker keep their existing transforms. */
+#questionnaire-scroll[lang="fa"] .questionnaire-card__title {
+  position: relative;
+  top: var(--questionnaire-card-title-fa-optical-nudge, -0.12em);
+  font-size: calc(
+    (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 0.91 *
+      var(--questionnaire-card-title-scale, 1) *
+      var(--questionnaire-card-title-text-scale, 1.5) *
+      var(--questionnaire-card-title-fa-scale, 0.95)
+  );
+}
+
+#questionnaire-scroll[lang="fa"]
+  .questionnaire-card:not(.is-expanded)
+  .questionnaire-card__title {
+  top: calc(
+    var(--questionnaire-card-title-fa-optical-nudge, -0.12em) +
+      var(--questionnaire-card-title-fa-closed-optical-extra, -0.025em)
+  );
 }
 
 #questionnaire-scroll[lang="fa"] :is(

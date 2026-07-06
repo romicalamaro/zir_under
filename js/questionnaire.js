@@ -478,24 +478,15 @@
       });
     }
 
-    if (
-      window.HandkerchiefArchive &&
-      typeof window.HandkerchiefArchive.captureDesignPngForPreview ===
-        "function"
-    ) {
-      return window.HandkerchiefArchive.captureDesignPngForPreview()
-        .then(openWithTexture)
-        .catch(function (err) {
-          console.warn(
-            "[Questionnaire] High-res preview capture failed, using archive image:",
-            err
-          );
-          return openWithTexture(snapshot.imageUrl);
-        });
+    if (entry && entry.previewCaptureUrl) {
+      return openWithTexture(entry.previewCaptureUrl);
     }
 
-    if (!snapshot.imageUrl) return false;
-    return openWithTexture(snapshot.imageUrl);
+    if (snapshot.imageUrl) {
+      return openWithTexture(snapshot.imageUrl);
+    }
+
+    return false;
   }
 
   function resumeQuestionnaireAfterPreviewClose() {
@@ -1632,6 +1623,15 @@
     return stepId === "octagonsN" || stepId === "innerScale";
   }
 
+  /** Only steps that change feelings marker layout need a feelings refresh. */
+  function shouldRefreshFeelingsAfterStep(stepId) {
+    if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) return true;
+    if (stepId === GRID_ALL_STEP_ID || isGridStep(stepId)) return true;
+    if (stepId === FAMILY_ALL_STEP_ID || isFamilyStep(stepId)) return true;
+    if (isBodyAutonomyStep(stepId)) return true;
+    return false;
+  }
+
   function triggerCanvasUpdateAfterSync(stepId, preview) {
     ensureQuestionnaireGridReady();
     ensureQuestionnaireCanvasUnlock(stepId);
@@ -1642,11 +1642,7 @@
       triggerCanvasRender();
       return;
     }
-    if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) {
-      triggerFeelingsCanvasUpdate(preview);
-      return;
-    }
-    if (hasFeelingsProgress()) {
+    if (shouldRefreshFeelingsAfterStep(stepId)) {
       triggerFeelingsCanvasUpdate(preview);
       return;
     }
@@ -1811,6 +1807,12 @@
     var key = "palette" + num;
     var btn = document.querySelector('[data-palette-key="' + key + '"]');
     if (btn) {
+      if (
+        btn.classList.contains("is-active") ||
+        btn.getAttribute("aria-pressed") === "true"
+      ) {
+        return;
+      }
       btn.click();
       return;
     }
@@ -2467,8 +2469,8 @@
     var entryStepId = getSectionEntryStepId(sectionKey);
     markStepReached(entryStepId);
     markSectionPassed(sectionKey);
-    syncToPanel();
-    triggerCanvasUpdateAfterSync(entryStepId);
+    // Canvas is kept in sync live as the user answers — do not re-sync the
+    // hidden panel here; that reshuffles emotion marks between sections.
     updateCardAccessibility(displayStepId || entryStepId);
   }
 
@@ -2512,7 +2514,6 @@
       currentSectionIndex = index;
       applyStepUIState(stepId, stepEl);
       checkSectionCompletion(section.key);
-      triggerCanvasRender();
     } else {
       updateCardAccessibility(displayStepId || stepId);
     }
@@ -5887,17 +5888,8 @@
     confirmEl.textContent = getUiString("savedToArchive");
 
     saveBtn.addEventListener("click", function () {
-      // Canvas already reflects questionnaire choices — resyncing the hidden
-      // panel clears hope merge and reshuffles emotion marks.
-      if (answers.hopeMode) {
-        syncHopeModeToPanel(answers.hopeMode);
-      }
-      if (typeof window.render === "function") {
-        window.render();
-      }
-      if (typeof window.layoutStage === "function") {
-        window.layoutStage();
-      }
+      // Canvas already reflects questionnaire choices — do not resync the hidden
+      // panel or re-render here; that clears hope merge and reshuffles emotion marks.
       if (
         !window.HandkerchiefArchive ||
         !window.HandkerchiefArchive.saveCurrentDesign
