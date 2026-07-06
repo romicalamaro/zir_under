@@ -1788,12 +1788,12 @@ button.sidebar__grid-btn {
   /* Section folder titles (PROFILE, GRID, …): may shrink separately from body
      text when the feelings chart is taller than the panel (see JS sync). */
   --questionnaire-card-title-text-scale: 1.5;
-  /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20%, +7% */
-  --questionnaire-small-text-multiplier: 0.585;
+  /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20% */
+  --questionnaire-small-text-multiplier: 0.546;
   /* Unified, fixed question + small-text sizes (do NOT scale with
-     --questionnaire-text-scale). 1.3125rem = 21px, 0.9375rem = 15px @ 16px root. */
+     --questionnaire-text-scale). 1.3125rem = 21px, 0.875rem = 14px @ 16px root. */
   --questionnaire-question-size: 1.3125rem;
-  --questionnaire-small-size: 0.9375rem;
+  --questionnaire-small-size: 0.875rem;
   --questionnaire-vertical-inset: var(--page2-space-20, 1.25rem); /* 20px @ ref */
   /* Fixed breathing room above/below each question divider line, shared by all
      multi-question sections (Community, Family) and the Feelings/Hope line. */
@@ -2576,7 +2576,7 @@ button.sidebar__grid-btn {
 .questionnaire-options--multi .questionnaire-option {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.585) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   padding: 0.45rem 0.4rem;
@@ -3315,7 +3315,9 @@ button.sidebar__grid-btn {
 #questionnaire-scroll[lang="fa"] .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__menu {
   left: auto;
   right: 0;
-  max-width: min(22rem, 100cqw);
+  /* English caps at 22rem; FA needs the full card width so long options (e.g.
+     homeAt) stay on one line while the panel expands left from the trigger. */
+  max-width: 100cqw;
   text-align: right;
   direction: rtl;
 }
@@ -3328,6 +3330,12 @@ button.sidebar__grid-btn {
   .questionnaire-madlibs-dropdown__option
 ) {
   text-align: right;
+}
+
+/* FA profile dropdown options: keep each answer on a single line; width grows
+   leftward via the right-anchored menu rule above. */
+#questionnaire-scroll[lang="fa"] .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__option {
+  white-space: nowrap;
 }
 
 .questionnaire-madlibs-dropdown__option {
@@ -4233,7 +4241,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-sublabel {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.585) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -4450,7 +4458,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-hope-block .questionnaire-section-question-heading {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.585) *
+      var(--questionnaire-small-text-multiplier, 0.546) *
       var(--questionnaire-text-scale, 1)
   );
 }
@@ -4815,7 +4823,6 @@ button.sidebar__grid-btn {
   .questionnaire-card__title,
   .questionnaire-option,
   .questionnaire-feelings-sublabel,
-  .questionnaire-slider-range-label,
   .questionnaire-step__complete-text,
   .questionnaire-archive-confirm
 ) {

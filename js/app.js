@@ -17290,10 +17290,11 @@
     slider.value = String(step);
     markFanSectionEngaged();
     snapFanLeavesSlider(slider);
-    renderHalfCircleLayer();
-    slider.dispatchEvent(new Event("input", { bubbles: true }));
     if (commit) {
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
       slider.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      renderHalfCircleLayer();
     }
   }
 
@@ -26485,7 +26486,6 @@
         syncBorderSideWhiteFillOutput();
         syncJunctionEmotionSliderRangesForGridType();
         syncAngerPainGuiltSliderRangesForGridType();
-        resetFeelingsLayoutSignatures();
         applyFeelingsControlState({ forceReshuffle: false });
         refreshLocationCoordinates();
         refreshLabelBarContent();
@@ -26501,7 +26501,6 @@
        */
       previewApply: function () {
         if (!isGridContentUnlocked()) return;
-        resetFeelingsLayoutSignatures();
         applyFeelingsControlState({ skipRender: true, forceReshuffle: false });
         render();
       },

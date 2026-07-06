@@ -589,6 +589,8 @@
   /** Family section: questions drive hidden frame / margin sliders via FamilyControls. */
   var FAMILY_STEP_ORDER = ["closeFamilyInIran", "iranLossTypes"];
   var FAMILY_ALL_STEP_ID = "__family_all__";
+  /** Frame default when the close-family question is skipped (someMembers = 2 divisions). */
+  var DEFAULT_SKIPPED_CLOSE_FAMILY_IN_IRAN = "someMembers";
 
   var BODY_AUTONOMY_STEP_ORDER = ["fanLeaves"];
 
@@ -1625,6 +1627,7 @@
 
   /** Only steps that change feelings marker layout need a feelings refresh. */
   function shouldRefreshFeelingsAfterStep(stepId) {
+    if (stepId === "hopeMode") return false;
     if (isFeelingsSliderStep(stepId) || isFeelingsStep(stepId)) return true;
     if (stepId === GRID_ALL_STEP_ID || isGridStep(stepId)) return true;
     if (stepId === FAMILY_ALL_STEP_ID || isFamilyStep(stepId)) return true;
@@ -1639,7 +1642,9 @@
       return;
     }
     if (isBodyAutonomyStep(stepId)) {
-      triggerCanvasRender();
+      if (!preview) {
+        triggerCanvasRender();
+      }
       return;
     }
     if (shouldRefreshFeelingsAfterStep(stepId)) {
@@ -1872,6 +1877,25 @@
       },
       !commit
     );
+  }
+
+  function isCloseFamilyInIranAnswered() {
+    return (
+      answers.closeFamilyInIran === "largePart" ||
+      answers.closeFamilyInIran === "someMembers" ||
+      answers.closeFamilyInIran === "almostAllOutside"
+    );
+  }
+
+  /** Leaving family without a close-family choice still draws the medium frame. */
+  function applyDefaultCloseFamilyInIranIfSkipped() {
+    if (isCloseFamilyInIranAnswered() || familyStepsReached.closeFamilyInIran) {
+      return;
+    }
+    answers.closeFamilyInIran = DEFAULT_SKIPPED_CLOSE_FAMILY_IN_IRAN;
+    familyStepsReached.closeFamilyInIran = true;
+    applyFamilyAnswersToPanel(true);
+    triggerCanvasUpdateAfterSync("closeFamilyInIran");
   }
 
   function syncFamilyToPanel() {
@@ -2292,6 +2316,12 @@
     scrollActiveCardIntoView();
 
     if (targetIndex !== previousIndex && previousIndex >= 0) {
+      if (
+        QUESTIONNAIRE_SECTION_ORDER[previousIndex].key === "family" &&
+        targetIndex > previousIndex
+      ) {
+        applyDefaultCloseFamilyInIranIfSkipped();
+      }
       startSectionCanvasTransition(previousIndex, targetIndex, behavior);
     } else if (targetIndex !== previousIndex) {
       sectionCanvasTransition = {
@@ -3851,7 +3881,6 @@
       answers[stepId] = next;
       applyPenState();
       syncHopeModeToPanel(next);
-      triggerCanvasUpdateAfterSync(stepId);
       if (onChange) onChange();
     });
 
