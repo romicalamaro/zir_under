@@ -1788,16 +1788,18 @@ button.sidebar__grid-btn {
   /* Section folder titles (PROFILE, GRID, …): may shrink separately from body
      text when the feelings chart is taller than the panel (see JS sync). */
   --questionnaire-card-title-text-scale: 1.5;
-  /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20% */
-  --questionnaire-small-text-multiplier: 0.546;
+  /* Uniform small-label size (slider ends, sublabels, etc.): base 0.65, −30%, +20%, +7% */
+  --questionnaire-small-text-multiplier: 0.585;
   /* Unified, fixed question + small-text sizes (do NOT scale with
-     --questionnaire-text-scale). 1.3125rem = 21px, 0.875rem = 14px @ 16px root. */
+     --questionnaire-text-scale). 1.3125rem = 21px, 0.9375rem = 15px @ 16px root. */
   --questionnaire-question-size: 1.3125rem;
-  --questionnaire-small-size: 0.875rem;
+  --questionnaire-small-size: 0.9375rem;
   --questionnaire-vertical-inset: var(--page2-space-20, 1.25rem); /* 20px @ ref */
   /* Fixed breathing room above/below each question divider line, shared by all
      multi-question sections (Community, Family) and the Feelings/Hope line. */
   --questionnaire-divider-gap: var(--page2-space-20, 1.25rem); /* 20px @ ref */
+  /* Extra reserve below profile mad-libs for homeAt dropdown (base rem, × text-scale) */
+  --questionnaire-profile-answers-bottom-pad: clamp(2.375rem, 2.894vw, 2.75rem); /* 38px @ 1728 — was 32px (2rem) */
   /* Set by syncQuestionnaireCardHeights() from longest header/body content */
   --questionnaire-card-header-height: auto;
   --questionnaire-card-expanded-header-height: auto;
@@ -2435,6 +2437,7 @@ button.sidebar__grid-btn {
   padding-inline-end: calc(
     var(--page2-gutter, 1.25rem) - var(--questionnaire-card-border-width, 1px)
   );
+  container-type: inline-size;
 }
 
 /* The question content grows to fill the free space inside the body, which
@@ -2456,6 +2459,12 @@ button.sidebar__grid-btn {
 .questionnaire-card.is-expanded
   .questionnaire-card__body:has(.questionnaire-card__next-footer) {
   padding-bottom: var(--page2-space-20, 1.25rem);
+}
+
+.questionnaire-card[data-section-key="profile"].is-expanded
+  .questionnaire-card__body:has(.questionnaire-card__next-footer) {
+  padding-bottom: calc(var(--page2-space-20, 1.25rem) + var(--page2-space-4, 0.25rem) * 2.5);
+  /* 20px + 10px = 30px @ ref — subtle gap for the Next arrow above COMMUNITY */
 }
 
 #section-design.section-design--questionnaire-started > .app-shell > .main:empty {
@@ -2567,7 +2576,7 @@ button.sidebar__grid-btn {
 .questionnaire-options--multi .questionnaire-option {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
+      var(--questionnaire-small-text-multiplier, 0.585) *
       var(--questionnaire-text-scale, 1)
   );
   padding: 0.45rem 0.4rem;
@@ -2838,7 +2847,10 @@ button.sidebar__grid-btn {
      has overflow:hidden and auto-sizes to its content, so this extra space also
      grows the folder — pushing COMMUNITY down instead of clipping the panel.
      Scales with the questionnaire text zoom so it stays correct at any size. */
-  padding-bottom: calc(2rem * var(--questionnaire-text-scale, 1));
+  padding-bottom: calc(
+    var(--questionnaire-profile-answers-bottom-pad, 2.375rem) *
+      var(--questionnaire-text-scale, 1)
+  );
 }
 
 .questionnaire-profile-madlibs {
@@ -3141,9 +3153,12 @@ button.sidebar__grid-btn {
 
 .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__trigger {
   justify-content: flex-start;
-  padding: 0 var(--madlibs-caret-slot)
-    calc(var(--madlibs-underline-gap) + var(--madlibs-underline-thickness))
-    0.15em;
+  padding-top: 0;
+  padding-inline-end: var(--madlibs-caret-slot);
+  padding-bottom: calc(
+    var(--madlibs-underline-gap) + var(--madlibs-underline-thickness)
+  );
+  padding-inline-start: 0.15em;
 }
 
 .questionnaire-profile-madlibs .questionnaire-madlibs-name-mode__surface {
@@ -3292,6 +3307,27 @@ button.sidebar__grid-btn {
   border: none;
   border-radius: 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* FA profile dropdowns: in RTL the panel sits on the right with a viewport bleed.
+   Anchor menus to the trigger's right edge so long Persian options grow leftward
+   into the card instead of overflowing off the right edge of the screen. */
+#questionnaire-scroll[lang="fa"] .questionnaire-profile-madlibs .questionnaire-madlibs-dropdown__menu {
+  left: auto;
+  right: 0;
+  max-width: min(22rem, 100cqw);
+  text-align: right;
+  direction: rtl;
+}
+
+/* FA profile dropdown answers: right-align selected value + options so long
+   Persian text does not run into the caret (inline-end in RTL). */
+#questionnaire-scroll[lang="fa"] .questionnaire-profile-madlibs :is(
+  .questionnaire-madlibs-dropdown__trigger,
+  .questionnaire-madlibs-dropdown__label,
+  .questionnaire-madlibs-dropdown__option
+) {
+  text-align: right;
 }
 
 .questionnaire-madlibs-dropdown__option {
@@ -4197,7 +4233,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-sublabel {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
+      var(--questionnaire-small-text-multiplier, 0.585) *
       var(--questionnaire-text-scale, 1)
   );
   font-weight: 700;
@@ -4414,7 +4450,7 @@ button.sidebar__grid-btn {
 .questionnaire-feelings-hope-block .questionnaire-section-question-heading {
   font-size: calc(
     (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) *
-      var(--questionnaire-small-text-multiplier, 0.546) *
+      var(--questionnaire-small-text-multiplier, 0.585) *
       var(--questionnaire-text-scale, 1)
   );
 }

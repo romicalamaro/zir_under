@@ -190,7 +190,7 @@
         setTimeout(markHeaderFontsReady, HEADER_FONT_TIMEOUT_MS);
       })();
     </script>
-    <link rel="stylesheet" href="css/styles.css?v=20260706-prod-fix" />
+    <link rel="stylesheet" href="css/styles.css?v=20260706-small-text" />
   </head>
   <body>
     <div id="page2" class="page2--section-home page2--scrollable">
@@ -5337,6 +5337,27 @@
         direction: rtl;
       }
 
+      /* Persian completion popup — Vazirmatn + original light weights, slightly
+         larger than questionnaire small text (0.875rem → 0.9375rem / 15px). */
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__copy-line--secondary {
+        font-family: "Vazirmatn", sans-serif;
+        font-size: 0.9375rem; /* 15px @ 16px root */
+        font-weight: 200;
+        letter-spacing: 0;
+      }
+
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__go-archive {
+        font-family: "Vazirmatn", sans-serif;
+        font-size: clamp(0.75rem, 0.87vw, 0.9375rem); /* +~7% vs default buy btn */
+        font-weight: normal;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
       #page2 .page2-buy-preview__actions {
         display: flex;
         flex-direction: column;
@@ -7474,7 +7495,7 @@
     <script defer src="js/embeddedPaletteCsv.js?v=20260704-palette9-final"></script>
     <script defer src="js/sheetPalettes.js?v=20260701-full-deploy"></script>
     <script defer src="js/labelBarSvgAssets.js?v=20260606-outside-iran"></script>
-    <script defer src="js/exportFontData.js?v=20260607-export-outlines"></script>
+    <script defer src="js/exportFontData.js?v=20260706-small-text"></script>
     <script defer src="js/opentype.min.js"></script>
     <script defer src="js/topkapiGeometry.js?v=20260706-prod-fix"></script>
     <script defer src="js/nestedStarOctagonsGeometry.js?v=20260623-star-perf"></script>
@@ -7491,7 +7512,7 @@
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
     <script defer src="js/productComboSpec.js?v=20260701-product-spec-rows"></script>
-    <script defer src="js/app.js?v=20260706-prod-fix"></script>
+    <script defer src="js/app.js?v=20260706-small-text"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
     <script defer src="js/signsPage.js?v=20260701-full-deploy"></script>
     <script defer src="js/handkerchiefArchive.js?v=20260706-prod-fix"></script>

@@ -14240,6 +14240,44 @@
   /**
    * Illustrator/Photoshop ignore dominant-baseline — export as outlined paths only.
    */
+  function escapeLabelBarExportXmlText(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function pushLabelBarKnockoutMaskSvgTextExport(edgeLines, textEl) {
+    var attrs = [
+      "x",
+      "y",
+      "fill",
+      "font-family",
+      "font-weight",
+      "font-size",
+      "letter-spacing",
+      "text-anchor",
+      "dominant-baseline",
+      "alignment-baseline",
+    ];
+    var parts = ["<text"];
+    var ai;
+    var name;
+    var val;
+    for (ai = 0; ai < attrs.length; ai++) {
+      name = attrs[ai];
+      val = textEl.getAttribute(name);
+      if (val != null && val !== "") {
+        parts.push(' ' + name + '="' + escapeLabelBarExportXmlText(val) + '"');
+      }
+    }
+    parts.push(">");
+    parts.push(escapeLabelBarExportXmlText(textEl.textContent || ""));
+    parts.push("</text>");
+    edgeLines.push(parts.join(""));
+  }
+
   function pushLabelBarExportTextMarkup(edgeLines, textEl, font) {
     var tx = parseFloat(textEl.getAttribute("x") || "0");
     var fill = textEl.getAttribute("fill") || getLabelBarContentColor();
@@ -14257,6 +14295,11 @@
     var measureG;
 
     if (!content) return;
+
+    if (isKnockoutMask && !font) {
+      pushLabelBarKnockoutMaskSvgTextExport(edgeLines, textEl);
+      return;
+    }
 
     if (font) {
       pathD = buildOutlinedPathDataForSvgText(
@@ -14298,6 +14341,11 @@
         );
         return;
       }
+    }
+
+    if (isKnockoutMask) {
+      pushLabelBarKnockoutMaskSvgTextExport(edgeLines, textEl);
+      return;
     }
 
     if (typeof console !== "undefined" && console.warn) {

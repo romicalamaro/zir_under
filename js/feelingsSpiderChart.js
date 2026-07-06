@@ -106,7 +106,7 @@
     return el;
   }
 
-  /** Read --questionnaire-small-size (0.875rem / 14px) from the panel. */
+  /** Read --questionnaire-small-size (0.9375rem / 15px) from the panel. */
   function readQuestionnaireSmallSizePx(container) {
     var panel = container.closest(".questionnaire-panel");
     if (!panel) return QUESTIONNAIRE_SMALL_SIZE_FALLBACK_PX;
