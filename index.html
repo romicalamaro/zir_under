@@ -1861,16 +1861,20 @@
       }
 
       /* Clip logo/media from the bottom in sync with the rising signs curtain.
-         Use the live signs rect in JS — not anchor math — to avoid white gaps. */
+         Use the live signs rect in JS — not anchor math — to avoid white gaps.
+         about-behind-signs keeps the clip active between cover frames so the
+         portrait cannot flash when exitActive flickers for one scroll tick. */
       #page2.page2--signs-covering .page2-about-media,
-      #page2.page2--signs-passed .page2-about-media {
+      #page2.page2--signs-passed .page2-about-media,
+      #page2.page2--about-behind-signs .page2-about-media {
         clip-path: inset(
           0 0 var(--page2-about-media-signs-clip-bottom, 0px) 0
         );
       }
 
       #page2.page2--signs-covering .page2-logo__slot,
-      #page2.page2--signs-passed .page2-logo__slot {
+      #page2.page2--signs-passed .page2-logo__slot,
+      #page2.page2--about-behind-signs .page2-logo__slot {
         clip-path: inset(0 0 var(--page2-logo-signs-clip-bottom, 0px) 0);
       }
 
@@ -5522,6 +5526,33 @@
           page2.style.setProperty("--page2-logo-signs-clip-bottom", "0px");
         }
 
+        function shouldKeepAboutSignsClip() {
+          if (
+            page2.classList.contains("page2--signs-passed") ||
+            page2.classList.contains("page2--signs-covering") ||
+            page2.classList.contains("page2--about-behind-signs")
+          ) {
+            return true;
+          }
+          if (!aboutMediaEl || !aboutMediaOpenedOnce || !homeSignsEl) {
+            return false;
+          }
+          var mediaRect = aboutMediaEl.getBoundingClientRect();
+          if (mediaRect.height <= 0 || mediaRect.width <= 0) return false;
+          var signsTop = getSignsClipTopY(page2.getBoundingClientRect().top);
+          return signsTop < mediaRect.bottom - 0.5;
+        }
+
+        function clearAboutLayersSignsClipIfAllowed() {
+          if (shouldKeepAboutSignsClip()) {
+            syncAboutLayersSignsClip(
+              getSignsClipTopY(page2.getBoundingClientRect().top)
+            );
+            return;
+          }
+          resetAboutLayersSignsClip();
+        }
+
         function getLogoSignsClipRect() {
           if (!logoEl) return null;
           var slot = logoEl.querySelector(".page2-logo__slot");
@@ -5609,7 +5640,7 @@
           page2.classList.remove("page2--signs-covering");
           page2.classList.remove("page2--about-behind-signs");
           if (!page2.classList.contains("page2--signs-passed")) {
-            resetAboutLayersSignsClip();
+            clearAboutLayersSignsClipIfAllowed();
           }
           homeSignsFlowHeightPx = 0;
           homeSignsCoverAnchor = null;
@@ -5749,7 +5780,7 @@
               homeSignsPlaceholder.style.height = "0";
             }
             if (!page2.classList.contains("page2--signs-passed")) {
-              resetAboutLayersSignsClip();
+              clearAboutLayersSignsClipIfAllowed();
             }
             return;
           }
@@ -7124,6 +7155,12 @@
             "page2--about-media-visible",
             openProgress >= 1
           );
+
+          if (holdForSignsExit) {
+            syncAboutLayersSignsClip(
+              getSignsClipTopY(page2.getBoundingClientRect().top)
+            );
+          }
         }
 
         function isSignsCoverScrollLocked() {
