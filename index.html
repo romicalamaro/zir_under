@@ -2149,13 +2149,13 @@
       }
 
       /* Copyright — sits on the logo row (row 2) to the right of the zir under
-         wordmark. grid-column 9 / -1 is the default for 16″ and 21.5″ screens.
+         wordmark. grid-column 8 / -1 is the default for 16″ and 21.5″ screens.
          Spanning to the grid's right edge gives the line enough width to stay on
          ONE row (© + year included). The text is left-aligned, so it still
          visually begins under the Bezalel logo block. align-self/margin pin its
          baseline to the bottom alongside the lifted logo. */
       #page2 .page2-footer__copyright {
-        grid-column: 9 / -1;
+        grid-column: 8 / -1;
         grid-row: 2;
         white-space: nowrap;
         align-self: end;
@@ -2177,11 +2177,11 @@
 
       /* Copyright — 27″ screens only (viewport ≳ 2560px wide): on very wide
          displays the © line sits one grid column further RIGHT (start at
-         column 10 instead of the 16″/21.5″ default of 9). 21.5″ at 2048×1152
-         (1× dpr) is 2048 CSS px wide — must stay on column 9, not this rule. */
+         column 9 instead of the 16″/21.5″ default of 8). 21.5″ at 2048×1152
+         (1× dpr) is 2048 CSS px wide — must stay on column 8, not this rule. */
       @media (min-width: 2560px) {
         #page2 .page2-footer__copyright {
-          grid-column: 10 / -1;
+          grid-column: 9 / -1;
         }
       }
 
