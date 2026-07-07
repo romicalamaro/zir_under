@@ -8,10 +8,10 @@
         history.scrollRestoration = "manual";
       }
     </script>
-    <title>zin.under</title>
-    <meta name="application-name" content="zin.under" />
-    <meta property="og:title" content="zin.under" />
-    <meta property="og:site_name" content="zin.under" />
+    <title>zir under</title>
+    <meta name="application-name" content="zir under" />
+    <meta property="og:title" content="zir under" />
+    <meta property="og:site_name" content="zir under" />
     <!-- Header nav titles: fetch fonts before first paint (avoids FOUT on slow networks). -->
     <link
       rel="preload"
@@ -332,7 +332,7 @@
 
         <div class="page2-logo" aria-label="Site logo">
           <div class="page2-logo__slot">
-            <div class="page2-logo__image" role="img" aria-label="zin.under">
+            <div class="page2-logo__image" role="img" aria-label="zir under">
               <div
                 class="page2-logo__layer page2-logo__layer--white"
                 aria-hidden="true"
@@ -707,7 +707,7 @@
                 <div
                   class="page2-footer__logo"
                   role="img"
-                  aria-label="zin.under"
+                  aria-label="zir under"
                 ></div>
                 <p class="page2-footer__copyright">&copy; Designed by Romi Calamaro 2026</p>
               </footer>
@@ -2144,15 +2144,14 @@
         fill: #fff;
       }
 
-      /* Copyright — sits on the logo row (row 2) to the right of the zin.under
-         wordmark. grid-column 8 / -1 is the default for 21.5″ screens; 16″ uses
-         column 9 (one step right) via the max-width rule below. Spanning to the
-         grid's right edge gives the line enough width to stay on ONE row (© +
-         year included). The text is left-aligned, so it still visually begins
-         under the Bezalel logo block. align-self/margin pin its baseline to the
-         bottom alongside the lifted logo. */
+      /* Copyright — sits on the logo row (row 2) to the right of the zir under
+         wordmark. grid-column 9 / -1 is the default for 16″ and 21.5″ screens.
+         Spanning to the grid's right edge gives the line enough width to stay on
+         ONE row (© + year included). The text is left-aligned, so it still
+         visually begins under the Bezalel logo block. align-self/margin pin its
+         baseline to the bottom alongside the lifted logo. */
       #page2 .page2-footer__copyright {
-        grid-column: 8 / -1;
+        grid-column: 9 / -1;
         grid-row: 2;
         white-space: nowrap;
         align-self: end;
@@ -2172,19 +2171,10 @@
         color: #fff;
       }
 
-      /* Copyright — 16″ screens only (viewport ≲ 1728px, below the 21.5″ band):
-         nudge one grid column right (9 instead of 8). Larger breakpoints are
-         untouched — 21.5″ keeps column 8, 27″ keeps column 10. */
-      @media (max-width: 1824px) {
-        #page2 .page2-footer__copyright {
-          grid-column: 9 / -1;
-        }
-      }
-
       /* Copyright — 27″ screens only (viewport ≳ 2560px wide): on very wide
-         displays the © line can sit two grid columns further RIGHT (start at
-         column 10 instead of the 16″/21.5″ default of 8). 21.5″ at 2048×1152
-         (1× dpr) is 2048 CSS px wide — must stay on column 8, not this rule. */
+         displays the © line sits one grid column further RIGHT (start at
+         column 10 instead of the 16″/21.5″ default of 9). 21.5″ at 2048×1152
+         (1× dpr) is 2048 CSS px wide — must stay on column 9, not this rule. */
       @media (min-width: 2560px) {
         #page2 .page2-footer__copyright {
           grid-column: 10 / -1;
