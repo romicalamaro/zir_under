@@ -6568,7 +6568,7 @@
       var originalShowSection = window.Page2Navigation.showSection;
       window.Page2Navigation.showSection = function (colIndex, options) {
         var result = originalShowSection.call(this, colIndex, options);
-        if (colIndex === 4) {
+        if (colIndex === 3) {
           window.requestAnimationFrame(function () {
             maybeInitIfDesignVisible();
             window.setTimeout(maybeInitIfDesignVisible, 600);
@@ -6870,7 +6870,7 @@
           window.Page2Navigation &&
           typeof window.Page2Navigation.showSection === "function"
         ) {
-          window.Page2Navigation.showSection(3);
+          window.Page2Navigation.showSection(4);
         }
       });
     }
