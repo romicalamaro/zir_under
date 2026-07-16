@@ -2622,6 +2622,24 @@
   // title shrink — blend toward header-only budget fit (see sync below).
   var QUESTIONNAIRE_FEELINGS_TITLE_BLEND = 0.55;
 
+  // 14″ short windows (≲1512×982 / 1512×900): open folders grow to content
+  // height instead of being clamped to the viewport (avoids inner scroll).
+  // max-width 1600 keeps 16″ (~1728) and 21.5″ on the fit-to-viewport path.
+  var QUESTIONNAIRE_14IN_MQ =
+    "(max-width: 1600px) and (max-height: 1020px)";
+  // Folder title size on 14″ (vs base 1.5) — a bit smaller so closed red bars
+  // don’t dominate the short column.
+  var QUESTIONNAIRE_14IN_TITLE_SCALE = 1.2;
+  // Less vertical padding around closed-folder titles on 14″ (vs 1.2).
+  var QUESTIONNAIRE_14IN_COLLAPSED_HEADER_SCALE = 1.05;
+
+  function isQuestionnaire14inShortViewport() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(QUESTIONNAIRE_14IN_MQ).matches
+    );
+  }
+
   // Measure a single card body's natural height at the current panel scale.
   // The body is moved offscreen so measuring never flashes on screen.
   function measureQuestionnaireBodyHeight(body, measureWidth) {
@@ -2717,13 +2735,24 @@
     var base = QUESTIONNAIRE_BASE_TEXT_SCALE;
     var probe = QUESTIONNAIRE_PROBE_TEXT_SCALE;
     var i;
+    var expandToContent = isQuestionnaire14inShortViewport();
+    // On 14″ measure + render folder titles smaller so closed bars aren’t oversized.
+    var measureTitleScale = expandToContent
+      ? QUESTIONNAIRE_14IN_TITLE_SCALE
+      : base;
+    var collapsedHeaderScale = expandToContent
+      ? QUESTIONNAIRE_14IN_COLLAPSED_HEADER_SCALE
+      : QUESTIONNAIRE_COLLAPSED_HEADER_SCALE;
 
     panelEl.classList.add("questionnaire-panel--measuring");
     panelEl.classList.add("questionnaire-panel--measure-spider-coupled");
 
     // --- Pass 1: measure headers + each body height at BASE scale. ---
     panelEl.style.setProperty("--questionnaire-text-scale", String(base));
-    panelEl.style.setProperty("--questionnaire-card-title-text-scale", String(base));
+    panelEl.style.setProperty(
+      "--questionnaire-card-title-text-scale",
+      String(measureTitleScale)
+    );
 
     var headerMetrics = measureQuestionnaireHeaderMetrics(cards);
     var maxCollapsedHeaderPx = headerMetrics.maxCollapsedHeaderPx;
@@ -2747,7 +2776,7 @@
     // content. The extra height is split evenly around the centered text and is
     // applied here so it also flows into the available-space math below.
     maxCollapsedHeaderPx = Math.ceil(
-      maxCollapsedHeaderPx * QUESTIONNAIRE_COLLAPSED_HEADER_SCALE
+      maxCollapsedHeaderPx * collapsedHeaderScale
     );
     // Folder bar height stays at this base measurement; title font scale shrinks
     // independently (see fitScaleForTitles below).
@@ -2780,13 +2809,22 @@
     // then pick ONE global text scale so EVERY section fits with no inner
     // scroll and no list scroll. A single global scale keeps every question the
     // same size (visual uniformity across sections).
+    //
+    // Exception — 14″ short viewports: skip fit-to-screen shrink/clamp so open
+    // folders grow to their natural content height; the left scroll column
+    // scrolls instead of the card body. Titles stay at the smaller 14″ scale.
     var fitScale = base;
-    var fitScaleForTitles = base;
+    var fitScaleForTitles = measureTitleScale;
     var headerTitleScaleEstimate = null;
     var availableBodyPx = 0;
     var target = 0;
 
-    if (scrollEl && maxCollapsedHeaderPx > 0 && maxBodyPx > 0) {
+    if (
+      !expandToContent &&
+      scrollEl &&
+      maxCollapsedHeaderPx > 0 &&
+      maxBodyPx > 0
+    ) {
       var scrollStyles = window.getComputedStyle(scrollEl);
       var scrollPadTop = parseFloat(scrollStyles.paddingTop) || 0;
       var scrollPadBottom = parseFloat(scrollStyles.paddingBottom) || 0;
@@ -2906,6 +2944,12 @@
       }
     }
 
+    if (expandToContent && panelEl) {
+      panelEl.classList.add("questionnaire-panel--expand-to-content");
+    } else if (panelEl) {
+      panelEl.classList.remove("questionnaire-panel--expand-to-content");
+    }
+
     panelEl.style.setProperty("--questionnaire-text-scale", String(fitScale));
     panelEl.style.setProperty(
       "--questionnaire-card-title-text-scale",
@@ -2961,10 +3005,12 @@
       // Never taller than the space available for a body (keeps a shrunk tall
       // section on-screen), and never negative. Feelings may exceed available
       // height so the enlarged spider chart is never clipped.
+      // On 14″ short viewports, skip the clamp so folders grow to content.
       var isFeelingsCard =
         bodyCards[i] &&
         bodyCards[i].getAttribute("data-section-key") === "feelings";
       if (
+        !expandToContent &&
         !isFeelingsCard &&
         availableBodyPx > 0 &&
         bodyFitPx > availableBodyPx

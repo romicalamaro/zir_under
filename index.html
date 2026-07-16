@@ -2148,14 +2148,11 @@
         fill: #fff;
       }
 
-      /* Copyright — sits on the logo row (row 2) to the right of the zir under
-         wordmark. grid-column 8 / -1 is the default for 16″ and 21.5″ screens.
-         Spanning to the grid's right edge gives the line enough width to stay on
-         ONE row (© + year included). The text is left-aligned, so it still
-         visually begins under the Bezalel logo block. align-self/margin pin its
-         baseline to the bottom alongside the lifted logo. */
+      /* Copyright — sits on the logo row (row 2), one column left of the
+         Bezalel block so it still clears the zir under wordmark while lining
+         up consistently on every footer (home / shop / archive). */
       #page2 .page2-footer__copyright {
-        grid-column: 8 / -1;
+        grid-column: 9 / -1;
         grid-row: 2;
         white-space: nowrap;
         align-self: end;
@@ -2175,14 +2172,68 @@
         color: #fff;
       }
 
-      /* Copyright — 27″ screens only (viewport ≳ 2560px wide): on very wide
-         displays the © line sits one grid column further RIGHT (start at
-         column 9 instead of the 16″/21.5″ default of 8). 21.5″ at 2048×1152
-         (1× dpr) is 2048 CSS px wide — must stay on column 8, not this rule. */
-      @media (min-width: 2560px) {
-        #page2 .page2-footer__copyright {
-          grid-column: 9 / -1;
+      /* ── 14″ short viewports (≲1512×982 / 1512×900) ─────────────────────
+         max-width 1600 keeps 16″ (~1728) and 21.5″ out of this band.
+         max-height 1020 covers full-window (~982) and not-full (~900). */
+      @media (max-width: 1600px) and (max-height: 1020px) {
+        #page2 {
+          /* About: pull copy/media up and slightly smaller so they fit the
+             shorter frame without riding over the hero or lingering later. */
+          --page2-about-top-offset: clamp(5.5rem, 6.5vw, 8.5rem);
+          --page2-about-text-size: clamp(0.9375rem, 1.05vw, 1.125rem);
+          --page2-about-text-size-en: clamp(0.875rem, 1vw, 1.0625rem);
+          --page2-about-media-height: clamp(14rem, 16.5vw, 18rem);
+          --page2-about-row-gap: clamp(1.75rem, 2vw, 2.5rem);
+          --page2-logo-bottom-gap: clamp(1.25rem, 1.5vw, 2rem);
         }
+
+        /* Footer: compress top padding + credit type so Pages/Credits/Contact
+           clear the zir under wordmark inside the locked 100vh − header band. */
+        #page2 #section-home .page2-footer__top {
+          padding-top: clamp(1rem, 1.5vw, 1.75rem);
+        }
+
+        #page2 #section-home .page2-footer__link,
+        #page2 #section-home .page2-footer__note,
+        #page2 #section-home .page2-footer__subheading {
+          font-size: clamp(0.6875rem, 0.8vw, 0.8125rem);
+          line-height: 1.35;
+        }
+
+        #page2 #section-home .page2-footer__heading {
+          margin-bottom: calc(var(--page2-space-4) * 0.8);
+        }
+
+        #page2 #section-home .page2-footer__heading--fonts {
+          margin-top: clamp(0.5rem, 0.8vw, 0.875rem);
+        }
+
+        #page2 #section-home .page2-footer__credit-group + .page2-footer__credit-group {
+          margin-top: calc(var(--page2-space-4) * 0.75);
+        }
+
+        #page2 #section-home .page2-footer__col {
+          gap: 0.1rem;
+        }
+
+        /* Compressed credits free vertical space that the home wordmark was
+           absorbing (growing larger than shop/archive and covering the ©).
+           Reclaim that space above the logo so home matches shop/archive scale. */
+        #page2 #section-home .page2-footer__logo {
+          margin-top: calc(
+            var(--page2-header-shop-banner-height) + var(--page2-space-50) +
+              var(--page2-space-50) + var(--page2-space-30)
+          );
+        }
+      }
+
+      /* Safety: once the home footer enters the viewport, keep fixed About
+         layers (bilingual copy, photo, logo) fully hidden so they cannot
+         paint over the red footer band — especially on short 14″ windows. */
+      #page2.page2--home-footer-in-view #section-home .page2-about-content,
+      #page2.page2--home-footer-in-view .page2-about-media,
+      #page2.page2--home-footer-in-view .page2-logo {
+        visibility: hidden;
       }
 
       #page2 .page2-about-media__frame {
@@ -5489,6 +5540,7 @@
           resetAboutLayersSignsClip();
           setTopkapiDrawersOpen();
           page2.classList.remove("page2--signs-passed");
+          page2.classList.remove("page2--home-footer-in-view");
           homeSignsCoverDone = false;
           homeSignsCoverReleaseScroll = 0;
           homeSignsCoverStoredHeightPx = 0;
@@ -5500,6 +5552,25 @@
             aboutMediaEl.style.left = "0";
             aboutMediaEl.style.top = "0";
           }
+        }
+
+        /* Hide fixed About layers as soon as the home footer enters the
+           viewport (prevents copy/photo/logo from painting over the red
+           footer on short 14″ windows where scroll timing can lag). */
+        function updateHomeFooterAboutClear() {
+          if (!homeSection || !isHomeScrollCol(scrollActiveIndex)) {
+            page2.classList.remove("page2--home-footer-in-view");
+            return;
+          }
+          var footer = homeSection.querySelector(".page2-footer");
+          if (!footer) {
+            page2.classList.remove("page2--home-footer-in-view");
+            return;
+          }
+          var footerRect = footer.getBoundingClientRect();
+          var pageRect = page2.getBoundingClientRect();
+          var footerInView = footerRect.top < pageRect.bottom - 4;
+          page2.classList.toggle("page2--home-footer-in-view", footerInView);
         }
 
         function getHomeScrollTop() {
@@ -6001,6 +6072,7 @@
         function updateHomeOverlayScrollPolish() {
           updateAboutExitAnimation();
           updateAboutTextReveal();
+          updateHomeFooterAboutClear();
           updateHomeSignsScrollState();
           updateTopkapiDrawers();
           updateSignsSectionReveal();
@@ -6641,11 +6713,9 @@
           }
 
           /* Raise the "© Romi Calamaro" line so its bottom edge sits on the
-             wordmark's baseline (bottom of the "r"). We measure the letters'
-             real on-screen baseline and the copyright's box, then nudge our
-             extra-lift variable by the leftover gap. It is self-correcting:
-             each run converges the text bottom onto the baseline, at any screen
-             size. */
+             wordmark's baseline (bottom of the "r"). Measured from a clean
+             extra-lift of 0 so every footer (home / shop / archive) converges
+             to the same baseline, instead of accumulating different leftovers. */
           function alignFooterCopyright(footer) {
             var logoSvg = footer.querySelector(".page2-footer__logo svg");
             var copyright = footer.querySelector(".page2-footer__copyright");
@@ -6697,20 +6767,16 @@
               }
             } catch (e) {}
             var glyphBottomScreen = box.bottom - (vbH - baselineUnits) * scale;
+            /* Measure from a zero extra-lift so each footer gets the same
+               absolute nudge (avoids home/shop/archive drifting apart). */
+            copyright.style.setProperty(
+              "--page2-footer-copyright-extra-lift",
+              "0px"
+            );
             var copyRect = copyright.getBoundingClientRect();
             if (!copyRect.height) return;
-            var prev =
-              parseFloat(
-                copyright.style.getPropertyValue(
-                  "--page2-footer-copyright-extra-lift"
-                )
-              ) || 0;
-            /* Positive gap = text bottom is BELOW the glyph baseline → lift more.
-               Self-correcting: converges the text bottom onto the baseline. */
-            var next = prev + (copyRect.bottom - glyphBottomScreen);
+            var next = copyRect.bottom - glyphBottomScreen;
             if (next < 0) next = 0;
-            /* Skip sub-pixel churn so we don't loop forever on tiny rounding. */
-            if (Math.abs(next - prev) < 0.5) return;
             copyright.style.setProperty(
               "--page2-footer-copyright-extra-lift",
               next + "px"
@@ -6997,6 +7063,7 @@
           updateAboutMediaOpen();
           updateAboutTextReveal();
           updateAboutExitAnimation();
+          updateHomeFooterAboutClear();
           updateTopkapiDrawers();
           updateSignsSectionReveal();
         }
