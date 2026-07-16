@@ -2195,32 +2195,26 @@
           --page2-logo-bottom-gap: clamp(1.25rem, 1.5vw, 2rem);
         }
 
-        /* Footer: compress top padding + credit type so Pages/Credits/Contact
-           clear the zir under wordmark inside the locked 100vh − header band. */
-        #page2 #section-home .page2-footer__top {
+        /* Footer: compress top padding / gaps on short windows so Credits clear
+           the wordmark. Text sizes stay on the shared rules above so home,
+           shop, and archive always match. */
+        #page2 .page2-footer__top {
           padding-top: clamp(1rem, 1.5vw, 1.75rem);
         }
 
-        #page2 #section-home .page2-footer__link,
-        #page2 #section-home .page2-footer__note,
-        #page2 #section-home .page2-footer__subheading {
-          font-size: clamp(0.6875rem, 0.8vw, 0.8125rem);
-          line-height: 1.35;
-        }
-
-        #page2 #section-home .page2-footer__heading {
+        #page2 .page2-footer__heading {
           margin-bottom: calc(var(--page2-space-4) * 0.8);
         }
 
-        #page2 #section-home .page2-footer__heading--fonts {
+        #page2 .page2-footer__heading--fonts {
           margin-top: clamp(0.5rem, 0.8vw, 0.875rem);
         }
 
-        #page2 #section-home .page2-footer__credit-group + .page2-footer__credit-group {
+        #page2 .page2-footer__credit-group + .page2-footer__credit-group {
           margin-top: calc(var(--page2-space-4) * 0.75);
         }
 
-        #page2 #section-home .page2-footer__col {
+        #page2 .page2-footer__col {
           gap: 0.1rem;
         }
 
