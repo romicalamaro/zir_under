@@ -2622,21 +2622,24 @@
   // title shrink — blend toward header-only budget fit (see sync below).
   var QUESTIONNAIRE_FEELINGS_TITLE_BLEND = 0.55;
 
-  // 14″ short windows (≲1512×982 / 1512×900): open folders grow to content
-  // height instead of being clamped to the viewport (avoids inner scroll).
-  // max-width 1600 keeps 16″ (~1728) and 21.5″ on the fit-to-viewport path.
-  var QUESTIONNAIRE_14IN_MQ =
-    "(max-width: 1600px) and (max-height: 1020px)";
-  // Folder title size on 14″ (vs base 1.5) — a bit smaller so closed red bars
-  // don’t dominate the short column.
-  var QUESTIONNAIRE_14IN_TITLE_SCALE = 1.2;
-  // Less vertical padding around closed-folder titles on 14″ (vs 1.2).
-  var QUESTIONNAIRE_14IN_COLLAPSED_HEADER_SCALE = 1.05;
+  // Short desktop windows (16″ not-maximized, 14″, etc.): open folders grow to
+  // content instead of crushing titles to fit. min-width keeps phones out.
+  var QUESTIONNAIRE_SHORT_HEIGHT_MQ =
+    "(min-width: 1000px) and (max-height: 1020px)";
+  // Folder title size on short windows (vs base 1.5). Matches the compact
+  // full-16″ look instead of letting 1.5 fill a short column (looked huge).
+  var QUESTIONNAIRE_SHORT_TITLE_SCALE = 1.2;
+  // Vertical padding around closed-folder titles when short (was 1.05 — a bit
+  // tight for the 1.2 title size; 1.22 gives comfortable breathing room).
+  var QUESTIONNAIRE_SHORT_COLLAPSED_HEADER_SCALE = 1.22;
+  // Floor for folder titles when fit-to-screen still runs — never crush them
+  // the way body text can shrink (was going down toward 0.7).
+  var QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE = 1.2;
 
-  function isQuestionnaire14inShortViewport() {
+  function isQuestionnaireShortViewport() {
     return (
       typeof window.matchMedia === "function" &&
-      window.matchMedia(QUESTIONNAIRE_14IN_MQ).matches
+      window.matchMedia(QUESTIONNAIRE_SHORT_HEIGHT_MQ).matches
     );
   }
 
@@ -2735,13 +2738,16 @@
     var base = QUESTIONNAIRE_BASE_TEXT_SCALE;
     var probe = QUESTIONNAIRE_PROBE_TEXT_SCALE;
     var i;
-    var expandToContent = isQuestionnaire14inShortViewport();
-    // On 14″ measure + render folder titles smaller so closed bars aren’t oversized.
+    // Any short desktop window: grow folders to content (no title crush).
+    var expandToContent = isQuestionnaireShortViewport();
+    // Short windows use the compact title size (same as approved 14″ tweak) so
+    // labels match full-16″ proportions — base 1.5 looked huge when the
+    // window was only short, not narrow.
     var measureTitleScale = expandToContent
-      ? QUESTIONNAIRE_14IN_TITLE_SCALE
+      ? QUESTIONNAIRE_SHORT_TITLE_SCALE
       : base;
     var collapsedHeaderScale = expandToContent
-      ? QUESTIONNAIRE_14IN_COLLAPSED_HEADER_SCALE
+      ? QUESTIONNAIRE_SHORT_COLLAPSED_HEADER_SCALE
       : QUESTIONNAIRE_COLLAPSED_HEADER_SCALE;
 
     panelEl.classList.add("questionnaire-panel--measuring");
@@ -2810,9 +2816,9 @@
     // scroll and no list scroll. A single global scale keeps every question the
     // same size (visual uniformity across sections).
     //
-    // Exception — 14″ short viewports: skip fit-to-screen shrink/clamp so open
-    // folders grow to their natural content height; the left scroll column
-    // scrolls instead of the card body. Titles stay at the smaller 14″ scale.
+    // Exception — short desktop windows: skip fit-to-screen shrink/clamp so
+    // open folders grow to content. Titles use the compact short-window scale
+    // (not full 1.5) so they match full-16″ proportions instead of dominating.
     var fitScale = base;
     var fitScaleForTitles = measureTitleScale;
     var headerTitleScaleEstimate = null;
@@ -2895,8 +2901,10 @@
       if (fitScale < QUESTIONNAIRE_MIN_TEXT_SCALE) {
         fitScale = QUESTIONNAIRE_MIN_TEXT_SCALE;
       }
-      if (fitScaleForTitles < QUESTIONNAIRE_MIN_TEXT_SCALE) {
-        fitScaleForTitles = QUESTIONNAIRE_MIN_TEXT_SCALE;
+      // Titles keep a higher floor than body text so folder labels never look
+      // crushed inside oversized red bars (esp. on short 16″ windows).
+      if (fitScaleForTitles < QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE) {
+        fitScaleForTitles = QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE;
       }
 
       // Feelings body uses a fixed-size spider on screen, so shrinking section
@@ -2941,6 +2949,9 @@
             }
           }
         }
+      }
+      if (fitScaleForTitles < QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE) {
+        fitScaleForTitles = QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE;
       }
     }
 

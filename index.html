@@ -2105,8 +2105,9 @@
         filter: brightness(0) invert(1);
       }
 
-      /* Logo fills grid columns 1–9 (≈75% width) and sits on the second row,
-         directly below the Pages + Credits links. */
+      /* Wordmark spans columns 1–9. The © is placed by JS one grid column
+         after the wordmark’s real ink edge (not the empty SVG box), so the
+         gap stays even when “meet” scaling leaves empty space on the right. */
       #page2 .page2-footer__logo {
         grid-column: 1 / 10;
         grid-row: 2;
@@ -2148,23 +2149,30 @@
         fill: #fff;
       }
 
-      /* Copyright — sits on the logo row (row 2), one column left of the
-         Bezalel block so it still clears the zir under wordmark while lining
-         up consistently on every footer (home / shop / archive). */
+      /* Copyright — full logo row; left inset set by alignFooterCopyright to
+         “one grid column after wordmark ink”. Fallback before JS: column 10. */
       #page2 .page2-footer__copyright {
-        grid-column: 9 / -1;
+        grid-column: 1 / -1;
         grid-row: 2;
         white-space: nowrap;
+        width: max-content;
+        max-width: 100%;
         align-self: end;
-        /* Bottom margin = the logo's own lift + a measured "extra lift" set by
-           JS (alignFooterCopyright) so the text's bottom edge lands on the
-           wordmark's baseline (bottom of the "r"), not the empty space beneath
-           the logo's viewBox. Extra lift defaults to 0 before JS runs. */
+        justify-self: start;
+        text-align: start;
+        box-sizing: border-box;
+        /* Fallback inset ≈ columns 1–9 + gaps, until JS measures real ink. */
         margin: 0 0
           calc(
             var(--page2-footer-logo-lift) +
               var(--page2-footer-copyright-extra-lift, 0px)
           );
+        margin-inline-start: var(
+          --page2-footer-copyright-ink-inset,
+          calc(
+            (100% - 11 * var(--page2-gutter)) / 12 * 9 + 9 * var(--page2-gutter)
+          )
+        );
         font-family: "Suisse Intl", sans-serif;
         font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
         font-weight: 300;
@@ -6712,10 +6720,9 @@
             }
           }
 
-          /* Raise the "© Romi Calamaro" line so its bottom edge sits on the
-             wordmark's baseline (bottom of the "r"). Measured from a clean
-             extra-lift of 0 so every footer (home / shop / archive) converges
-             to the same baseline, instead of accumulating different leftovers. */
+          /* Align © to the wordmark: vertically on the letter baseline, and
+             horizontally one grid column after the real ink (not the empty SVG
+             box left by preserveAspectRatio meet). */
           function alignFooterCopyright(footer) {
             var logoSvg = footer.querySelector(".page2-footer__logo svg");
             var copyright = footer.querySelector(".page2-footer__copyright");
@@ -6734,8 +6741,9 @@
             if (!glyphs || !glyphs.height) return;
             /* "meet" scale: the artwork fits inside the svg box keeping aspect
                ratio. preserveAspectRatio yMax anchors the viewBox bottom to the
-               box bottom, so a point at user-y Y renders at box.bottom −
-               (vbH − Y) * scale. */
+               box bottom; xMin anchors left. A point at user (X, Y) renders at:
+                 screenX = box.left + X * scale
+                 screenY = box.bottom - (vbH - Y) * scale */
             var scale = Math.min(box.width / vbW, box.height / vbH);
             /* Target the MAIN letter baseline (the bottom of the "r" and the
                other letters), NOT the overall wordmark bbox: one decorative
@@ -6767,8 +6775,38 @@
               }
             } catch (e) {}
             var glyphBottomScreen = box.bottom - (vbH - baselineUnits) * scale;
+            /* Real ink right edge (xMin meet → no horizontal letterboxing offset). */
+            var inkRightScreen = box.left + (glyphs.x + glyphs.width) * scale;
+
+            /* One grid column (+ one gutter) of space after the ink. */
+            var footerStyles = window.getComputedStyle(footer);
+            var colGap = parseFloat(footerStyles.columnGap) || 0;
+            var padInlineStart =
+              parseFloat(footerStyles.paddingInlineStart) || 0;
+            var padInlineEnd = parseFloat(footerStyles.paddingInlineEnd) || 0;
+            var footerRect = footer.getBoundingClientRect();
+            var contentWidth =
+              footerRect.width - padInlineStart - padInlineEnd;
+            var colWidth = (contentWidth - 11 * colGap) / 12;
+            if (!(colWidth > 0)) return;
+
+            var contentLeft = footerRect.left + padInlineStart;
+            var desiredCopyLeft = inkRightScreen + colGap + colWidth;
+            var inset = desiredCopyLeft - contentLeft;
+            if (inset < 0) inset = 0;
+            /* Keep © inside the footer content box. */
+            var copyWidth = copyright.getBoundingClientRect().width;
+            var maxInset = contentWidth - copyWidth;
+            if (maxInset < 0) maxInset = 0;
+            if (inset > maxInset) inset = maxInset;
+
+            copyright.style.setProperty(
+              "--page2-footer-copyright-ink-inset",
+              inset + "px"
+            );
+
             /* Measure from a zero extra-lift so each footer gets the same
-               absolute nudge (avoids home/shop/archive drifting apart). */
+               absolute vertical nudge (avoids home/shop/archive drifting apart). */
             copyright.style.setProperty(
               "--page2-footer-copyright-extra-lift",
               "0px"

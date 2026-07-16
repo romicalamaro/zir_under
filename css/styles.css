@@ -2440,9 +2440,9 @@ button.sidebar__grid-btn {
   container-type: inline-size;
 }
 
-/* 14″ short viewports: open folder grows to content; no inner scrollbar.
-   JS toggles .questionnaire-panel--expand-to-content via the same MQ. */
-@media (max-width: 1600px) and (max-height: 1020px) {
+/* Short desktop windows (16″ not-maximized, 14″, …): open folder grows to
+   content; no inner scrollbar. JS toggles .questionnaire-panel--expand-to-content. */
+@media (min-width: 1000px) and (max-height: 1020px) {
   .questionnaire-panel--expand-to-content .questionnaire-card.is-expanded {
     height: auto;
     min-height: var(--questionnaire-card-expanded-height);
