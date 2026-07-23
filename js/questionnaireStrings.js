@@ -62,7 +62,15 @@
       goToArchive: "Buy",
       completionPreviewHeading: "Thank you!",
       completionPreviewCopy:
-        "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.",
+        "Your choices join the voices of women fighting for bodily autonomy in Iran.",
+      shareScanHint: "Scan to take your textile to your phone",
+      sharePreparing: "Preparing your link…",
+      shareCountdownLabel: "sec",
+      shareCountdownAlmost: "Almost ready…",
+      shareError: "Could not create a share link. Try again.",
+      shareRetry: "Retry",
+      shareDownload: "Download",
+      shareQrAlt: "QR code linking to your scarf image",
       savedToArchive: "Saved to archive",
       archiveFull:
         "Archive is full - delete older handkerchiefs to save new ones.",
@@ -350,7 +358,15 @@
       goToArchive: "خرید",
       completionPreviewHeading: "ممنون!",
       completionPreviewCopy:
-        "پرسشنامه را تکمیل کردی و طرح پارچه‌ی انتخابی خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند.",
+        "انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند.",
+      shareScanHint: "برای بردن پارچه به گوشی‌ات، کد را اسکن کن",
+      sharePreparing: "در حال آماده‌سازی لینک…",
+      shareCountdownLabel: "ثانیه",
+      shareCountdownAlmost: "تقریباً آماده…",
+      shareError: "ساخت لینک ممکن نشد. دوباره تلاش کن.",
+      shareRetry: "تلاش دوباره",
+      shareDownload: "دانلود",
+      shareQrAlt: "کد QR برای تصویر روسری تو",
       savedToArchive: "در آرشیو ذخیره شد",
       archiveFull:
         "آرشیو پر است - برای ذخیره طرح‌های جدید، طرح‌های قدیمی‌تر را حذف کنید.",

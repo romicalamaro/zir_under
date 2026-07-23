@@ -474,7 +474,7 @@
         textureUrl: textureUrl,
         title: snapshot.name || "Designed handkerchief",
         showGoToArchive: true,
-        onClose: resumeQuestionnaireAfterPreviewClose,
+        onClose: resetQuestionnaireAfterSubmit,
       });
     }
 
@@ -6916,7 +6916,7 @@
     if (buyPreviewRoot) {
       buyPreviewRoot.addEventListener(
         "buyPreview3d:postSubmitClosed",
-        resumeQuestionnaireAfterPreviewClose
+        resetQuestionnaireAfterSubmit
       );
     }
 

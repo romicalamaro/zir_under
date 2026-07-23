@@ -1407,6 +1407,53 @@
             />
           </div>
           <div class="page2-buy-preview__actions">
+            <div
+              id="page2-buy-preview-share"
+              class="page2-buy-preview__share"
+              hidden
+            >
+              <!-- Hint sits above QR so it reads right after the thank-you copy -->
+              <p
+                id="page2-buy-preview-share-hint"
+                class="page2-buy-preview__share-hint"
+              ></p>
+              <div class="page2-buy-preview__share-qr-wrap">
+                <img
+                  id="page2-buy-preview-share-qr"
+                  class="page2-buy-preview__share-qr"
+                  alt=""
+                  hidden
+                />
+                <div
+                  id="page2-buy-preview-share-status"
+                  class="page2-buy-preview__share-status"
+                  aria-live="polite"
+                ></div>
+                <div
+                  id="page2-buy-preview-share-countdown"
+                  class="page2-buy-preview__share-countdown"
+                  hidden
+                  aria-live="polite"
+                >
+                  <span
+                    id="page2-buy-preview-share-countdown-num"
+                    class="page2-buy-preview__share-countdown-num"
+                  ></span>
+                  <span
+                    id="page2-buy-preview-share-countdown-label"
+                    class="page2-buy-preview__share-countdown-label"
+                  ></span>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="page2-buy-preview-share-retry"
+                class="page2-buy-preview__share-retry"
+                hidden
+              >
+                Retry
+              </button>
+            </div>
             <div class="page2-buy-preview__action-row">
               <button
                 type="button"
@@ -5037,7 +5084,8 @@
       }
 
       #page2 .page2-cart-drawer__buy,
-      #page2 .page2-buy-preview__go-archive {
+      #page2 .page2-buy-preview__go-archive,
+      #page2 .page2-buy-preview__share-retry {
         display: block;
         box-sizing: border-box;
         padding: clamp(0.35rem, 0.486vw, 0.525rem);
@@ -5063,35 +5111,41 @@
       }
 
       #page2 .page2-cart-drawer__buy[hidden],
-      #page2 .page2-buy-preview__go-archive[hidden] {
+      #page2 .page2-buy-preview__go-archive[hidden],
+      #page2 .page2-buy-preview__share-retry[hidden] {
         display: none;
       }
 
       #page2 .page2-cart-drawer__buy:hover,
-      #page2 .page2-buy-preview__go-archive:hover {
+      #page2 .page2-buy-preview__go-archive:hover,
+      #page2 .page2-buy-preview__share-retry:hover {
         background: #fff;
         color: var(--page2-header-shop-banner-surface);
       }
 
       #page2 .page2-cart-drawer__buy:focus-visible,
-      #page2 .page2-buy-preview__go-archive:focus-visible {
+      #page2 .page2-buy-preview__go-archive:focus-visible,
+      #page2 .page2-buy-preview__share-retry:focus-visible {
         outline: 2px solid var(--page2-header-shop-banner-surface);
         outline-offset: 2px;
       }
 
       /* End-of-questionnaire popup Buy button: brown instead of the red used
          by the cart-drawer Buy / shop banner. */
-      #page2 .page2-buy-preview__go-archive {
+      #page2 .page2-buy-preview__go-archive,
+      #page2 .page2-buy-preview__share-retry {
         border-color: var(--color-brown);
         background: var(--color-brown);
       }
 
-      #page2 .page2-buy-preview__go-archive:hover {
+      #page2 .page2-buy-preview__go-archive:hover,
+      #page2 .page2-buy-preview__share-retry:hover {
         background: #fff;
         color: var(--color-brown);
       }
 
-      #page2 .page2-buy-preview__go-archive:focus-visible {
+      #page2 .page2-buy-preview__go-archive:focus-visible,
+      #page2 .page2-buy-preview__share-retry:focus-visible {
         outline-color: var(--color-brown);
       }
 
@@ -5275,19 +5329,25 @@
 
       #page2
         .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
+        .page2-buy-preview__actions {
+        order: 3;
+        /* Pull scan hint + QR closer to thank-you copy */
+        margin-top: var(--page2-space-4); /* was 50px — lift share block up */
+        gap: var(--page2-space-4); /* scan-only: no Buy row below */
+      }
+
+      #page2 .page2-buy-preview__action-row[hidden] {
+        display: none;
+      }
+
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
         .page2-buy-preview__copy {
         order: 2;
         align-self: center;
         width: var(--page2-buy-preview-copy-width);
         max-width: calc(100% - 2 * var(--page2-gutter));
-        padding: var(--page2-gutter) 0 var(--page2-space-4);
-      }
-
-      #page2
-        .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
-        .page2-buy-preview__actions {
-        order: 3;
-        margin-top: var(--page2-space-50); /* 50px @ ref — gap above Buy while button stays pinned to panel bottom */
+        padding: var(--page2-gutter) 0 0; /* less space under thank-you → share */
       }
 
       /* Completion popup — Buy spans 1 site grid column */
@@ -5296,6 +5356,15 @@
         .page2-buy-preview__action-row {
         width: var(--page2-buy-preview-action-width);
         max-width: var(--page2-buy-preview-action-width);
+      }
+
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
+        .page2-buy-preview__share {
+        width: calc(
+          3 * var(--page2-buy-preview-vw-grid-col) + 2 * var(--page2-gutter)
+        );
+        max-width: calc(100% - 2 * var(--page2-gutter));
       }
 
       #page2 .page2-buy-preview__copy[hidden] {
@@ -5388,7 +5457,10 @@
          larger than questionnaire small text (0.875rem → 0.9375rem / 15px). */
       #page2
         .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
-        .page2-buy-preview__copy-line--secondary {
+        .page2-buy-preview__copy-line--secondary,
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__share-hint {
         font-family: "Vazirmatn", sans-serif;
         font-size: 0.9375rem; /* 15px @ 16px root */
         font-weight: 200;
@@ -5397,12 +5469,27 @@
 
       #page2
         .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
-        .page2-buy-preview__go-archive {
+        .page2-buy-preview__go-archive,
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__share-retry,
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__share-status,
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__share-countdown-label {
         font-family: "Vazirmatn", sans-serif;
-        font-size: clamp(0.75rem, 0.87vw, 0.9375rem); /* +~7% vs default buy btn */
+        font-size: clamp(0.75rem, 0.87vw, 0.9375rem);
         font-weight: normal;
         letter-spacing: 0;
         text-transform: none;
+      }
+
+      #page2
+        .page2-buy-preview__panel:has(.page2-buy-preview__copy-line--fa)
+        .page2-buy-preview__share-countdown-num {
+        font-family: "Vazirmatn", sans-serif;
       }
 
       #page2 .page2-buy-preview__actions {
@@ -5412,6 +5499,114 @@
         gap: var(--page2-space-4);
         padding: 0 var(--page2-gutter) var(--page2-gutter);
         box-sizing: border-box;
+      }
+
+      #page2 .page2-buy-preview__share {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(0.25rem, 0.347vw, 0.375rem); /* ~4–6px — tight hint→QR */
+        width: calc(var(--page2-cart-drawer-width) - 2 * var(--page2-gutter));
+        max-width: calc(100% - 2 * var(--page2-gutter));
+        margin-inline: auto;
+        text-align: center;
+      }
+
+      #page2 .page2-buy-preview__share[hidden] {
+        display: none;
+      }
+
+      /* Match scan hint to completion secondary copy (Your choices…) */
+      #page2 .page2-buy-preview__share-hint {
+        margin: 0;
+        font-family: "Suisse Intl", sans-serif;
+        font-weight: 200;
+        font-size: calc(
+          (var(--page2-space-20, 1.25rem) - var(--page2-space-4)) * 1.2 * 1.5 * 0.5
+        ); /* same as copy-line--secondary */
+        line-height: 1.15;
+        color: var(--page2-header-cell-fill, #1a1a1a);
+      }
+
+      #page2 .page2-buy-preview__share-status {
+        margin: 0;
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.7rem, 0.81vw, 0.875rem);
+        line-height: 1.2;
+        color: var(--color-brown, #442c28);
+      }
+
+      #page2 .page2-buy-preview__share-qr-wrap {
+        --page2-share-qr-size: clamp(6.5rem, 9.26vw, 10rem); /* 104–160px @ 1728 */
+        position: relative;
+        width: var(--page2-share-qr-size);
+        height: var(--page2-share-qr-size);
+        display: grid;
+        place-items: center;
+        background: #fff;
+        border: 1px solid color-mix(in srgb, var(--color-brown, #442c28) 25%, transparent);
+        box-sizing: border-box;
+      }
+
+      #page2 .page2-buy-preview__share-qr {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      #page2 .page2-buy-preview__share-qr[hidden] {
+        display: none;
+      }
+
+      #page2 .page2-buy-preview__share-status {
+        position: absolute;
+        inset: var(--page2-space-4);
+        display: none; /* countdown replaces status during load */
+        place-items: center;
+        pointer-events: none;
+      }
+
+      #page2 .page2-buy-preview__share-status:not([hidden]) {
+        display: grid;
+      }
+
+      #page2 .page2-buy-preview__share-countdown {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(0.1rem, 0.2vw, 0.25rem);
+        pointer-events: none;
+        color: var(--color-brown, #442c28);
+      }
+
+      #page2 .page2-buy-preview__share-countdown[hidden] {
+        display: none;
+      }
+
+      #page2 .page2-buy-preview__share-countdown-num {
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(1.75rem, 2.78vw, 2.5rem); /* ~28–40px @ 1728 */
+        font-weight: normal;
+        line-height: 1;
+        letter-spacing: 0.02em;
+      }
+
+      #page2 .page2-buy-preview__share-countdown-label {
+        font-family: "Suisse Intl Light", sans-serif;
+        font-size: clamp(0.625rem, 0.694vw, 0.75rem); /* 10–12px */
+        line-height: 1.2;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      #page2 .page2-buy-preview__share-retry {
+        width: auto;
+        min-width: clamp(5.5rem, 8vw, 7.5rem);
+        margin: 0;
       }
 
       #page2 .page2-buy-preview__action-row {
@@ -7614,8 +7809,10 @@
     <script defer src="js/shopAlbums.js?v=20260704-feelings-legend"></script>
     <script defer src="js/cartDrawer.js?v=20260701-full-deploy"></script>
     <script defer src="js/vendor/three.min.js"></script>
+    <script defer src="js/vendor/qrcode.min.js"></script>
+    <script defer src="js/designShareQr.js?v=20260722-story-transparent"></script>
     <script defer src="js/headscarf3d.js?v=20260705-balanced-flutter"></script>
-    <script defer src="js/buyPreview3d.js?v=20260705-live-balanced"></script>
+    <script defer src="js/buyPreview3d.js?v=20260722-scan-only"></script>
     <script defer src="js/page2Units.js"></script>
     <script defer src="js/constants.js?v=20260705-handkerchief-top-align"></script>
     <script defer src="js/embeddedPaletteCsv.js?v=20260704-palette9-final"></script>
@@ -7632,8 +7829,8 @@
     <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
     <script defer src="js/sectionProgression.js?v=20260625-grid-unlock-fix"></script>
     <script defer src="js/feelingsSpiderChart.js?v=20260704-feelings-legend"></script>
-    <script defer src="js/questionnaireStrings.js?v=20260704-feelings-legend"></script>
-    <script defer src="js/questionnaire.js?v=20260706-prod-fix"></script>
+    <script defer src="js/questionnaireStrings.js?v=20260722-qr-countdown"></script>
+    <script defer src="js/questionnaire.js?v=20260722-scan-only"></script>
     <script defer src="js/locationCoordinates.js"></script>
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>

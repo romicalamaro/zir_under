@@ -9,10 +9,27 @@
   var closeBtn = root && root.querySelector(".page2-buy-preview__close");
   var scrim = root && root.querySelector("[data-buy-preview-dismiss]");
   var goToArchiveBtn = document.getElementById("page2-buy-preview-go-archive");
+  var sharePanel = document.getElementById("page2-buy-preview-share");
+  var shareHintEl = document.getElementById("page2-buy-preview-share-hint");
+  var shareQrEl = document.getElementById("page2-buy-preview-share-qr");
+  var shareStatusEl = document.getElementById("page2-buy-preview-share-status");
+  var shareCountdownEl = document.getElementById(
+    "page2-buy-preview-share-countdown"
+  );
+  var shareCountdownNumEl = document.getElementById(
+    "page2-buy-preview-share-countdown-num"
+  );
+  var shareCountdownLabelEl = document.getElementById(
+    "page2-buy-preview-share-countdown-label"
+  );
+  var shareRetryBtn = document.getElementById("page2-buy-preview-share-retry");
 
   if (!page2 || !root || !stage || !previewImg || !closeBtn) return;
 
   var CART_OPEN_AFTER_ARCHIVE_MS = 450;
+  var SHARE_COUNTDOWN_SECONDS = 8;
+  var shareCountdownTimerId = null;
+  var shareCountdownLeft = 0;
 
   var HEADSCARF_3D_BUY_CONFIG = {
     camY: 0,
@@ -88,6 +105,257 @@
     return "Buy";
   }
 
+  function getUiString(key, fallback) {
+    var locale = getQuestionnaireLocale();
+    var strings = window.QuestionnaireStrings;
+    if (
+      strings &&
+      strings[locale] &&
+      strings[locale].ui &&
+      strings[locale].ui[key]
+    ) {
+      return strings[locale].ui[key];
+    }
+    return fallback;
+  }
+
+  function getShareUiCopy() {
+    var locale = getQuestionnaireLocale();
+    return {
+      lang: locale,
+      dir: locale === "fa" ? "rtl" : "ltr",
+      scanHint: getUiString(
+        "shareScanHint",
+        "Scan to take your textile to your phone"
+      ),
+      preparing: getUiString("sharePreparing", "Preparing your link…"),
+      error: getUiString(
+        "shareError",
+        "Could not create a share link. Try again."
+      ),
+      retry: getUiString("shareRetry", "Retry"),
+      qrAlt: getUiString("shareQrAlt", "QR code linking to your scarf image"),
+      countdownLabel: getUiString("shareCountdownLabel", "sec"),
+      countdownAlmost: getUiString("shareCountdownAlmost", "Almost ready…"),
+    };
+  }
+
+  function stopShareCountdown() {
+    if (shareCountdownTimerId) {
+      window.clearInterval(shareCountdownTimerId);
+      shareCountdownTimerId = null;
+    }
+    shareCountdownLeft = 0;
+    if (shareCountdownEl) {
+      shareCountdownEl.hidden = true;
+    }
+    if (shareCountdownNumEl) {
+      shareCountdownNumEl.textContent = "";
+    }
+    if (shareCountdownLabelEl) {
+      shareCountdownLabelEl.textContent = "";
+    }
+  }
+
+  function renderShareCountdown() {
+    var copy = getShareUiCopy();
+    if (!shareCountdownEl) return;
+
+    if (shareCountdownLeft > 0) {
+      shareCountdownEl.hidden = false;
+      if (shareCountdownNumEl) {
+        shareCountdownNumEl.hidden = false;
+        shareCountdownNumEl.textContent = String(shareCountdownLeft);
+      }
+      if (shareCountdownLabelEl) {
+        shareCountdownLabelEl.textContent = copy.countdownLabel;
+      }
+      return;
+    }
+
+    // Past estimate — keep reassurance until QR appears.
+    shareCountdownEl.hidden = false;
+    if (shareCountdownNumEl) {
+      shareCountdownNumEl.hidden = true;
+      shareCountdownNumEl.textContent = "";
+    }
+    if (shareCountdownLabelEl) {
+      shareCountdownLabelEl.textContent = copy.countdownAlmost;
+    }
+  }
+
+  function startShareCountdown() {
+    stopShareCountdown();
+    shareCountdownLeft = SHARE_COUNTDOWN_SECONDS;
+    if (shareStatusEl) {
+      shareStatusEl.hidden = true;
+      shareStatusEl.textContent = "";
+    }
+    renderShareCountdown();
+    shareCountdownTimerId = window.setInterval(function () {
+      if (!isOpen || !postSubmitPreview) {
+        stopShareCountdown();
+        return;
+      }
+      shareCountdownLeft -= 1;
+      if (shareCountdownLeft < 0) {
+        shareCountdownLeft = 0;
+      }
+      renderShareCountdown();
+      if (shareCountdownLeft <= 0 && shareCountdownTimerId) {
+        // Stay on "Almost ready…" — cleared when QR succeeds/fails.
+        window.clearInterval(shareCountdownTimerId);
+        shareCountdownTimerId = null;
+      }
+    }, 1000);
+  }
+
+  function clearShareUi() {
+    stopShareCountdown();
+    if (shareHintEl) {
+      shareHintEl.textContent = "";
+    }
+    if (shareStatusEl) {
+      shareStatusEl.textContent = "";
+      shareStatusEl.hidden = true;
+    }
+    if (shareQrEl) {
+      shareQrEl.hidden = true;
+      shareQrEl.removeAttribute("src");
+      shareQrEl.alt = "";
+    }
+    if (shareRetryBtn) {
+      shareRetryBtn.hidden = true;
+    }
+  }
+
+  function setSharePanelVisible(visible) {
+    if (!sharePanel) return;
+    sharePanel.hidden = !visible;
+    if (!visible) {
+      clearShareUi();
+    }
+  }
+
+  function applyShareLocaleAttrs() {
+    var copy = getShareUiCopy();
+    if (sharePanel) {
+      sharePanel.lang = copy.lang;
+      sharePanel.dir = copy.dir;
+    }
+    if (shareHintEl) {
+      shareHintEl.lang = copy.lang;
+      shareHintEl.dir = copy.dir;
+    }
+    if (shareStatusEl) {
+      shareStatusEl.lang = copy.lang;
+      shareStatusEl.dir = copy.dir;
+    }
+    if (shareCountdownEl) {
+      shareCountdownEl.lang = copy.lang;
+      shareCountdownEl.dir = copy.dir;
+    }
+    if (shareRetryBtn) {
+      shareRetryBtn.lang = copy.lang;
+      shareRetryBtn.dir = copy.dir;
+    }
+  }
+
+  function showShareLoading() {
+    var copy = getShareUiCopy();
+    applyShareLocaleAttrs();
+    if (shareHintEl) {
+      shareHintEl.textContent = copy.scanHint;
+    }
+    if (shareQrEl) {
+      shareQrEl.hidden = true;
+      shareQrEl.removeAttribute("src");
+      shareQrEl.alt = "";
+    }
+    if (shareRetryBtn) {
+      shareRetryBtn.hidden = true;
+    }
+    if (shareStatusEl) {
+      shareStatusEl.hidden = true;
+      shareStatusEl.textContent = "";
+    }
+    startShareCountdown();
+  }
+
+  function startCompletionShare(textureUrl) {
+    if (!sharePanel) return;
+    setSharePanelVisible(true);
+    applyShareLocaleAttrs();
+    showShareLoading();
+
+    var shareApi = window.DesignShareQr;
+    if (!shareApi || typeof shareApi.prepareShareFromImageSource !== "function") {
+      showShareError("upload-failed");
+      return;
+    }
+
+    shareApi.prepareShareFromImageSource(textureUrl).then(function (result) {
+      if (!isOpen || !postSubmitPreview) return;
+      if (!result || result.cancelled) return;
+      if (result.ok) {
+        showShareSuccess(result.qrDataUrl);
+        return;
+      }
+      showShareError(result.errorCode || "upload-failed");
+    });
+  }
+
+  function showShareSuccess(qrDataUrl) {
+    var copy = getShareUiCopy();
+    applyShareLocaleAttrs();
+    stopShareCountdown();
+    if (shareHintEl) {
+      shareHintEl.textContent = copy.scanHint;
+    }
+    if (shareStatusEl) {
+      shareStatusEl.hidden = true;
+      shareStatusEl.textContent = "";
+    }
+    if (shareRetryBtn) {
+      shareRetryBtn.hidden = true;
+    }
+    if (shareQrEl) {
+      shareQrEl.alt = copy.qrAlt;
+      shareQrEl.src = qrDataUrl;
+      shareQrEl.hidden = false;
+    }
+  }
+
+  function showShareError(errorCode) {
+    var copy = getShareUiCopy();
+    applyShareLocaleAttrs();
+    stopShareCountdown();
+    if (shareHintEl) {
+      shareHintEl.textContent = copy.scanHint;
+    }
+    if (shareQrEl) {
+      shareQrEl.hidden = true;
+      shareQrEl.removeAttribute("src");
+      shareQrEl.alt = "";
+    }
+    if (shareStatusEl) {
+      shareStatusEl.hidden = false;
+      shareStatusEl.textContent = copy.error;
+    }
+    if (shareRetryBtn) {
+      shareRetryBtn.textContent = copy.retry;
+      shareRetryBtn.hidden = false;
+    }
+  }
+
+  function resetCompletionShare() {
+    if (window.DesignShareQr && typeof window.DesignShareQr.resetShareState === "function") {
+      window.DesignShareQr.resetShareState();
+    }
+    setSharePanelVisible(false);
+    clearShareUi();
+  }
+
   function getCompletionPreviewCopy() {
     var locale = getQuestionnaireLocale();
     var strings = window.QuestionnaireStrings || {};
@@ -95,8 +363,8 @@
     var fallbackHeading = locale === "fa" ? "ممنون!" : "Thank you!";
     var fallbackCopy =
       locale === "fa"
-        ? "پرسشنامه را تکمیل کردی و طرح پارچه‌ی انتخابی خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند."
-        : "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.";
+        ? "انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند."
+        : "Your choices join the voices of women fighting for bodily autonomy in Iran.";
 
     return {
       lang: locale,
@@ -140,6 +408,10 @@
     goToArchiveBtn.hidden = !visible;
     if (visible) {
       goToArchiveBtn.textContent = getGoToArchiveLabel();
+    }
+    var actionRow = goToArchiveBtn.closest(".page2-buy-preview__action-row");
+    if (actionRow) {
+      actionRow.hidden = !visible;
     }
   }
 
@@ -399,6 +671,7 @@
     setCompletionPreviewMode(false);
     setGoToArchiveVisible(false);
     setCompletionPreviewCopyVisible(false);
+    resetCompletionShare();
     clearCompletionFlatImageLayout();
   }
 
@@ -639,8 +912,14 @@
     mountPreview(textureUrl, options.title || "");
     setCompletionPreviewMode(postSubmitPreview);
     scheduleCompletionFlatImageLayout();
-    setGoToArchiveVisible(postSubmitPreview);
+    // Completion is scan-only — no Buy / archive CTA on this modal.
+    setGoToArchiveVisible(false);
     setCompletionPreviewCopyVisible(postSubmitPreview);
+    if (postSubmitPreview) {
+      startCompletionShare(textureUrl);
+    } else {
+      resetCompletionShare();
+    }
     closeBtn.focus();
     return true;
   }
@@ -650,6 +929,13 @@
     pendingOnClose = null;
     if (typeof onClose === "function") {
       onClose();
+      return;
+    }
+    if (
+      window.Questionnaire &&
+      typeof window.Questionnaire.resetToIntro === "function"
+    ) {
+      window.Questionnaire.resetToIntro();
       return;
     }
     if (
@@ -707,6 +993,14 @@
       event.stopPropagation();
       closePreview();
       navigateToArchiveAndOpenCart();
+    });
+  }
+
+  if (shareRetryBtn) {
+    shareRetryBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      if (!isOpen || !postSubmitPreview || !activeTextureUrl) return;
+      startCompletionShare(activeTextureUrl);
     });
   }
 
