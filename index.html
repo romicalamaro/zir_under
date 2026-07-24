@@ -5347,8 +5347,7 @@
         align-self: center;
         width: var(--page2-buy-preview-copy-width);
         max-width: calc(100% - 2 * var(--page2-gutter));
-        /* Push Thank you down so it sits clear of the scarf hem */
-        padding: calc(var(--page2-gutter) * 1.5) 0 0;
+        padding: var(--page2-gutter) 0 0; /* less space under thank-you → share */
       }
 
       /* Completion popup — Buy spans 1 site grid column */
@@ -5380,20 +5379,10 @@
             92vh - 12rem - 2 * var(--page2-space-50) - var(--page2-space-50)
           ),
           calc(var(--page2-buy-preview-panel-width) * 0.72)
-        ); /* reserve copy + QR gap + panel padding @ ref */
+        ); /* reserve copy + Buy gap + panel padding @ ref */
         height: var(--page2-buy-preview-art-max-h);
         min-height: 0;
-        /* Extra bottom pad so the scarf hem clears the clip edge */
         padding-top: var(--page2-gutter);
-        padding-bottom: calc(var(--page2-gutter) * 2);
-      }
-
-      /* Give the 3D stage matching bottom inset (breathing room under hem) */
-      #page2
-        .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
-        .page2-buy-preview__stage {
-        inset: calc(var(--page2-gutter) * 2) var(--page2-gutter)
-          calc(var(--page2-gutter) * 2);
       }
 
       /* Flat image (offline / file://) — scale to fit, never clip the handkerchief */

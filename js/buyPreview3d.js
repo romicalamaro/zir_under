@@ -70,12 +70,6 @@
     if (iw > 0 && ih > 0) {
       config.flagWidth = config.flagHeight * (ih / iw);
     }
-    // Completion popup is shorter (copy + QR below) — leave margin so the
-    // hanging hem isn't clipped by overflow:hidden on the art/stage box.
-    if (postSubmitPreview) {
-      config.fitToWidthScale = 1.02;
-      config.meshScale = 0.9;
-    }
     return config;
   }
 
