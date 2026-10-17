@@ -239,7 +239,7 @@
     refs.note = el("textarea", "order-form__input order-form__textarea");
     refs.note.name = "note";
 
-    refs.submit = el("button", "page2-cart-drawer__buy", "Send order / ارسال سفارش");
+    refs.submit = el("button", "page2-cart-drawer__buy", "Send order & pay");
     refs.submit.type = "submit";
 
     refs.back = el("button", "order-form__back", "Back to cart / بازگشت");

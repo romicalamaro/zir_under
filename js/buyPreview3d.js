@@ -85,7 +85,7 @@
     ) {
       return strings[locale].ui.goToArchive;
     }
-    return "Buy";
+    return "Add to cart";
   }
 
   function getCompletionPreviewCopy() {

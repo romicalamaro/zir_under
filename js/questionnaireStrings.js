@@ -59,7 +59,7 @@
       shuffleLayoutAria:
         "Randomize emotion placement on the canvas without changing intensity values",
       submitOrder: "order",
-      goToArchive: "Buy",
+      goToArchive: "Add to cart",
       completionPreviewHeading: "Thank you!",
       completionPreviewCopy:
         "You've completed the questionnaire and created your own textile. Your choices join the voices of women fighting for bodily autonomy in Iran.",
@@ -347,7 +347,7 @@
       shuffleLayoutAria:
         "جای احساسات روی بوم را بدون تغییر شدت، تصادفی کنید",
       submitOrder: "سفارش",
-      goToArchive: "خرید",
+      goToArchive: "افزودن به سبد خرید",
       completionPreviewHeading: "ممنون!",
       completionPreviewCopy:
         "پرسشنامه را تکمیل کردی و طرح پارچه‌ی انتخابی خودت را خلق کردی. انتخاب‌های تو به صدای زنانی می‌پیوندد که در ایران برای آزادی پوشش بر بدن خود مبارزه می‌کنند.",
