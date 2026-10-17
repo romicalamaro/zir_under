@@ -209,6 +209,10 @@
 
   function renderCart() {
     if (!emptyEl || !listEl) return;
+    // Any change to the cart closes an open order form (see orderSubmit.js).
+    if (window.OrderSubmit && window.OrderSubmit.hideForm) {
+      window.OrderSubmit.hideForm();
+    }
 
     if (!items.length) {
       emptyEl.hidden = false;
@@ -281,6 +285,9 @@
 
   function addItem(snapshot) {
     if (!snapshot || !snapshot.id) return false;
+    if (emptyEl && typeof EMPTY_TEXT === "string" && EMPTY_TEXT) {
+      emptyEl.textContent = EMPTY_TEXT;
+    }
 
     var existing = null;
     for (var i = 0; i < items.length; i++) {
@@ -445,9 +452,32 @@
     closeCart();
   });
 
+  var EMPTY_TEXT = emptyEl ? emptyEl.textContent : "";
+
   if (buyBtn) {
     buyBtn.addEventListener("click", function (event) {
       event.stopPropagation();
+      // Order form + sending lives in js/orderSubmit.js.
+      if (window.OrderSubmit && typeof window.OrderSubmit.startCheckout === "function") {
+        window.OrderSubmit.startCheckout({
+          items: items.slice(),
+          getItems: function () {
+            return items.slice();
+          },
+          drawerBody: buyBtn.parentNode,
+          buyBtn: buyBtn,
+          clearCart: clearCart,
+          onSent: function (orderId) {
+            if (emptyEl) {
+              emptyEl.textContent =
+                "Thank you! Your order " +
+                orderId +
+                " was sent. We will email you soon. / سپاس! سفارش شما ارسال شد.";
+            }
+          },
+        });
+        return;
+      }
       clearCart();
       closeCart();
     });

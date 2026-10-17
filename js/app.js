@@ -24654,6 +24654,13 @@
     });
   }
 
+  /**
+   * Full-size vector print file (same markup as "Export SVG") from the most
+   * recent archive capture. Kept so an order sends exactly the design the
+   * customer saw in her thumbnail — re-rendering later can reshuffle marks.
+   */
+  var lastCapturedPrintSvg = null;
+
   function captureArchiveDesignPng(thumbWidth) {
     var width = thumbWidth || 560;
     var fontReady =
@@ -24684,6 +24691,7 @@
           fontDataUri,
           hopeDotsVectorLines
         );
+        lastCapturedPrintSvg = markup;
         return rasterizeSvgMarkupToPngDataUrl(markup, width);
       })
       .catch(function (err) {
@@ -24698,6 +24706,7 @@
           getEmbeddedExportFontDataUri(),
           null
         );
+        lastCapturedPrintSvg = markup;
         return rasterizeSvgMarkupToPngDataUrl(markup, width);
       });
   }
@@ -26660,6 +26669,9 @@
     window.layoutQuestionnaireCanvasFromScroll =
       layoutQuestionnaireCanvasFromScroll;
     window.captureArchiveDesignPng = captureArchiveDesignPng;
+    window.getLastCapturedPrintSvg = function () {
+      return lastCapturedPrintSvg;
+    };
     window.beginArchiveCapture = beginArchiveCapture;
     window.endArchiveCapture = endArchiveCapture;
 

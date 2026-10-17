@@ -580,6 +580,19 @@
             mimeType: encoded.mimeType,
             image: encoded.blob,
           };
+          // The full-size print SVG is not stored in the archive (several MB
+          // each would fill browser storage). It is kept in memory for this
+          // visit so the order can send it — see js/orderSubmit.js.
+          if (
+            window.OrderSubmit &&
+            typeof window.getLastCapturedPrintSvg === "function"
+          ) {
+            window.OrderSubmit.rememberDesign(entry.id, {
+              svg: window.getLastCapturedPrintSvg(),
+              profile: profile,
+              previewDataUrl: previewDataUrl,
+            });
+          }
           return putEntry(entry).then(function (savedEntry) {
             return getAllEntries().then(function (entries) {
               renderArchiveGridWithEntries(entries);
