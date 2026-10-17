@@ -18,6 +18,8 @@
     "https://script.google.com/macros/s/AKfycbwpkyErRC-z7Qqk5enQ2VLOcWFz57-W8S1cmWMgOSwh0KNQ2PPW-I4907cawRfBXW7i/exec";
 
   // Preview image for the email and Drive (the SVG is the print file).
+  var SHIPPING_PRICE_ILS = 25; // registered mail within Israel
+
   var PREVIEW_EMAIL_WIDTH = 1600;
   var PREVIEW_JPEG_QUALITY = 0.92;
   var STYLE_ID = "order-submit-styles";
@@ -190,6 +192,11 @@
       "#page2 .order-form { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; font-family: 'Suisse Intl Light', sans-serif; }",
       "#page2 .order-form[hidden] { display: none; }",
       "#page2 .order-form__label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; }",
+      "#page2 .order-form__label[hidden] { display: none; }",
+      "#page2 .order-form__check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }",
+      "#page2 .order-form__check input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--page2-header-shop-banner-surface, #000); }",
+      "#page2 .order-form__pickup { font-size: 0.75rem; margin: -0.25rem 0 0; }",
+      "#page2 .order-form__pickup[hidden] { display: none; }",
       "#page2 .order-form__input { font: inherit; font-size: 0.95rem; padding: 0.45rem 0.5rem; border: 1px solid currentColor; background: transparent; color: inherit; border-radius: 0; }",
       "#page2 .order-form__input:focus-visible { outline: 2px solid var(--page2-header-shop-banner-surface, #000); outline-offset: 1px; }",
       "#page2 .order-form__textarea { min-height: 4.5rem; resize: vertical; }",
@@ -252,9 +259,23 @@
 
     refs.address = el("textarea", "order-form__input order-form__textarea");
     refs.address.name = "address";
-    refs.address.required = true;
+    refs.address.required = false; // required only when shipping is ticked
     refs.address.autocomplete = "street-address";
     refs.address.placeholder = "Street, number, apartment, city";
+
+    refs.shipping = el("input");
+    refs.shipping.type = "checkbox";
+    refs.shipping.name = "shipping";
+    refs.shippingRow = el("label", "order-form__check");
+    refs.shippingRow.appendChild(refs.shipping);
+    refs.shippingRow.appendChild(
+      document.createTextNode("Add shipping by registered mail (₪" + SHIPPING_PRICE_ILS + ")")
+    );
+    refs.pickup = el(
+      "p",
+      "order-form__pickup",
+      "Without shipping, we will arrange a pickup with you."
+    );
 
     refs.notice = el("div", "order-form__notice");
     refs.notice.appendChild(
@@ -289,7 +310,22 @@
     form.appendChild(field("Name / نام *", refs.name));
     form.appendChild(field("Email / ایمیل *", refs.email));
     form.appendChild(field("Phone / تلفن *", refs.phone));
-    form.appendChild(field("Shipping address in Israel / آدرس ارسال در اسرائیل *", refs.address));
+    form.appendChild(refs.shippingRow);
+    form.appendChild(refs.pickup);
+    refs.addressRow = field("Shipping address in Israel / آدرس ارسال در اسرائیل *", refs.address);
+    form.appendChild(refs.addressRow);
+
+    function syncShipping() {
+      var on = refs.shipping.checked;
+      refs.addressRow.hidden = !on;
+      refs.address.required = on;
+      refs.pickup.hidden = on;
+    }
+    refs.shipping.addEventListener("change", syncShipping);
+    form.addEventListener("reset", function () {
+      setTimeout(syncShipping, 0);
+    });
+    syncShipping();
     form.appendChild(field("Note / یادداشت", refs.note));
     form.appendChild(refs.submit);
     form.appendChild(refs.back);
@@ -345,7 +381,9 @@
         name: refs.name.value.trim(),
         email: refs.email.value.trim(),
         phone: refs.phone.value.trim(),
-        address: refs.address.value.trim(),
+        shipping: refs.shipping.checked,
+        shippingPrice: refs.shipping.checked ? SHIPPING_PRICE_ILS : 0,
+        address: refs.shipping.checked ? refs.address.value.trim() : "",
         note: refs.note.value.trim(),
       };
       refs.submit.disabled = true;

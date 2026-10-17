@@ -161,6 +161,7 @@ function saveOrder_(order) {
     folder.getUrl(),
     c.phone || "",
     c.address || "",
+    c.shipping ? "Shipping ₪" + (c.shippingPrice || 25) : "Pickup",
   ]);
 
   var to = NOTIFY_EMAIL || Session.getEffectiveUser().getEmail();
@@ -169,6 +170,7 @@ function saveOrder_(order) {
     "<p><b>Name:</b> " + esc_(c.name || "-") + "<br>" +
     "<b>Email:</b> " + esc_(c.email) + "<br>" +
     "<b>Phone:</b> " + esc_(c.phone || "-") + "<br>" +
+    "<b>Delivery:</b> " + (c.shipping ? "Registered mail (₪" + (c.shippingPrice || 25) + ")" : "Pickup (no shipping)") + "<br>" +
     "<b>Address:</b> " + esc_(c.address || "-").replace(/\n/g, "<br>") + "<br>" +
     "<b>Note:</b> " + esc_(c.note || "-") + "</p>" +
     rowsHtml.join("") +
@@ -224,6 +226,7 @@ function getSheet_() {
   var sh = ss.getSheets()[0];
   // Columns added later (Israel shipping): keep older sheets in step.
   if (!sh.getRange(1, 10).getValue()) sh.getRange(1, 10, 1, 2).setValues([["Phone", "Address"]]);
+  if (!sh.getRange(1, 12).getValue()) sh.getRange(1, 12).setValue("Delivery");
   return sh;
 }
 
