@@ -159,6 +159,8 @@ function saveOrder_(order) {
     customCount,
     "new",
     folder.getUrl(),
+    c.phone || "",
+    c.address || "",
   ]);
 
   var to = NOTIFY_EMAIL || Session.getEffectiveUser().getEmail();
@@ -166,6 +168,8 @@ function saveOrder_(order) {
     "<h2>New UNDER order " + esc_(order.orderId) + "</h2>" +
     "<p><b>Name:</b> " + esc_(c.name || "-") + "<br>" +
     "<b>Email:</b> " + esc_(c.email) + "<br>" +
+    "<b>Phone:</b> " + esc_(c.phone || "-") + "<br>" +
+    "<b>Address:</b> " + esc_(c.address || "-").replace(/\n/g, "<br>") + "<br>" +
     "<b>Note:</b> " + esc_(c.note || "-") + "</p>" +
     rowsHtml.join("") +
     "<p><a href='" + folder.getUrl() + "'>Open the order folder in Drive</a></p>" +
@@ -217,7 +221,10 @@ function getSheet_() {
     sheet.setFrozenRows(1);
     DriveApp.getFileById(ss.getId()).moveTo(getRootFolder_());
   }
-  return ss.getSheets()[0];
+  var sh = ss.getSheets()[0];
+  // Columns added later (Israel shipping): keep older sheets in step.
+  if (!sh.getRange(1, 10).getValue()) sh.getRange(1, 10, 1, 2).setValues([["Phone", "Address"]]);
+  return sh;
 }
 
 function dataUrlToBlob_(dataUrl, name) {

@@ -194,6 +194,8 @@
       "#page2 .order-form__input:focus-visible { outline: 2px solid var(--page2-header-shop-banner-surface, #000); outline-offset: 1px; }",
       "#page2 .order-form__textarea { min-height: 4.5rem; resize: vertical; }",
       "#page2 .order-form__status { font-size: 0.85rem; margin: 0; }",
+      "#page2 .order-form__notice { font-size: 0.8rem; line-height: 1.4; display: flex; flex-direction: column; gap: 0.4rem; }",
+      "#page2 .order-form__notice p { margin: 0; }",
       "#page2 .order-form__status--error { color: #b00020; }",
       "#page2 .order-form__back { font: inherit; font-size: 0.8rem; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: inherit; align-self: flex-start; }",
     ].join("\n");
@@ -229,6 +231,7 @@
     refs.name.type = "text";
     refs.name.name = "name";
     refs.name.autocomplete = "name";
+    refs.name.required = true;
 
     refs.email = el("input", "order-form__input");
     refs.email.type = "email";
@@ -236,10 +239,43 @@
     refs.email.required = true;
     refs.email.autocomplete = "email";
 
+    // Israel only for now: phone for the Bit payment request + courier,
+    // and a local shipping address.
+    refs.phone = el("input", "order-form__input");
+    refs.phone.type = "tel";
+    refs.phone.name = "phone";
+    refs.phone.required = true;
+    refs.phone.autocomplete = "tel";
+    refs.phone.placeholder = "05X-XXXXXXX";
+    refs.phone.pattern = "\\s*(\\+972|0)(\\s|-)*5\\d((\\s|-)*\\d){7}\\s*";
+    refs.phone.title = "Israeli mobile number, e.g. 050-1234567";
+
+    refs.address = el("textarea", "order-form__input order-form__textarea");
+    refs.address.name = "address";
+    refs.address.required = true;
+    refs.address.autocomplete = "street-address";
+    refs.address.placeholder = "Street, number, apartment, city";
+
+    refs.notice = el("div", "order-form__notice");
+    refs.notice.appendChild(
+      el(
+        "p",
+        "",
+        "Shipping within Israel only. After you send the order, we will contact you within 48 hours with the final price and a Bit payment request."
+      )
+    );
+    var noticeFa = el(
+      "p",
+      "",
+      "در حال حاضر ارسال فقط به داخل اسرائیل است. پس از ثبت سفارش، ظرف ۴۸ ساعت قیمت نهایی و درخواست پرداخت از طریق Bit را برایتان می‌فرستیم."
+    );
+    noticeFa.dir = "rtl";
+    refs.notice.appendChild(noticeFa);
+
     refs.note = el("textarea", "order-form__input order-form__textarea");
     refs.note.name = "note";
 
-    refs.submit = el("button", "page2-cart-drawer__buy", "Send order & pay");
+    refs.submit = el("button", "page2-cart-drawer__buy", "Send order");
     refs.submit.type = "submit";
 
     refs.back = el("button", "order-form__back", "Back to cart / بازگشت");
@@ -249,8 +285,11 @@
     refs.status.setAttribute("role", "status");
     refs.status.hidden = true;
 
-    form.appendChild(field("Name / نام", refs.name));
+    form.appendChild(refs.notice);
+    form.appendChild(field("Name / نام *", refs.name));
     form.appendChild(field("Email / ایمیل *", refs.email));
+    form.appendChild(field("Phone / تلفن *", refs.phone));
+    form.appendChild(field("Shipping address in Israel / آدرس ارسال در اسرائیل *", refs.address));
     form.appendChild(field("Note / یادداشت", refs.note));
     form.appendChild(refs.submit);
     form.appendChild(refs.back);
@@ -295,13 +334,18 @@
 
     form.onsubmit = function (event) {
       event.preventDefault();
-      if (!refs.email.checkValidity()) {
-        refs.email.reportValidity();
-        return;
+      var required = [refs.name, refs.email, refs.phone, refs.address];
+      for (var i = 0; i < required.length; i++) {
+        if (!required[i].checkValidity()) {
+          required[i].reportValidity();
+          return;
+        }
       }
       var customer = {
         name: refs.name.value.trim(),
         email: refs.email.value.trim(),
+        phone: refs.phone.value.trim(),
+        address: refs.address.value.trim(),
         note: refs.note.value.trim(),
       };
       refs.submit.disabled = true;

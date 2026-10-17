@@ -472,7 +472,7 @@
               emptyEl.textContent =
                 "Thank you! Your order " +
                 orderId +
-                " was sent. We will email you soon. / سپاس! سفارش شما ارسال شد.";
+                " was sent. Within 48 hours we will contact you with the final price and a Bit payment request. / سپاس! سفارش شما ارسال شد.";
             }
           },
         });
