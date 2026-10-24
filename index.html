@@ -5444,6 +5444,217 @@
         }
       }
     </style>
+    <style id="page2-mobile-styles">
+      /*
+        Phones (≤ 767px) — part 1: header, shop, product page, cart, footer,
+        completion popup button. Desktop is untouched: every rule lives inside
+        this media query. Fonts and type sizes reuse the site's own tokens.
+      */
+      @media (max-width: 767px) {
+        #page2 {
+          /* Overlays that are a few grid columns wide on desktop become
+             full-width sheets on a phone. */
+          --page2-cart-drawer-width: 100vw;
+          --page2-product-panel-width: 100vw;
+          --page2-buy-preview-panel-width: calc(
+            100vw - 2 * var(--page2-margin-inline)
+          );
+          --page2-buy-preview-copy-width: calc(
+            100vw - 4 * var(--page2-margin-inline)
+          );
+          --page2-buy-preview-action-width: min(
+            16rem,
+            calc(100vw - 4 * var(--page2-margin-inline))
+          );
+        }
+
+        /* ---- Header: closed columns show only the English title ---------- */
+        #page2 .page2-header-col:not(.is-hovered) .page2-col-title__sep,
+        #page2 .page2-header-col:not(.is-hovered) .page2-col-title__fa {
+          display: none;
+        }
+
+        /* ---- Shop: two cards per row instead of four -------------------- */
+        #page2 #section-shop .shop-section__grid {
+          column-gap: var(--page2-gutter);
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #page2 #section-shop .shop-section__item,
+        #page2 #section-shop .shop-card {
+          grid-column: auto;
+        }
+
+        /* ---- Product page: image, thumbnails, then details (stacked) ----- */
+        #page2 .page2-product-page {
+          box-shadow: none;
+        }
+
+        #page2 #section-product .product-grid {
+          display: flex;
+          flex-direction: column;
+          gap: var(--page2-gutter);
+          width: 100%;
+          height: auto;
+          min-height: 0;
+          padding: var(--page2-gutter) var(--page2-margin-inline) 0;
+        }
+
+        #page2 #section-product .product-hero {
+          order: 1;
+          align-self: stretch;
+          width: 100%;
+          height: auto;
+          max-height: none;
+          aspect-ratio: 2 / 3;
+        }
+
+        #page2 #section-product .product-gallery {
+          order: 2;
+          width: 100%;
+          max-width: none;
+          height: auto;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scroll-snap-type: x proximity;
+        }
+
+        #page2 #section-product .product-gallery__track {
+          flex-direction: row;
+          width: max-content;
+          padding-block: 0;
+        }
+
+        #page2 #section-product .product-gallery__thumb {
+          width: 3.5rem;
+          scroll-snap-align: start;
+          scroll-snap-stop: normal;
+        }
+
+        #page2 #section-product .product-details {
+          order: 3;
+          align-self: stretch;
+          margin: var(--page2-gutter) 0 0;
+          padding-bottom: calc(var(--page2-margin-block-end) + 2rem);
+        }
+
+        #page2 #section-product .product-title,
+        #page2 #section-product .product-spec__heading,
+        #page2 #section-product .product-price {
+          padding-inline-start: 0;
+        }
+
+        #page2 #section-product .product-spec__row {
+          padding-inline: 0;
+        }
+
+        #page2 #section-product .product-price {
+          margin-top: var(--page2-gutter);
+        }
+
+        #page2 #section-product .product-order-btn {
+          width: 100%;
+          margin-inline-start: 0;
+          padding-block: 0.75rem;
+        }
+
+        /* ---- Cart: full-width sheet, comfortable tap targets ------------- */
+        #page2 .page2-cart-drawer {
+          box-shadow: none;
+        }
+
+        #page2 .page2-cart-drawer__buy {
+          padding-block: 0.75rem;
+        }
+
+        /* iOS zooms into inputs under 16px — keep the order form at 16px. */
+        #page2 .order-form__input {
+          font-size: 1rem;
+        }
+
+        /* ---- Completion popup: the "Add to cart" button ------------------ */
+        #page2 .page2-buy-preview__action-row {
+          width: var(--page2-buy-preview-action-width);
+          max-width: 100%;
+        }
+
+        #page2 .page2-buy-preview__go-archive {
+          padding-block: 0.75rem;
+        }
+
+        /* ---- Footer: stacked, and allowed to grow taller than one screen -- */
+        #page2 .page2-footer,
+        #page2 #section-home .page2-footer,
+        #page2 #section-archive .page2-footer,
+        #page2 #section-shop .page2-footer {
+          grid-template-rows: auto auto auto;
+          max-height: none;
+          align-items: start;
+        }
+
+        #page2 .page2-footer__top {
+          padding-top: calc(var(--page2-space-50) + var(--page2-gutter));
+          row-gap: calc(var(--page2-gutter) * 2);
+        }
+
+        /* Pages | Contact side by side, Credits full width below,
+           Bezalel logo last. */
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(1) {
+          grid-column: 1 / span 6;
+          grid-row: 1;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
+          grid-column: 7 / -1;
+          grid-row: 1;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          column-gap: var(--page2-gutter);
+          row-gap: var(--page2-space-4);
+          align-items: start;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) > .page2-footer__heading {
+          grid-column: 1 / -1;
+        }
+
+        #page2 .page2-footer__credit-group + .page2-footer__credit-group {
+          margin-top: 0;
+        }
+
+        #page2 .page2-footer__credit-group {
+          margin-bottom: var(--page2-space-4);
+        }
+
+        #page2 .page2-footer__bezalel {
+          grid-column: 1 / span 6;
+          grid-row: 3;
+        }
+
+        #page2 .page2-footer__logo,
+        #page2 #section-home .page2-footer__logo,
+        #page2 #section-archive .page2-footer__logo {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          align-self: start;
+          height: auto;
+          aspect-ratio: 72.15 / 33.64;
+          margin: calc(var(--page2-gutter) * 3) 0 0;
+        }
+
+        #page2 .page2-footer__copyright {
+          grid-row: 3;
+          margin: var(--page2-gutter) 0 calc(var(--page2-margin-block-end) + 1rem);
+          margin-inline-start: 0;
+          white-space: normal;
+        }
+      }
+    </style>
 
     <script src="js/page2Units.js"></script>
     <script id="page2-scroll-script">
@@ -6504,9 +6715,59 @@
           );
         }
 
+        /* Phones: one grid column (~17px) is far narrower than a title, so the
+           closed columns cut "DESIGN" / "ARCHIVE". Give each closed column
+           exactly its widest English title and the open column the rest. */
+        var mobileHeaderQuery = window.matchMedia("(max-width: 767px)");
+        /* Title widths change once DIN Condensed loads — measure again then. */
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(function () {
+            if (mobileHeaderQuery.matches) scheduleRefresh();
+          });
+        }
+
+        function getMobileHeaderTrackWidthsPx(spans, metrics) {
+          var widths = spans.map(function (_, index) {
+            return edgeTrackPx(index, metrics);
+          });
+          var total = header.getBoundingClientRect().width || window.innerWidth;
+          var used = 0;
+          var closedWidth = 0;
+          headerCols.forEach(function (col, i) {
+            if (isLockedColumn(i)) {
+              used += widths[i];
+              return;
+            }
+            var en = col.querySelector(".page2-col-title__en");
+            var cell = en && en.closest(".page2-header-cell");
+            if (!en || !cell) return;
+            var pad = parseFloat(window.getComputedStyle(cell).paddingLeft) || 0;
+            closedWidth = Math.max(
+              closedWidth,
+              Math.ceil(en.getBoundingClientRect().width + 2 * pad + 4)
+            );
+          });
+          var openCount = 0;
+          spans.forEach(function (span, i) {
+            if (isLockedColumn(i)) return;
+            if (span === MAX_SPAN) openCount++;
+            else used += closedWidth;
+          });
+          var openWidth = openCount
+            ? Math.max(closedWidth, (total - used) / openCount)
+            : closedWidth;
+          return spans.map(function (span, i) {
+            if (isLockedColumn(i)) return widths[i];
+            return span === MAX_SPAN ? openWidth : closedWidth;
+          });
+        }
+
         function getHeaderTrackWidthsPx(spans) {
           var metrics = getGridMetrics();
           if (!metrics) return null;
+          if (mobileHeaderQuery.matches) {
+            return getMobileHeaderTrackWidthsPx(spans, metrics);
+          }
           return spans.map(function (span, index) {
             var edgePx = edgeTrackPx(index, metrics);
             return edgePx !== null
@@ -6573,7 +6834,7 @@
         function buildTrackTemplate(spans) {
           var widths = getHeaderTrackWidthsPx(spans);
           if (!widths) return "";
-          if (hoveredHeaderColIndex >= 0) {
+          if (hoveredHeaderColIndex >= 0 && !mobileHeaderQuery.matches) {
             widths = applyHeaderHoverOffset(
               widths,
               hoveredHeaderColIndex,
