@@ -5653,6 +5653,167 @@
           margin-inline-start: 0;
           white-space: normal;
         }
+
+        /* ================= Part 2 — home + design intro ================= */
+
+        /* ---- Home hero: both intros sit in the open sky above the scarf,
+           English top-left, Persian under it on the right; the logo is
+           larger (4 columns, centred — see getLogoColumnOffsetX). ------- */
+        #page2 #section-home .page2-home-content {
+          grid-template-rows: auto auto 1fr;
+          align-items: start;
+          padding-top: calc(var(--page2-header-band-height) + var(--page2-gutter) * 2);
+        }
+
+        #page2 .page2-home-intro--en {
+          grid-column: 2 / span 7;
+          grid-row: 1;
+        }
+
+        #page2 .page2-home-intro--fa {
+          grid-column: 5 / span 7;
+          grid-row: 2;
+          margin-top: calc(var(--page2-gutter) * 1.5);
+        }
+
+        #page2 .page2-logo__slot {
+          grid-column: 1 / span 4;
+        }
+
+        /* ---- About: English, then Persian, each full width ------------ */
+        #page2 {
+          --page2-about-top-offset: calc(var(--page2-space-20) + var(--page2-gutter) * 2);
+          --page2-about-row-gap: calc(var(--page2-gutter) * 1.5);
+        }
+
+        #page2 .page2-about-text {
+          grid-column: 2 / -2;
+          grid-row: 1;
+          line-height: 1.25;
+        }
+
+        #page2 .page2-about-text--fa {
+          grid-column: 2 / -2;
+          grid-row: 2;
+          justify-self: stretch;
+          line-height: 1.5;
+        }
+
+        /* ---- Signs: title on its own line (EN ▪ FA), text below ------- */
+        #page2 #section-home .page2-home-signs__title {
+          grid-column: 2 / -2;
+          grid-row: 1;
+          flex-direction: row;
+          align-items: baseline;
+          flex-wrap: wrap;
+          column-gap: 0;
+        }
+
+        #page2 #section-home .page2-home-signs__title-sep {
+          display: block;
+          position: static;
+          transform: none;
+          flex-shrink: 0;
+          order: 2;
+          align-self: center;
+          margin-inline: 0.6em;
+        }
+
+        #page2 #section-home .page2-home-signs__title-en {
+          order: 1;
+        }
+
+        #page2 #section-home .page2-home-signs__title-fa {
+          order: 3;
+        }
+
+        #page2 #section-home .page2-home-signs__desc {
+          grid-column: 2 / -2;
+          grid-row: 2;
+        }
+
+        /* ---- Topkapi: the three drawings become a band above the text -- */
+        #page2 #section-home .page2-home-topkapi {
+          padding-top: 0;
+        }
+
+        #page2 #section-home .page2-home-topkapi__rects {
+          position: relative;
+          top: auto;
+          bottom: auto;
+          left: auto;
+          width: calc(100% + 2 * var(--page2-margin-inline));
+          height: 70vw;
+          margin-inline: calc(-1 * var(--page2-margin-inline));
+          margin-bottom: calc(var(--page2-gutter) * 2);
+        }
+
+        #page2 #section-home .page2-home-topkapi__text {
+          grid-column: 2 / -2;
+        }
+
+        /* One line, like the Signs heading: slightly smaller than desktop. */
+        #page2 #section-home .page2-home-topkapi__title {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          font-size: calc(var(--page2-topkapi-title-size) * 0.58);
+        }
+
+        #page2 #section-home .page2-home-topkapi__body--fa {
+          line-height: 1.5;
+        }
+
+        /* ---- Design intro, panel 1: English, then Persian ------------- */
+        #page2 .design-intro__panel--headscarf .design-intro__panel-inner {
+          padding-top: calc(var(--page2-header-band-height) + var(--page2-gutter) * 2);
+          row-gap: calc(var(--page2-gutter) * 1.5);
+        }
+
+        #page2 .design-intro__panel--headscarf .design-intro__text:not(.design-intro__text--fa) {
+          grid-column: 2 / span 8;
+          grid-row: 1;
+        }
+
+        #page2 .design-intro__panel--headscarf .design-intro__text--fa {
+          grid-column: 4 / -2;
+          grid-row: 2;
+        }
+
+        #page2 .design-intro__scroll-group {
+          grid-column: 1 / -1;
+        }
+
+        #page2 .design-intro__scroll-label {
+          font-size: 0.875rem;
+          white-space: nowrap;
+        }
+
+        /* ---- Design intro, panel 2: readable note + real buttons ------ */
+        #page2 .design-intro__panel--light:not(.design-intro__panel--headscarf)
+          .design-intro__text:not(.design-intro__text--secondary) {
+          grid-column: 2 / -2;
+        }
+
+        #page2 .design-intro__panel--light:not(.design-intro__panel--headscarf)
+          .design-intro__text--secondary {
+          grid-column: 2 / -2;
+          font-size: 0.9375rem;
+          line-height: 1.35;
+          text-align: center;
+        }
+
+        #page2 #design-start-btn-en {
+          grid-column: 2 / span 5;
+        }
+
+        #page2 #design-start-btn-fa {
+          grid-column: 7 / span 5;
+        }
+
+        #page2 .design-start__lang-btns .design-start__btn {
+          padding-block: 0.75rem;
+        }
       }
     </style>
 
@@ -7189,7 +7350,11 @@
           var gridCols = guides.querySelectorAll(".page2-col");
           if (gridCols.length < 7) return 0;
           var leftColLeft = gridCols[0].getBoundingClientRect().left;
-          var middleColLeft = gridCols[5].getBoundingClientRect().left;
+          /* Phones: the logo is 4 columns wide (see mobile styles), so it
+             starts at column 5 to stay centred; desktop keeps column 6. */
+          var middleColLeft = gridCols[
+            window.matchMedia("(max-width: 767px)").matches ? 4 : 5
+          ].getBoundingClientRect().left;
           return middleColLeft - leftColLeft;
         }
 
