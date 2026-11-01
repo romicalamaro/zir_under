@@ -5707,6 +5707,15 @@
           grid-column: 1 / span 8;
         }
 
+        /* Phones: the opening screen shows only the logo (with its two
+           squares) — the same texts follow right after in the about page —
+           and the about page has no photo, which ran over the texts. */
+        #page2 .page2-home-intro--en,
+        #page2 .page2-home-intro--fa,
+        #page2 .page2-about-media {
+          display: none;
+        }
+
         /* ---- About: English, then Persian, each full width ------------ */
         #page2 {
           --page2-about-top-offset: calc(var(--page2-space-20) + var(--page2-gutter) * 2);
