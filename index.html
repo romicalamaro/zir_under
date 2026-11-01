@@ -5667,10 +5667,10 @@
 
         /* ================= Part 2 — home + design intro ================= */
 
-        /* ---- Home hero: English at the top, the logo large in the middle
-           (8 columns, centred — see getLogoColumnOffsetX) with a white square
-           on each side of it as on desktop (updateHomeMarkers), and the
-           Persian just below the logo. ----------------------------------- */
+        /* ---- Home hero: English at the top with the Persian under it; the
+           logo large in the middle (8 columns, centred — see
+           getLogoColumnOffsetX) with a white square on each side of it as on
+           desktop (updateHomeMarkers). ------------------------------------ */
         #page2 #section-home .page2-home-content {
           grid-template-rows: auto auto 1fr;
           align-items: start;
@@ -5696,15 +5696,11 @@
           --page2-logo-about-scale: 1.15;
         }
 
-        /* The logo is centred on the visible screen (JS), so the Persian is
-           placed from the screen's middle: half the logo + a gap below it. */
+        /* Persian right under the English, aligned right. */
         #page2 .page2-home-intro--fa {
-          position: absolute;
-          top: calc(50% + var(--page2-phone-logo-h) / 2 + var(--page2-gutter) * 2.5);
-          top: calc(50dvh + var(--page2-phone-logo-h) / 2 + var(--page2-gutter) * 2.5);
-          right: calc(var(--page2-margin-inline) + var(--page2-phone-col) + var(--page2-gutter));
-          width: calc(7 * var(--page2-phone-col) + 6 * var(--page2-gutter));
-          margin: 0;
+          grid-column: 5 / span 7;
+          grid-row: 2;
+          margin-top: calc(var(--page2-gutter) * 1.5);
         }
 
         #page2 .page2-logo__slot {
