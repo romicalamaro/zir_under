@@ -6030,6 +6030,47 @@
           grid-column: 7;
         }
 
+        /* The numbered squares stay pinned under the scarf while the questions
+           scroll beneath them (z-index above the open card's 100). The white
+           shadows fill the gaps between squares and a strip below them so the
+           text scrolling underneath never shows through. */
+        #page2 .questionnaire-panel__scroll,
+        #page2 .questionnaire-panel--locale-fa .questionnaire-panel__scroll {
+          padding-top: 0;
+        }
+
+        #page2 .questionnaire-card:not(.is-expanded),
+        #page2 .questionnaire-card:not(.is-expanded):first-child,
+        #page2 .questionnaire-card:not(.is-expanded):not(:first-child),
+        #page2 .questionnaire-stack::before {
+          position: sticky;
+          top: 0;
+          z-index: 150;
+          margin-top: var(--page2-gutter);
+          box-shadow:
+            0 calc(-1 * var(--page2-gutter)) 0 0.125rem var(--page2-bg),
+            0 var(--page2-gutter) 0 0.125rem var(--page2-bg);
+        }
+
+        #page2 .questionnaire-stack::before {
+          background: var(--page2-bg);
+        }
+
+        #page2 .questionnaire-card.is-expanded {
+          margin-top: var(--page2-gutter);
+        }
+
+        /* Feelings chart: on a phone a finger on the chart scrolls the page;
+           only the dots themselves start a drag (see feelingsSpiderChart.js). */
+        #page2 .questionnaire-feelings-spider,
+        #page2 .questionnaire-feelings-spider__svg {
+          touch-action: pan-y;
+        }
+
+        #page2 .questionnaire-feelings-spider__axis-hit {
+          pointer-events: none;
+        }
+
         /* ---- The open section: full width under the squares ----------- */
         #page2 .questionnaire-card.is-expanded,
         #page2 .questionnaire-panel--expand-to-content .questionnaire-card.is-expanded {
@@ -8469,7 +8510,7 @@
     <script defer src="js/signsCatalog.js?v=20260701-full-deploy"></script>
     <script defer src="js/identityControls.js?v=20260611-questionnaire-sync"></script>
     <script defer src="js/sectionProgression.js?v=20260625-grid-unlock-fix"></script>
-    <script defer src="js/feelingsSpiderChart.js?v=20260704-feelings-legend"></script>
+    <script defer src="js/feelingsSpiderChart.js?v=20261101-phone-scroll"></script>
     <script defer src="js/questionnaireStrings.js?v=20261017-labels"></script>
     <script defer src="js/questionnaire.js?v=20261101-phone-q"></script>
     <script defer src="js/locationCoordinates.js"></script>

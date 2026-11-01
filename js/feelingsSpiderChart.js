@@ -588,6 +588,19 @@
       bindDrag(hitEl);
       bindDrag(axisHitEl);
 
+      // Phones let the chart scroll the page (touch-action: pan-y in the
+      // mobile styles); a touch that starts on a dot must still drag it, so
+      // stop the browser from turning that touch into a scroll.
+      [handleEl, hitEl].forEach(function (el) {
+        el.addEventListener(
+          "touchstart",
+          function (event) {
+            if (event.cancelable) event.preventDefault();
+          },
+          { passive: false }
+        );
+      });
+
       handleEl.addEventListener("keydown", function (event) {
         var delta = 0;
         if (event.key === "ArrowUp" || event.key === "ArrowRight") {
