@@ -5563,15 +5563,50 @@
           margin-top: var(--page2-gutter);
         }
 
+        /* iPhone: 100vh is taller than what is visible above Safari's bottom
+           bar, so the page is sized to the visible height (dvh) and the
+           "Add to cart" button stays pinned at the bottom of the screen. */
+        #page2 .page2-product-page {
+          height: 100vh;
+          height: 100dvh;
+          /* will-change / a transform would make the pinned button below
+             scroll with the page instead of staying on screen. */
+          will-change: auto;
+        }
+
+        #page2.page2--product-open .page2-product-page:not([hidden]) {
+          transform: none;
+        }
+
+        /* Always on screen at the bottom of the product page (which is itself
+           a fixed full-screen panel, so this stays inside it). */
         #page2 #section-product .product-order-btn {
-          width: 100%;
+          position: fixed;
+          right: var(--page2-margin-inline);
+          bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+          left: var(--page2-margin-inline);
+          z-index: 4;
+          width: auto;
           margin-inline-start: 0;
           padding-block: 0.75rem;
+          box-shadow: 0 0.75rem 0 0.75rem var(--page2-bg);
+        }
+
+        /* Room at the end of the page so the last lines aren't under it. */
+        #page2 #section-product .product-details {
+          padding-bottom: calc(var(--page2-margin-block-end) + 5rem);
         }
 
         /* ---- Cart: full-width sheet, comfortable tap targets ------------- */
         #page2 .page2-cart-drawer {
           box-shadow: none;
+          /* Visible height on iPhone (the JS sets a 100vh-based height that
+             would put the bottom of the cart behind Safari's bar). */
+          height: calc(100dvh - var(--page2-header-band-height)) !important;
+        }
+
+        #page2 .page2-cart-drawer__body {
+          padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
         }
 
         #page2 .page2-cart-drawer__buy {
@@ -6053,7 +6088,9 @@
         #page2 .questionnaire-card:not(.is-expanded):not(:first-child),
         #page2 .questionnaire-stack::before {
           position: sticky;
-          top: 0;
+          /* Pinned exactly where they sit before scrolling (same top gap),
+             so nothing jumps when the questions start to scroll. */
+          top: var(--page2-gutter);
           z-index: 150;
           margin-top: var(--page2-gutter);
           box-shadow:
@@ -6066,7 +6103,28 @@
         }
 
         #page2 .questionnaire-card.is-expanded {
-          margin-top: var(--page2-gutter);
+          margin-top: 0;
+          /* Visible overflow so the section title inside can stay pinned
+             (a clipped card would hold the sticky title in place with it). */
+          overflow: visible;
+        }
+
+        /* The open section's title stays pinned right under the numbered
+           squares; only the questions below it scroll. */
+        #page2 .questionnaire-card.is-expanded .questionnaire-card__header {
+          position: sticky;
+          /* squares' top gap + squares + the row gap under them */
+          top: calc(var(--page2-gutter) + var(--questionnaire-phone-chip-h) + var(--page2-gutter));
+          z-index: 2;
+          background: var(--page2-bg);
+          /* White below the title, and a full-width white band behind the
+             squares above it (incl. the side margins), so no scrolled text
+             peeks out around the pinned area. */
+          box-shadow:
+            0 0.5rem 0 0 var(--page2-bg),
+            0 calc(-1 * var(--page2-gutter)) 0 var(--page2-margin-inline) var(--page2-bg),
+            0 calc(-1 * (2 * var(--page2-gutter) + var(--questionnaire-phone-chip-h)))
+              0 var(--page2-margin-inline) var(--page2-bg);
         }
 
         /* Feelings chart: on a phone a finger on the chart scrolls the page;
