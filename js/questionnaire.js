@@ -2636,6 +2636,18 @@
   // the way body text can shrink (was going down toward 0.7).
   var QUESTIONNAIRE_MIN_TITLE_TEXT_SCALE = 1.2;
 
+  // Phones: the open section grows to its content (the questions column then
+  // scrolls) instead of shrinking every question to fit — same model as the
+  // short-desktop mode, with the phone layout in index.html's mobile styles.
+  var QUESTIONNAIRE_PHONE_MQ = "(max-width: 767px)";
+
+  function isQuestionnairePhoneViewport() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(QUESTIONNAIRE_PHONE_MQ).matches
+    );
+  }
+
   function isQuestionnaireShortViewport() {
     return (
       typeof window.matchMedia === "function" &&
@@ -2739,7 +2751,8 @@
     var probe = QUESTIONNAIRE_PROBE_TEXT_SCALE;
     var i;
     // Any short desktop window: grow folders to content (no title crush).
-    var expandToContent = isQuestionnaireShortViewport();
+    var expandToContent =
+      isQuestionnaireShortViewport() || isQuestionnairePhoneViewport();
     // Short windows use the compact title size (same as approved 14″ tweak) so
     // labels match full-16″ proportions — base 1.5 looked huge when the
     // window was only short, not narrow.
@@ -3929,7 +3942,9 @@
       var on = answers[stepId] === "merge";
       btn.classList.toggle("is-selected", on);
       btn.setAttribute("aria-checked", String(on));
+      syncPhoneHopeDrawing(on, btn, resetBtnRef);
     }
+    var resetBtnRef = null;
 
     applyPenState();
 
@@ -3976,7 +3991,72 @@
     });
 
     group.appendChild(resetBtn);
+    resetBtnRef = resetBtn;
     parent.appendChild(group);
+  }
+
+  // Phones: the scarf band at the top is too small to draw on, so turning the
+  // Hope pen on opens the scarf full screen (upright) with Undo / Done
+  // buttons; Done (or turning the pen off) returns to the questions.
+  var phoneHopeToolbar = null;
+
+  function syncPhoneHopeDrawing(on, penBtn, resetBtn) {
+    if (!panelEl) return;
+    var phone = isQuestionnairePhoneViewport();
+    var active = !!(on && phone);
+    if (panelEl.classList.contains("questionnaire-panel--phone-drawing") === active) {
+      return;
+    }
+    panelEl.classList.toggle("questionnaire-panel--phone-drawing", active);
+    if (active) ensurePhoneHopeToolbar(penBtn, resetBtn);
+    // The canvas host changed size — re-fit the scarf (upright when drawing).
+    var relayout = function () {
+      if (typeof window.layoutStage === "function") window.layoutStage();
+    };
+    relayout();
+    window.requestAnimationFrame(function () {
+      relayout();
+      window.requestAnimationFrame(relayout);
+    });
+  }
+
+  function ensurePhoneHopeToolbar(penBtn, resetBtn) {
+    var host = document.getElementById("questionnaire-canvas-host");
+    if (!host) return;
+    var fa = questionnaireLocale === "fa";
+    if (!phoneHopeToolbar) {
+      phoneHopeToolbar = document.createElement("div");
+      phoneHopeToolbar.className = "questionnaire-phone-draw-toolbar";
+      var hint = document.createElement("p");
+      hint.className = "questionnaire-phone-draw-toolbar__hint";
+      var undo = document.createElement("button");
+      undo.type = "button";
+      undo.className = "questionnaire-phone-draw-toolbar__btn questionnaire-phone-draw-toolbar__btn--undo";
+      var done = document.createElement("button");
+      done.type = "button";
+      done.className = "questionnaire-phone-draw-toolbar__btn questionnaire-phone-draw-toolbar__btn--done";
+      phoneHopeToolbar.appendChild(hint);
+      phoneHopeToolbar.appendChild(undo);
+      phoneHopeToolbar.appendChild(done);
+      host.appendChild(phoneHopeToolbar);
+    }
+    var hintEl = phoneHopeToolbar.querySelector(".questionnaire-phone-draw-toolbar__hint");
+    var undoEl = phoneHopeToolbar.querySelector(".questionnaire-phone-draw-toolbar__btn--undo");
+    var doneEl = phoneHopeToolbar.querySelector(".questionnaire-phone-draw-toolbar__btn--done");
+    phoneHopeToolbar.dir = fa ? "rtl" : "ltr";
+    hintEl.textContent = fa
+      ? "با انگشت روی پارچه بکشید."
+      : "Draw on the textile with your finger.";
+    undoEl.textContent = fa ? "بازگشت" : "Undo";
+    doneEl.textContent = fa ? "تمام" : "Done";
+    // Re-bind each time: the pen/undo buttons are rebuilt with the section.
+    undoEl.onclick = function () {
+      if (resetBtn) resetBtn.click();
+    };
+    doneEl.onclick = function () {
+      if (penBtn && penBtn.classList.contains("is-selected")) penBtn.click();
+      else syncPhoneHopeDrawing(false, penBtn, resetBtn);
+    };
   }
 
   function appendMadlibsEnterAdvance(el, stepId) {

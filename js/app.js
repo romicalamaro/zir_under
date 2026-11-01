@@ -23684,6 +23684,9 @@
     var f = getHandkerchiefOuterFramePx();
     var totalW = CANVAS_W + 2 * f;
     var totalH = CANVAS_H + 2 * f;
+    if (isPhoneQuestionnaireCanvas()) {
+      return computeQuestionnairePhoneLayout(wrap, totalW, totalH);
+    }
     var level = getQuestionnaireZoomLevelForSection(sectionIndex);
     var scale = getQuestionnaireScaleForLevel(level, wrap, f);
     var svgWidth = totalW * scale;
@@ -23710,6 +23713,58 @@
     };
   }
 
+  /*
+   * Phones: the questions use the full width and the scarf lives in a band
+   * across the top (see the mobile styles in index.html). Instead of the
+   * desktop per-section zooms (which are positioned against the side-by-side
+   * layout), the whole scarf is shown, rotated sideways to fill the band.
+   * In the full-screen drawing mode (Hope) it stands upright so drawing maps
+   * 1:1 to the finger.
+   */
+  var PHONE_QUESTIONNAIRE_MQ = "(max-width: 767px)";
+  var PHONE_QUESTIONNAIRE_CANVAS_PAD = 12;
+
+  function isPhoneQuestionnaireCanvas() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(PHONE_QUESTIONNAIRE_MQ).matches
+    );
+  }
+
+  function isPhoneQuestionnaireDrawingMode() {
+    var panel = document.getElementById("questionnaire-panel");
+    return !!(
+      panel && panel.classList.contains("questionnaire-panel--phone-drawing")
+    );
+  }
+
+  function computeQuestionnairePhoneLayout(wrap, totalW, totalH) {
+    var host = wrap.closest("#questionnaire-canvas-host") || wrap;
+    var w = host.clientWidth;
+    var h = host.clientHeight;
+    if (!w || !h) return null;
+    var pad = PHONE_QUESTIONNAIRE_CANVAS_PAD;
+    var rotate = !isPhoneQuestionnaireDrawingMode();
+    // Rotated: the scarf's height runs along the band's width.
+    var scale = rotate
+      ? Math.min((w - 2 * pad) / totalH, (h - 2 * pad) / totalW)
+      : Math.min((w - 2 * pad) / totalW, (h - 2 * pad) / totalH);
+    if (!(scale > 0)) return null;
+    var svgWidth = totalW * scale;
+    var svgHeight = totalH * scale;
+    return {
+      svgWidth: svgWidth,
+      svgHeight: svgHeight,
+      svgLeft: (w - svgWidth) / 2,
+      svgTop: (h - svgHeight) / 2,
+      centerX: w / 2,
+      centerY: h / 2,
+      extendUp: 0,
+      focusZoom: false,
+      rotate: rotate,
+    };
+  }
+
   function lerpQuestionnaireLayoutValue(fromValue, toValue, progress) {
     return fromValue + (toValue - fromValue) * progress;
   }
@@ -23726,7 +23781,10 @@
     svg.style.top = params.svgTop + "px";
     svg.style.left = params.svgLeft + "px";
     svg.style.bottom = "auto";
-    svg.style.transform = "none";
+    // Phones rotate the scarf around its own centre (see
+    // computeQuestionnairePhoneLayout); desktop never sets params.rotate.
+    svg.style.transformOrigin = params.rotate ? "50% 50%" : "";
+    svg.style.transform = params.rotate ? "rotate(-90deg)" : "none";
   }
 
   function layoutQuestionnaireCanvasInterpolated(fromIndex, toIndex, progress) {
@@ -23739,8 +23797,13 @@
     if (!fromLayout || !toLayout) return;
 
     var t = Math.min(1, Math.max(0, progress));
-    if (t <= 0.001 || fromIndex === toIndex) {
-      applyQuestionnaireLayoutParams(wrap, svg, fromLayout);
+    if (t <= 0.001 || fromIndex === toIndex || fromLayout.rotate !== undefined) {
+      // Phones (rotate is set) use one fixed fit for every section.
+      applyQuestionnaireLayoutParams(
+        wrap,
+        svg,
+        fromLayout.rotate !== undefined ? toLayout : fromLayout
+      );
       return;
     }
     if (t >= 0.999) {
@@ -23797,6 +23860,17 @@
 
     if (isPage2DesignPreQuestionnaireStart()) {
       resetPage2DesignCanvasLayout(wrap);
+      return;
+    }
+
+    if (isCanvasInQuestionnaireHost(wrap) && isPhoneQuestionnaireCanvas()) {
+      var phoneF = getHandkerchiefOuterFramePx();
+      var phoneLayout = computeQuestionnairePhoneLayout(
+        wrap,
+        CANVAS_W + 2 * phoneF,
+        CANVAS_H + 2 * phoneF
+      );
+      if (phoneLayout) applyQuestionnaireLayoutParams(wrap, svg, phoneLayout);
       return;
     }
 
