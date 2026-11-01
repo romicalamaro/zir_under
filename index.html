@@ -5667,9 +5667,10 @@
 
         /* ================= Part 2 — home + design intro ================= */
 
-        /* ---- Home hero: both intros sit in the open sky above the scarf,
-           English top-left, Persian under it on the right; the logo is
-           larger (4 columns, centred — see getLogoColumnOffsetX). ------- */
+        /* ---- Home hero: English at the top, the logo large in the middle
+           (8 columns, centred — see getLogoColumnOffsetX) with a white square
+           on each side of it as on desktop (updateHomeMarkers), and the
+           Persian just below the logo. ----------------------------------- */
         #page2 #section-home .page2-home-content {
           grid-template-rows: auto auto 1fr;
           align-items: start;
@@ -5681,14 +5682,33 @@
           grid-row: 1;
         }
 
+        #page2 {
+          /* One grid column on a phone, and the hero logo's height
+             (8 columns wide; artwork ratio 33.64 / 72.15). */
+          --page2-phone-col: calc(
+            (100vw - 2 * var(--page2-margin-inline) - 11 * var(--page2-gutter)) / 12
+          );
+          --page2-phone-logo-h: calc(
+            (8 * var(--page2-phone-col) + 7 * var(--page2-gutter)) * 33.64 / 72.15
+          );
+          /* The logo grows a little less when it moves to the bottom of the
+             about page, so the photo above it keeps clear of the text. */
+          --page2-logo-about-scale: 1.15;
+        }
+
+        /* The logo is centred on the visible screen (JS), so the Persian is
+           placed from the screen's middle: half the logo + a gap below it. */
         #page2 .page2-home-intro--fa {
-          grid-column: 5 / span 7;
-          grid-row: 2;
-          margin-top: calc(var(--page2-gutter) * 1.5);
+          position: absolute;
+          top: calc(50% + var(--page2-phone-logo-h) / 2 + var(--page2-gutter) * 2.5);
+          top: calc(50dvh + var(--page2-phone-logo-h) / 2 + var(--page2-gutter) * 2.5);
+          right: calc(var(--page2-margin-inline) + var(--page2-phone-col) + var(--page2-gutter));
+          width: calc(7 * var(--page2-phone-col) + 6 * var(--page2-gutter));
+          margin: 0;
         }
 
         #page2 .page2-logo__slot {
-          grid-column: 1 / span 4;
+          grid-column: 1 / span 8;
         }
 
         /* ---- About: English, then Persian, each full width ------------ */
@@ -5757,6 +5777,12 @@
           height: 70vw;
           margin-inline: calc(-1 * var(--page2-margin-inline));
           margin-bottom: calc(var(--page2-gutter) * 2);
+        }
+
+        /* Desktop sizes the first drawing for a narrower band; on a phone it
+           fills its third of the band like the other two. */
+        #page2 #section-home .page2-home-topkapi__slot:nth-child(1) .page2-home-topkapi__rect-img {
+          width: 100%;
         }
 
         #page2 #section-home .page2-home-topkapi__text {
@@ -7715,10 +7741,10 @@
           var gridCols = guides.querySelectorAll(".page2-col");
           if (gridCols.length < 7) return 0;
           var leftColLeft = gridCols[0].getBoundingClientRect().left;
-          /* Phones: the logo is 4 columns wide (see mobile styles), so it
-             starts at column 5 to stay centred; desktop keeps column 6. */
+          /* Phones: the logo is 8 columns wide (see mobile styles), so it
+             starts at column 3 to stay centred; desktop keeps column 6. */
           var middleColLeft = gridCols[
-            window.matchMedia("(max-width: 767px)").matches ? 4 : 5
+            window.matchMedia("(max-width: 767px)").matches ? 2 : 5
           ].getBoundingClientRect().left;
           return middleColLeft - leftColLeft;
         }
@@ -7794,6 +7820,22 @@
             (introFaRect.left + logoRect.right) / 2 -
             contentRect.left -
             markerHalf;
+
+          /* Phones: the texts sit above and below the logo, so the two squares
+             go on either side of it at its middle — halfway between the
+             screen margin and the logo, as on desktop. */
+          if (window.matchMedia("(max-width: 767px)").matches) {
+            var marginPx = getMarginInlinePx();
+            enCenterY = faCenterY = logoCenterY - contentRect.top - markerHalf;
+            enCenterX =
+              (contentRect.left + marginPx + logoRect.left) / 2 -
+              contentRect.left -
+              markerHalf;
+            faCenterX =
+              (logoRect.right + contentRect.right - marginPx) / 2 -
+              contentRect.left -
+              markerHalf;
+          }
 
           homeMarkerEn.style.left = enCenterX + "px";
           homeMarkerEn.style.top = enCenterY + "px";
