@@ -5468,6 +5468,17 @@
           );
         }
 
+        /* ---- No sideways movement: if any element is ever wider than the
+           screen it is clipped, instead of letting the page slide left/right
+           and show a white strip. (The product thumbnails strip keeps its own
+           intentional sideways scroll.) ----------------------------------- */
+        html,
+        body,
+        #page2,
+        #page2 #section-home .page2-home-overlay {
+          overflow-x: hidden;
+        }
+
         /* ---- Header: closed columns show only the English title ---------- */
         #page2 .page2-header-col:not(.is-hovered) .page2-col-title__sep,
         #page2 .page2-header-col:not(.is-hovered) .page2-col-title__fa {
