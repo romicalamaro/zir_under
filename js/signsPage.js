@@ -1552,15 +1552,54 @@
         renderFamilyAnimationStep(svg, sequence[frameIndex]);
       }
 
-      loopState.raf = window.requestAnimationFrame(frame);
+      scheduleSignsLoopFrame(loopState, panel, frame);
     }
 
-    loopState.raf = window.requestAnimationFrame(frame);
+    scheduleSignsLoopFrame(loopState, panel, frame);
     signsAnimationLoops[sectionId] = loopState;
+  }
+
+  // The sign animations only run while their panel is on (or near) the
+  // screen; off screen the loop waits and picks up again when it comes back,
+  // so nothing changes visually but the phone isn't animating unseen icons.
+  var signsLoopObserver =
+    typeof window.IntersectionObserver === "function"
+      ? new window.IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              var panel = entry.target;
+              panel.__signsVisible = entry.isIntersecting;
+              var loop = panel.__signsLoop;
+              if (entry.isIntersecting && loop && loop.waiting && !loop.stopped) {
+                loop.waiting = false;
+                loop.raf = window.requestAnimationFrame(loop.frameFn);
+              }
+            });
+          },
+          { rootMargin: "200px 0px" }
+        )
+      : null;
+
+  function scheduleSignsLoopFrame(loopState, panel, frame) {
+    if (loopState.stopped) return;
+    if (signsLoopObserver && panel) {
+      if (panel.__signsLoop !== loopState) {
+        panel.__signsLoop = loopState;
+        signsLoopObserver.observe(panel);
+      }
+      if (panel.__signsVisible === false) {
+        loopState.waiting = true;
+        loopState.frameFn = frame;
+        loopState.raf = 0;
+        return;
+      }
+    }
+    loopState.raf = window.requestAnimationFrame(frame);
   }
 
   function stopSignsAnimationLoop(sectionId) {
     var loop = signsAnimationLoops[sectionId];
+    if (loop) loop.stopped = true;
     if (loop && loop.raf) {
       window.cancelAnimationFrame(loop.raf);
     }
@@ -1571,6 +1610,7 @@
     var key;
     for (key in signsAnimationLoops) {
       if (!signsAnimationLoops.hasOwnProperty(key)) continue;
+      signsAnimationLoops[key].stopped = true;
       if (signsAnimationLoops[key].raf) {
         window.cancelAnimationFrame(signsAnimationLoops[key].raf);
       }
@@ -1621,10 +1661,10 @@
       var eased = 0.5 - 0.5 * Math.cos(theta);
       var value = min + eased * (max - min);
       renderSignsAnimationFrame(panel, cfg, value, loopState);
-      loopState.raf = window.requestAnimationFrame(frame);
+      scheduleSignsLoopFrame(loopState, panel, frame);
     }
 
-    loopState.raf = window.requestAnimationFrame(frame);
+    scheduleSignsLoopFrame(loopState, panel, frame);
     signsAnimationLoops[sectionId] = loopState;
   }
 
@@ -1664,10 +1704,10 @@
         rows[nextIndex].classList.add("is-cycle-active");
         activeIndex = nextIndex;
       }
-      loopState.raf = window.requestAnimationFrame(frame);
+      scheduleSignsLoopFrame(loopState, panel, frame);
     }
 
-    loopState.raf = window.requestAnimationFrame(frame);
+    scheduleSignsLoopFrame(loopState, panel, frame);
     signsAnimationLoops[sectionId] = loopState;
   }
 
@@ -1876,9 +1916,75 @@
     return Number(slider.value);
   }
 
+  // Drawing every sign miniature at start-up took ~2s on a phone before the
+  // page could respond. They are now drawn one at a time in idle moments
+  // after the page has loaded (so no single long freeze), and a row that
+  // comes near the screen jumps to the front of the queue.
+  var signsPreviewQueue = [];
+  var signsPreviewPumpScheduled = false;
+
+  function scheduleSignsPreviewPump() {
+    if (signsPreviewPumpScheduled || !signsPreviewQueue.length) return;
+    signsPreviewPumpScheduled = true;
+    var run = function () {
+      signsPreviewPumpScheduled = false;
+      var row = signsPreviewQueue.shift();
+      if (row) {
+        row.__previewQueued = false;
+        row.__previewNow = true;
+        hydrateCanvasPreviewRow(row);
+      }
+      scheduleSignsPreviewPump();
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: 1500 });
+    } else {
+      window.setTimeout(run, 60);
+    }
+  }
+
+  function enqueueSignsPreview(row, urgent) {
+    if (row.__previewNow) return;
+    if (row.__previewQueued) {
+      if (!urgent) return;
+      var at = signsPreviewQueue.indexOf(row);
+      if (at > 0) {
+        signsPreviewQueue.splice(at, 1);
+        signsPreviewQueue.unshift(row);
+      }
+    } else {
+      row.__previewQueued = true;
+      if (urgent) signsPreviewQueue.unshift(row);
+      else signsPreviewQueue.push(row);
+    }
+    scheduleSignsPreviewPump();
+  }
+
+  var signsPreviewObserver =
+    typeof window.IntersectionObserver === "function"
+      ? new window.IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              signsPreviewObserver.unobserve(entry.target);
+              enqueueSignsPreview(entry.target, true);
+            });
+          },
+          { rootMargin: "900px 0px" }
+        )
+      : null;
+
   function hydrateCanvasPreviewRow(row) {
     var previewId = row.getAttribute("data-preview-id");
     if (!previewId) return;
+    if (signsPreviewObserver && !row.__previewNow) {
+      if (!row.__previewObserved) {
+        row.__previewObserved = true;
+        signsPreviewObserver.observe(row);
+      }
+      enqueueSignsPreview(row, false);
+      return;
+    }
     if (
       !window.UnderCoverSignPreviews ||
       typeof window.UnderCoverSignPreviews.renderPreview !== "function"

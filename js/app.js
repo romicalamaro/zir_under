@@ -26766,7 +26766,23 @@
     lastHelplessnessLayoutSignature = "";
     lastDiamondLayoutSignature = "";
     render();
-    ensureHopeStippleReady();
+    // The Hope stipple files (~2.3MB) are only needed for the Hope step and
+    // the print file, so they are fetched when a visitor starts designing
+    // (or after 15s), not during the first page load. If they are needed
+    // earlier, applyMergeReveal() requests them itself.
+    (function deferHopeStippleLoad() {
+      var started = false;
+      function loadOnce() {
+        if (started) return;
+        started = true;
+        ensureHopeStippleReady();
+      }
+      ["design-start-btn-en", "design-start-btn-fa"].forEach(function (id) {
+        var btn = document.getElementById(id);
+        if (btn) btn.addEventListener("click", loadOnce);
+      });
+      window.setTimeout(loadOnce, 15000);
+    })();
     appStartupBootstrapping = false;
     syncFrameOverlayToggleButton();
     initSidebarScrollFocus();

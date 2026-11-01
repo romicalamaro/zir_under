@@ -527,7 +527,7 @@
                     <span class="page2-home-topkapi__rect">
                       <img
                         class="page2-home-topkapi__rect-img"
-                        src="website/topkapi%20scrolls/2.jpeg?v=20260701"
+                        src="website/topkapi%20scrolls/2.jpeg?v=20261101"
                         alt=""
                         loading="lazy"
                         decoding="async"
@@ -538,7 +538,7 @@
                     <span class="page2-home-topkapi__rect">
                       <img
                         class="page2-home-topkapi__rect-img"
-                        src="website/topkapi%20scrolls/1.jpeg?v=20260701"
+                        src="website/topkapi%20scrolls/1.jpeg?v=20261101"
                         alt=""
                         loading="lazy"
                         decoding="async"
@@ -6749,6 +6749,15 @@
            Each drawer starts only after the previous drawer has fully opened. */
         function updateTopkapiDrawers() {
           if (!topkapiEl || !topkapiRects.length) return;
+          /* Phones: the three drawings are simply shown (no slide-in on
+             scroll), which also saves work on every scroll. */
+          if (window.matchMedia("(max-width: 767px)").matches) {
+            if (!topkapiEl.__phoneDrawersOpen) {
+              topkapiEl.__phoneDrawersOpen = true;
+              setTopkapiDrawersOpen();
+            }
+            return;
+          }
           if (prefersReducedMotion || !isHomeScrollCol(scrollActiveIndex)) {
             setTopkapiDrawersOpen();
             return;
@@ -8353,16 +8362,32 @@
           if (firstImage.complete) markHomeBgReady(); // already cached
         })();
 
+        // Phones show one fixed photo (no slideshow), so only that photo is
+        // downloaded. Elsewhere each photo is downloaded just before its turn
+        // instead of all of them at once (about 1MB each).
+        if (window.matchMedia("(max-width: 767px)").matches) {
+          HOME_BG_IMAGES = HOME_BG_IMAGES.slice(0, 1);
+        }
+
         HOME_BG_IMAGES.forEach(function (filename, index) {
           var slide = document.createElement("div");
           slide.className =
             "page2-home-bg__slide" + (index === 0 ? " is-active" : "");
-          slide.style.backgroundImage =
-            "url('" + homeBgUrl(filename) + "')";
+          slide.setAttribute("data-bg", "url('" + homeBgUrl(filename) + "')");
           bgContainer.appendChild(slide);
         });
 
         var slides = bgContainer.querySelectorAll(".page2-home-bg__slide");
+
+        function ensureSlideImage(slide) {
+          if (slide && !slide.style.backgroundImage) {
+            slide.style.backgroundImage = slide.getAttribute("data-bg");
+          }
+        }
+
+        // The first photo now, and the next one so it is ready in time.
+        ensureSlideImage(slides[0]);
+        ensureSlideImage(slides[1]);
         if (slides.length < 2) {
           if (slides[0]) {
             page2.style.setProperty(
@@ -8473,6 +8498,9 @@
         function advanceSlide() {
           var previousIndex = currentIndex;
           currentIndex = (currentIndex + 1) % slides.length;
+          ensureSlideImage(slides[currentIndex]);
+          // Start downloading the photo after this one for the next turn.
+          ensureSlideImage(slides[(currentIndex + 1) % slides.length]);
           setActiveSlide(currentIndex, previousIndex);
         }
 
@@ -8526,9 +8554,9 @@
     <script defer src="js/embeddedCombinationsCsv.js"></script>
     <script defer src="js/handkerchiefCombinations.js"></script>
     <script defer src="js/productComboSpec.js?v=20260701-product-spec-rows"></script>
-    <script defer src="js/app.js?v=20261101-phone-q"></script>
+    <script defer src="js/app.js?v=20261101-perf"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
-    <script defer src="js/signsPage.js?v=20260701-full-deploy"></script>
+    <script defer src="js/signsPage.js?v=20261101-perf"></script>
     <script defer src="js/handkerchiefArchive.js?v=20261017-orders"></script>
     <script defer src="js/exhibitionIdleReload.js"></script>
   </body>
