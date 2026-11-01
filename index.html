@@ -5798,9 +5798,17 @@
         }
 
         /* ---- Design intro, panel 1: English, then Persian ------------- */
+        /* The panel already starts under the header band, so only a small
+           gap above the texts; same text size as the home hero intro. */
         #page2 .design-intro__panel--headscarf .design-intro__panel-inner {
-          padding-top: calc(var(--page2-header-band-height) + var(--page2-gutter) * 2);
+          padding-top: calc(var(--page2-gutter) * 2);
           row-gap: calc(var(--page2-gutter) * 1.5);
+        }
+
+        #page2 .design-intro__panel--headscarf .design-intro__text {
+          font-size: calc(
+            (var(--page2-space-20) - var(--page2-space-4)) * 1.2 * 1.15
+          );
         }
 
         #page2 .design-intro__panel--headscarf .design-intro__text:not(.design-intro__text--fa) {
