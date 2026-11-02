@@ -5496,56 +5496,85 @@
           grid-column: auto;
         }
 
-        /* ---- Product page: image, thumbnails, then details (stacked) ----- */
+        /* ---- Product page: large image with the thumbnails in a column
+           beside it (like desktop), sized so the image, the thumbnails and
+           the pinned "Add to cart" button all fit the visible screen;
+           details below. ------------------------------------------------ */
         #page2 .page2-product-page {
           box-shadow: none;
         }
 
+        #page2 #section-product {
+          --product-phone-thumb-w: 3.5rem;
+          /* Image height: as tall as the width allows (2:3), but never taller
+             than the visible screen minus the header, gaps and the button. */
+          --product-phone-hero-h: min(
+            calc(
+              (100vw - 2 * var(--page2-margin-inline) - var(--product-phone-thumb-w) -
+                var(--page2-gutter)) * 1.5
+            ),
+            calc(100dvh - var(--page2-header-band-height) - var(--product-phone-top-pad) -
+              var(--page2-gutter) - 5.5rem)
+          );
+          /* Room above the images for the close × (1.5rem) so it never
+             sits on the first thumbnail. */
+          --product-phone-top-pad: calc(var(--page2-gutter) * 1.5 + 1.5rem);
+        }
+
         #page2 #section-product .product-grid {
-          display: flex;
-          flex-direction: column;
-          gap: var(--page2-gutter);
+          display: grid;
+          grid-template-columns:
+            calc(var(--product-phone-hero-h) * 2 / 3)
+            var(--product-phone-thumb-w);
+          grid-template-rows: var(--product-phone-hero-h) auto;
+          column-gap: var(--page2-gutter);
+          row-gap: 0;
+          justify-content: space-between;
           width: 100%;
           height: auto;
           min-height: 0;
-          padding: var(--page2-gutter) var(--page2-margin-inline) 0;
+          padding: var(--product-phone-top-pad) var(--page2-margin-inline) 0;
         }
 
         #page2 #section-product .product-hero {
-          order: 1;
-          align-self: stretch;
+          grid-column: 1;
+          grid-row: 1;
           width: 100%;
-          height: auto;
+          height: 100%;
           max-height: none;
-          aspect-ratio: 2 / 3;
+          aspect-ratio: auto;
         }
 
+        /* Thumbnails: a column as tall as the image; the next one peeks at
+           the bottom so it's clear there are more to scroll to. */
         #page2 #section-product .product-gallery {
-          order: 2;
+          grid-column: 2;
+          grid-row: 1;
           width: 100%;
           max-width: none;
-          height: auto;
-          overflow-x: auto;
-          overflow-y: hidden;
-          scroll-snap-type: x proximity;
+          height: var(--product-phone-hero-h);
+          overflow-x: hidden;
+          overflow-y: auto;
+          scroll-snap-type: y proximity;
         }
 
         #page2 #section-product .product-gallery__track {
-          flex-direction: row;
-          width: max-content;
+          flex-direction: column;
+          width: 100%;
           padding-block: 0;
         }
 
         #page2 #section-product .product-gallery__thumb {
-          width: 3.5rem;
+          width: 100%;
           scroll-snap-align: start;
           scroll-snap-stop: normal;
         }
 
         #page2 #section-product .product-details {
-          order: 3;
+          grid-column: 1 / -1;
+          grid-row: 2;
           align-self: stretch;
-          margin: var(--page2-gutter) 0 0;
+          margin: calc(var(--page2-gutter) * 2) 0 0;
           padding-bottom: calc(var(--page2-margin-block-end) + 2rem);
         }
 
