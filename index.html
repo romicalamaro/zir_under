@@ -5588,8 +5588,32 @@
           padding-inline: 0;
         }
 
+        /* Price on the right of the name / age / place line, right-aligned
+           with the answers below; the profile rows follow under both. */
+        #page2 #section-product .product-details {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          /* If a long name wraps, the price stays level with its first line. */
+          align-items: baseline;
+          column-gap: var(--page2-gutter);
+        }
+
+        #page2 #section-product .product-title {
+          grid-column: 1;
+          grid-row: 1;
+        }
+
         #page2 #section-product .product-price {
-          margin-top: var(--page2-gutter);
+          grid-column: 2;
+          grid-row: 1;
+          margin: 0;
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        #page2 #section-product .product-spec {
+          grid-column: 1 / -1;
+          grid-row: 2;
         }
 
         /* iPhone: 100vh is taller than what is visible above Safari's bottom
