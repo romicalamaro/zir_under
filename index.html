@@ -8202,8 +8202,19 @@
           var aboutScale = getLogoAboutScale();
           var scale = 1 + (aboutScale - 1) * yProgress;
           var centerTop = (viewportHeight - logoHeight) / 2;
+          /* iPhone: the page is 100vh tall, which runs behind Safari's
+             bottom bar, so a logo settled at the bottom of 100vh only peeked
+             out. On phones it settles at the bottom of what is visible. */
+          var settleHeight = viewportHeight;
+          if (phoneScrollMq.matches) {
+            var visibleHeight =
+              (window.visualViewport && window.visualViewport.height) ||
+              window.innerHeight ||
+              viewportHeight;
+            settleHeight = Math.min(viewportHeight, visibleHeight);
+          }
           var bottomTop =
-            viewportHeight - logoHeight - getLogoBottomPaddingPx();
+            settleHeight - logoHeight - getLogoBottomPaddingPx();
           var heroOffsetX = getLogoColumnOffsetX();
           var offsetX = getLogoScrollOffsetX(
             heroOffsetX,
@@ -8221,7 +8232,7 @@
             var settledLogoTop = bottomTop + logoHeight * (1 - aboutScale);
             page2.style.setProperty(
               "--page2-about-phone-logo-space",
-              Math.max(0, Math.round(viewportHeight - settledLogoTop)) + "px"
+              Math.max(0, Math.round(settleHeight - settledLogoTop)) + "px"
             );
           }
           markLogoPositionReady();
