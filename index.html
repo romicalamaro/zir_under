@@ -8596,6 +8596,14 @@
           );
         }
 
+        // Phones show one fixed photo (no slideshow): the portrait with the
+        // scarf over her face (4.webp), and only that photo is downloaded.
+        // Elsewhere each photo is downloaded just before its turn instead of
+        // all of them at once (about 1MB each).
+        if (window.matchMedia("(max-width: 767px)").matches) {
+          HOME_BG_IMAGES = ["4.webp"];
+        }
+
         // Reveal the soft drop-shadow only once the first hero image is ready, so the
         // white logo/intro/markers never show orphaned shadows over the blank hero.
         (function () {
@@ -8608,13 +8616,6 @@
           firstImage.src = homeBgUrl(HOME_BG_IMAGES[0]);
           if (firstImage.complete) markHomeBgReady(); // already cached
         })();
-
-        // Phones show one fixed photo (no slideshow), so only that photo is
-        // downloaded. Elsewhere each photo is downloaded just before its turn
-        // instead of all of them at once (about 1MB each).
-        if (window.matchMedia("(max-width: 767px)").matches) {
-          HOME_BG_IMAGES = HOME_BG_IMAGES.slice(0, 1);
-        }
 
         HOME_BG_IMAGES.forEach(function (filename, index) {
           var slide = document.createElement("div");
