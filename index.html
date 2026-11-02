@@ -5699,40 +5699,53 @@
           padding-block: 0.75rem;
         }
 
-        /* ---- Footer: stacked, and allowed to grow taller than one screen -- */
+        /* ---- Footer: exactly one visible screen (no scrolling inside it):
+           Credits, then Contact | Fonts, then the full-width logo and the
+           copyright at the bottom. "Pages" and the Bezalel logo are left out
+           on phones. svh = the height that is visible with Safari's bars
+           showing, so the bottom of the logo is never hidden behind them. -- */
         #page2 .page2-footer,
         #page2 #section-home .page2-footer,
         #page2 #section-archive .page2-footer,
         #page2 #section-shop .page2-footer {
-          grid-template-rows: auto auto auto;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
+          /* The page scrolls inside a 100vh box whose bottom sits behind
+             Safari's bar, so the red runs the full 100vh and the part behind
+             the bar is kept empty: everything lands in the visible part. */
+          height: 100vh;
+          min-height: 0;
           max-height: none;
-          align-items: start;
+          padding-top: var(--page2-header-band-height);
+          padding-bottom: calc(100vh - 100svh);
+          overflow: hidden;
         }
 
         #page2 .page2-footer__top {
-          padding-top: calc(var(--page2-space-50) + var(--page2-gutter));
-          row-gap: calc(var(--page2-gutter) * 2);
-        }
-
-        /* Pages | Contact side by side, Credits full width below,
-           Bezalel logo last. */
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(1) {
-          grid-column: 1 / span 6;
-          grid-row: 1;
-        }
-
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
-          grid-column: 7 / -1;
-          grid-row: 1;
-        }
-
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) {
-          grid-column: 1 / -1;
-          grid-row: 2;
+          flex: 1 1 auto;
+          min-height: 0;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           column-gap: var(--page2-gutter);
-          row-gap: var(--page2-space-4);
+          row-gap: var(--page2-gutter);
+          align-content: start;
+          padding-top: var(--page2-gutter);
+        }
+
+        #page2 .page2-footer__nav,
+        #page2 .page2-footer__bezalel {
+          display: none;
+        }
+
+        /* Credits: full width, its groups in two columns. */
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) {
+          grid-column: 1 / -1;
+          grid-row: 1;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          column-gap: var(--page2-gutter);
+          row-gap: calc(var(--page2-gutter) * 0.5);
           align-items: start;
         }
 
@@ -5740,33 +5753,75 @@
           grid-column: 1 / -1;
         }
 
+        #page2 .page2-footer__credit-group,
         #page2 .page2-footer__credit-group + .page2-footer__credit-group {
+          margin: 0;
+        }
+
+        /* Contact (left) | Fonts (right), side by side. */
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-auto-flow: row dense;
+          column-gap: var(--page2-gutter);
+          align-items: start;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__heading,
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__link {
+          grid-column: 1;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__heading--fonts,
+        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__note {
+          grid-column: 2;
+        }
+
+        #page2 .page2-footer__heading--fonts {
           margin-top: 0;
         }
 
-        #page2 .page2-footer__credit-group {
-          margin-bottom: var(--page2-space-4);
+        /* Tighter lines so everything fits above the logo. */
+        #page2 .page2-footer__top .page2-footer__note,
+        #page2 .page2-footer__top .page2-footer__link,
+        #page2 .page2-footer__top .page2-footer__subheading {
+          line-height: 1.25;
         }
 
-        #page2 .page2-footer__bezalel {
-          grid-column: 1 / span 6;
-          grid-row: 3;
+        #page2 .page2-footer__top .page2-footer__heading {
+          margin-bottom: calc(var(--page2-gutter) * 0.25);
+        }
+
+        /* Short screens (e.g. iPhone SE): when the space above the logo is
+           too short for Credits + Contact / Fonts, leave out Contact / Fonts. */
+        #page2 .page2-footer__top {
+          container-type: size;
+          align-self: stretch;
+          width: 100%;
+        }
+
+        @container (max-height: 343px) {
+          #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
+            display: none;
+          }
         }
 
         #page2 .page2-footer__logo,
         #page2 #section-home .page2-footer__logo,
         #page2 #section-archive .page2-footer__logo {
-          grid-column: 1 / -1;
-          grid-row: 2;
-          align-self: start;
+          flex: 0 0 auto;
+          width: 100%;
           height: auto;
           aspect-ratio: 72.15 / 33.64;
-          margin: calc(var(--page2-gutter) * 3) 0 0;
+          /* Room for the diamond on top of the logo. */
+          margin: calc(var(--page2-gutter) * 1.5) 0 0;
         }
 
         #page2 .page2-footer__copyright {
-          grid-row: 3;
-          margin: var(--page2-gutter) 0 calc(var(--page2-margin-block-end) + 1rem);
+          flex: 0 0 auto;
+          margin: var(--page2-gutter) 0 calc(var(--page2-gutter) + env(safe-area-inset-bottom, 0px));
           margin-inline-start: 0;
           white-space: normal;
         }
