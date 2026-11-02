@@ -613,6 +613,8 @@
       if (!svg) continue;
       if (window.GridUnitIcons.updateIconInnerScale) {
         window.GridUnitIcons.updateIconInnerScale(svg, gridType, innerScale);
+        /* Geometry rebuilt in place — it no longer matches a cached size. */
+        svg.__gridGeomKey = null;
       }
     }
   }
@@ -1383,8 +1385,44 @@
       if (!gridType) continue;
       svg = iconWrap.querySelector("svg.grid-unit-icon");
       if (!svg) continue;
-      window.GridUnitIcons.updateIconInnerScale(svg, gridType, innerScale);
+      if (isPhoneSignsViewport()) {
+        swapCachedGridGeometry(svg, gridType, innerScale);
+      } else {
+        window.GridUnitIcons.updateIconInnerScale(svg, gridType, innerScale);
+      }
     }
+  }
+
+  function isPhoneSignsViewport() {
+    return !!(
+      window.matchMedia && window.matchMedia("(max-width: 767px)").matches
+    );
+  }
+
+  /**
+   * Phones: rebuilding every grid icon's geometry on every frame is what made
+   * the home page stutter while scrolling. The animation sweeps through the
+   * same sizes again and again, so each size (rounded to 1/100 — invisible at
+   * icon size) is built once, kept, and swapped back in on later passes.
+   */
+  function swapCachedGridGeometry(svg, gridType, innerScale) {
+    var q = Math.round(innerScale * 100) / 100;
+    var key = gridType + "@" + q;
+    if (svg.__gridGeomKey === key) return;
+    var current = svg.querySelector(".grid-unit-icon__geom");
+    if (!current) return;
+    var cache = svg.__gridGeomCache || (svg.__gridGeomCache = {});
+    if (svg.__gridGeomKey) cache[svg.__gridGeomKey] = current;
+    var next = cache[key];
+    if (!next) {
+      var scratch = svg.cloneNode(false);
+      next = current.cloneNode(false);
+      scratch.appendChild(next);
+      window.GridUnitIcons.updateIconInnerScale(scratch, gridType, q);
+      scratch.removeChild(next);
+    }
+    svg.replaceChild(next, current);
+    svg.__gridGeomKey = key;
   }
 
   /**

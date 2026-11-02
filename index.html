@@ -2590,6 +2590,18 @@
         pointer-events: auto;
       }
 
+      /* Phones: a finger on the rising (fixed) signs curtain could not scroll
+         the home page underneath, so the page froze there. Let touches pass
+         through to the page while it rises; the list is tappable once it
+         settles into place. */
+      @media (max-width: 767px) {
+        #page2.page2--home-signs-visible.page2--signs-covering
+          #section-home
+          .page2-home-signs {
+          pointer-events: none;
+        }
+      }
+
       #page2.page2--signs-covering .page2-header {
         z-index: 5;
       }
@@ -5451,6 +5463,12 @@
         this media query. Fonts and type sizes reuse the site's own tokens.
       */
       @media (max-width: 767px) {
+        /* No soft shadow behind the home logo on phones. */
+        #page2 .page2-logo__layer--white,
+        #page2.page2--home-bg-ready .page2-logo__layer--white {
+          filter: none;
+        }
+
         #page2 {
           /* Overlays that are a few grid columns wide on desktop become
              full-width sheets on a phone. */
@@ -6408,6 +6426,96 @@
         var aboutMediaOpenedOnce = false;
         if (!page2 || !header) return;
 
+        /* Phones: the home scroll animation writes several CSS variables on
+           #page2 every frame. A variable on #page2 makes the browser restyle
+           the whole page (thousands of elements, incl. the sign SVGs), and the
+           script then reads computed styles right after, forcing that restyle
+           several times per frame — the home page stutters on phones. On a
+           phone each of these variables is written on the one element that
+           uses it instead (same look), only when its value changes, and the
+           fixed tokens it reads back are cached until the next resize. */
+        var phoneScrollMq = window.matchMedia("(max-width: 767px)");
+        var phoneVarValues = {};
+        var phoneTokenCache = {};
+        var nativePage2SetProperty = page2.style.setProperty;
+        function phoneScrollVarTarget(name) {
+          switch (name) {
+            case "--page2-about-text-clip-top":
+              return aboutContentEl;
+            case "--page2-logo-brown-inset-top":
+            case "--page2-logo-signs-clip-bottom":
+              return logoEl;
+            case "--page2-about-media-signs-clip-bottom":
+              return aboutMediaEl;
+            case "--page2-topkapi-drawer-1":
+            case "--page2-topkapi-drawer-2":
+            case "--page2-topkapi-drawer-3":
+              return topkapiEl;
+            case "--page2-about-media-open":
+              /* Only read back by this script — no element needs it. */
+              return true;
+          }
+          return null;
+        }
+        page2.style.setProperty = function (name, value, priority) {
+          if (phoneScrollMq.matches) {
+            var target = phoneScrollVarTarget(name);
+            if (target) {
+              value = String(value);
+              if (phoneVarValues[name] === value) return;
+              phoneVarValues[name] = value;
+              if (target !== true) {
+                target.style.setProperty(name, value, priority || "");
+              }
+              return;
+            }
+          }
+          return nativePage2SetProperty.call(page2.style, name, value, priority);
+        };
+        function clearPhoneScrollVars() {
+          Object.keys(phoneVarValues).forEach(function (name) {
+            var target = phoneScrollVarTarget(name);
+            if (target && target !== true) target.style.removeProperty(name);
+          });
+          phoneVarValues = {};
+        }
+        function onPhoneScrollMqChange() {
+          clearPhoneScrollVars();
+          phoneTokenCache = {};
+        }
+        if (phoneScrollMq.addEventListener) {
+          phoneScrollMq.addEventListener("change", onPhoneScrollMqChange);
+        } else if (phoneScrollMq.addListener) {
+          phoneScrollMq.addListener(onPhoneScrollMqChange);
+        }
+        window.addEventListener("resize", function () {
+          phoneTokenCache = {};
+        });
+        /* A fixed CSS token from #page2 (thresholds, scales) — cached on phones. */
+        function readPage2Token(name) {
+          if (phoneScrollMq.matches && name in phoneTokenCache) {
+            return phoneTokenCache[name];
+          }
+          var value = getComputedStyle(page2).getPropertyValue(name);
+          if (phoneScrollMq.matches) phoneTokenCache[name] = value;
+          return value;
+        }
+        function readAboutMediaOpen() {
+          if (
+            phoneScrollMq.matches &&
+            "--page2-about-media-open" in phoneVarValues
+          ) {
+            return parseFloat(phoneVarValues["--page2-about-media-open"]) || 0;
+          }
+          return (
+            parseFloat(
+              getComputedStyle(page2).getPropertyValue(
+                "--page2-about-media-open"
+              )
+            ) || 0
+          );
+        }
+
         var MIN_SPAN = 1;
         var MAX_SPAN = 6;
         var DEFAULT_OPEN_INDEX = 1; /* home — second column from the left */
@@ -6677,11 +6785,7 @@
             return;
           }
 
-          var pageStyles = getComputedStyle(page2);
-          var mediaOpen =
-            parseFloat(
-              pageStyles.getPropertyValue("--page2-about-media-open")
-            ) || 0;
+          var mediaOpen = readAboutMediaOpen();
           var trackTop = homeSignsCoverAnchor
             ? getSignsCoverTopY()
             : homeSignsEl.getBoundingClientRect().top;
@@ -6812,12 +6916,9 @@
           if (prefersReducedMotion) {
             var pageRect = page2.getBoundingClientRect();
             var aboutRect = aboutPanel.getBoundingClientRect();
-            var pageStyles = getComputedStyle(page2);
             var whiteThreshold =
               parseFloat(
-                pageStyles.getPropertyValue(
-                  "--page2-about-media-white-threshold"
-                )
+                readPage2Token("--page2-about-media-white-threshold")
               ) || 0.5;
             var onWhite =
               getAboutWhiteCoverageRatio(aboutRect, pageRect) >=
@@ -8019,9 +8120,8 @@
         }
 
         function getLogoAboutScale() {
-          var styles = window.getComputedStyle(page2);
           var scale = parseFloat(
-            styles.getPropertyValue("--page2-logo-about-scale")
+            readPage2Token("--page2-logo-about-scale")
           );
           return scale > 0 ? scale : 1.5;
         }
@@ -8039,12 +8139,9 @@
           if (prefersReducedMotion) {
             var aboutRect = aboutPanel.getBoundingClientRect();
             var pageRect = page2.getBoundingClientRect();
-            var pageStyles = getComputedStyle(page2);
             var whiteThreshold =
               parseFloat(
-                pageStyles.getPropertyValue(
-                  "--page2-about-media-white-threshold"
-                )
+                readPage2Token("--page2-about-media-white-threshold")
               ) || 0.5;
             var whiteCoverage = getAboutWhiteCoverageRatio(aboutRect, pageRect);
             clipValue =
@@ -8112,6 +8209,16 @@
         }
 
         function getAboutMediaLengthPx(token, fallback) {
+          var cacheKey = "px:" + token;
+          if (phoneScrollMq.matches && cacheKey in phoneTokenCache) {
+            return phoneTokenCache[cacheKey];
+          }
+          var px = readAboutMediaLengthPx(token, fallback);
+          if (phoneScrollMq.matches) phoneTokenCache[cacheKey] = px;
+          return px;
+        }
+
+        function readAboutMediaLengthPx(token, fallback) {
           if (
             window.Page2Units &&
             typeof window.Page2Units.readPage2CssLengthPx === "function"
@@ -8142,10 +8249,9 @@
           }
           var stepHeight = homeOverlay.clientHeight;
           if (!stepHeight) return false;
-          var pageStyles = getComputedStyle(page2);
           var whiteThreshold =
             parseFloat(
-              pageStyles.getPropertyValue("--page2-about-media-white-threshold")
+              readPage2Token("--page2-about-media-white-threshold")
             ) || 0.5;
           return homeOverlay.scrollTop >= stepHeight * whiteThreshold - 1;
         }
@@ -8165,10 +8271,9 @@
           var scrollTop = homeOverlay.scrollTop;
           var aboutRect = aboutPanel.getBoundingClientRect();
           var pageRect = page2.getBoundingClientRect();
-          var pageStyles = getComputedStyle(page2);
           var whiteThreshold =
             parseFloat(
-              pageStyles.getPropertyValue("--page2-about-media-white-threshold")
+              readPage2Token("--page2-about-media-white-threshold")
             ) || 0.5;
           var whiteCoverage = getAboutWhiteCoverageRatio(aboutRect, pageRect);
           var whiteStart = stepHeight * whiteThreshold;
@@ -8178,7 +8283,7 @@
           if (isOnWhitePage) {
             var openRangeFactor =
               parseFloat(
-                pageStyles.getPropertyValue("--page2-about-media-open-range")
+                readPage2Token("--page2-about-media-open-range")
               ) || 0.35;
             var openRange = Math.max(stepHeight * openRangeFactor, 1);
             openProgress = clampHomeProgress(
@@ -8667,7 +8772,7 @@
     <script defer src="js/productComboSpec.js?v=20260701-product-spec-rows"></script>
     <script defer src="js/app.js?v=20261101-perf"></script>
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
-    <script defer src="js/signsPage.js?v=20261101-perf"></script>
+    <script defer src="js/signsPage.js?v=20261102-phone-scroll"></script>
     <script defer src="js/handkerchiefArchive.js?v=20261017-orders"></script>
     <script defer src="js/exhibitionIdleReload.js"></script>
   </body>
