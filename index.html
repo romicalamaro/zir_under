@@ -5861,6 +5861,15 @@
           align-items: baseline;
           flex-wrap: wrap;
           column-gap: 0;
+          /* Same size as the Topkapı Scroll title, so the page keeps three
+             sizes: page title / section titles / text. */
+          font-size: calc(var(--page2-topkapi-title-size) * 0.58);
+          line-height: 1.1;
+        }
+
+        #page2 #section-home .page2-home-signs__title-en,
+        #page2 #section-home .page2-home-signs__title-fa {
+          font-size: inherit;
         }
 
         #page2 #section-home .page2-home-signs__title-sep {
