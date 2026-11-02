@@ -5822,21 +5822,33 @@
           display: none;
         }
 
-        /* ---- About: English, then Persian, each full width ------------ */
+        /* ---- About: Persian, then English, each full width ------------ */
         #page2 {
           --page2-about-top-offset: calc(var(--page2-space-20) + var(--page2-gutter) * 2);
           --page2-about-row-gap: calc(var(--page2-gutter) * 1.5);
         }
 
+        /* The two texts sit in the middle of the white space between the
+           header and the logo at the bottom (its height is measured by the
+           scroll script into --page2-about-phone-logo-space). */
+        #page2 #section-home .page2-about-content {
+          bottom: 0;
+          height: 100dvh;
+          min-height: 0;
+          padding-top: var(--page2-header-band-height);
+          padding-bottom: var(--page2-about-phone-logo-space, 20dvh);
+          align-content: center;
+        }
+
         #page2 .page2-about-text {
           grid-column: 2 / -2;
-          grid-row: 1;
+          grid-row: 2;
           line-height: 1.25;
         }
 
         #page2 .page2-about-text--fa {
           grid-column: 2 / -2;
-          grid-row: 2;
+          grid-row: 1;
           justify-self: stretch;
           line-height: 1.5;
         }
@@ -6441,6 +6453,7 @@
         function phoneScrollVarTarget(name) {
           switch (name) {
             case "--page2-about-text-clip-top":
+            case "--page2-about-phone-logo-space":
               return aboutContentEl;
             case "--page2-logo-brown-inset-top":
             case "--page2-logo-signs-clip-bottom":
@@ -8193,6 +8206,15 @@
             centerTop + (bottomTop - centerTop) * yProgress + "px";
           slot.style.transform =
             "translateX(" + offsetX + "px) scale(" + scale + ")";
+          if (phoneScrollMq.matches) {
+            /* Space the settled logo takes at the bottom of the about page
+               (it scales up from its bottom edge). */
+            var settledLogoTop = bottomTop + logoHeight * (1 - aboutScale);
+            page2.style.setProperty(
+              "--page2-about-phone-logo-space",
+              Math.max(0, Math.round(viewportHeight - settledLogoTop)) + "px"
+            );
+          }
           markLogoPositionReady();
           updateLogoBrownClip(slot);
           updateHomeMarkers();
