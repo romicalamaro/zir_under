@@ -5758,7 +5758,8 @@
           flex-wrap: wrap;
           align-content: flex-start;
           column-gap: 0;
-          row-gap: var(--page2-gutter);
+          row-gap: calc(var(--page2-gutter) * 1.75);
+          padding-top: calc(var(--page2-gutter) * 2.5);
         }
 
         #page2 .page2-footer__top::before {
@@ -5830,7 +5831,7 @@
           width: 100%;
         }
 
-        @container (max-height: 260px) {
+        @container (max-height: 288px) {
           #page2 .page2-footer__group--contact,
           #page2 .page2-footer__group--fonts {
             display: none;
@@ -8302,6 +8303,20 @@
           }
           var bottomTop =
             settleHeight - logoHeight - getLogoBottomPaddingPx();
+          if (phoneScrollMq.matches) {
+            /* Phones: on the opening screen the logo sits exactly halfway
+               between the bottom of the header and the bottom of the visible
+               screen. */
+            if (!("hdrBottom" in phoneTokenCache)) {
+              phoneTokenCache.hdrBottom = Math.max(
+                0,
+                header.getBoundingClientRect().bottom -
+                  page2.getBoundingClientRect().top
+              );
+            }
+            var hdrBottom = phoneTokenCache.hdrBottom;
+            centerTop = hdrBottom + (settleHeight - hdrBottom - logoHeight) / 2;
+          }
           var heroOffsetX = getLogoColumnOffsetX();
           var offsetX = getLogoScrollOffsetX(
             heroOffsetX,
