@@ -5699,6 +5699,22 @@
           font-size: 1rem;
         }
 
+        /* ---- Completion popup: the scarf stands up (portrait, see
+           buyPreview3d.js) in a tall box, so it shows much bigger. -------- */
+        #page2 .page2-buy-preview.page2-buy-preview--completion .page2-buy-preview__panel {
+          grid-column: 1 / -1;
+          max-height: calc(100svh - 2 * var(--page2-gutter));
+        }
+
+        #page2
+          .page2-buy-preview.page2-buy-preview--completion
+          .page2-buy-preview__panel:has(.page2-buy-preview__copy:not([hidden]))
+          .page2-buy-preview__art {
+          --page2-buy-preview-art-max-h: max(16rem, calc(100svh - 17rem));
+          height: var(--page2-buy-preview-art-max-h);
+          padding: var(--page2-gutter) var(--page2-gutter) 0;
+        }
+
         /* ---- Completion popup: the "Add to cart" button ------------------ */
         #page2 .page2-buy-preview__action-row {
           width: var(--page2-buy-preview-action-width);
@@ -8905,7 +8921,7 @@
     <script defer src="js/cartDrawer.js?v=20261017-israel"></script>
     <script defer src="js/vendor/three.min.js"></script>
     <script defer src="js/headscarf3d.js?v=20260705-balanced-flutter"></script>
-    <script defer src="js/buyPreview3d.js?v=20261017-labels"></script>
+    <script defer src="js/buyPreview3d.js?v=20261103-phone-portrait"></script>
     <script defer src="js/page2Units.js"></script>
     <script defer src="js/constants.js?v=20260705-handkerchief-top-align"></script>
     <script defer src="js/embeddedPaletteCsv.js?v=20260704-palette9-final"></script>

@@ -46,10 +46,28 @@
     lightIntensity: 55,
   };
 
+  /* Phones, after finishing the questionnaire: the scarf is shown standing
+     up (portrait) in a tall box, so it can be much bigger on a narrow screen. */
+  function isPhonePortraitCompletion() {
+    return (
+      postSubmitPreview &&
+      !!window.matchMedia &&
+      window.matchMedia("(max-width: 767px)").matches
+    );
+  }
+
   function buildBuy3dConfig(imageWidth, imageHeight) {
     var config = Object.assign({}, HEADSCARF_3D_BUY_CONFIG);
     var iw = Number(imageWidth) || 803;
     var ih = Number(imageHeight) || 2126;
+    if (isPhonePortraitCompletion()) {
+      config.textureRotation = 0;
+      config.flagWidth = HEADSCARF_3D_BUY_CONFIG.flagHeight;
+      config.flagHeight =
+        iw > 0 && ih > 0 ? config.flagWidth * (ih / iw) : config.flagWidth * 2.65;
+      config.fitToWidthScale = 1.08;
+      return config;
+    }
     if (iw > 0 && ih > 0) {
       config.flagWidth = config.flagHeight * (ih / iw);
     }
@@ -291,6 +309,14 @@
     previewImg.style.maxWidth = "none";
     previewImg.style.maxHeight = "none";
     previewImg.style.width = "auto";
+    if (isPhonePortraitCompletion()) {
+      /* Standing up, like the 3D scarf on phones — no rotation. */
+      previewImg.style.height = screen.height + "px";
+      previewImg.style.transform = "translate(-50%, -50%)";
+      previewImg.style.transformOrigin = "center center";
+      previewImg.hidden = false;
+      return true;
+    }
     previewImg.style.height = screen.width + "px";
     previewImg.style.transform = "translate(-50%, -50%) rotate(90deg)";
     previewImg.style.transformOrigin = "center center";
