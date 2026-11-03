@@ -2238,6 +2238,21 @@
 
   function scrollActiveCardIntoView() {
     if (!stackEl) return;
+    /* Phones: a newly opened section starts at its top, so its first
+       question is shown whole under the pinned title; the rest is revealed
+       by scrolling down. (Again after layout settles.) */
+    if (isQuestionnairePhoneViewport()) {
+      var phoneScroller = document.getElementById("questionnaire-scroll");
+      if (phoneScroller) {
+        phoneScroller.scrollTop = 0;
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () {
+            phoneScroller.scrollTop = 0;
+          });
+        });
+      }
+      return;
+    }
     var activeCard = stackEl.querySelector(".questionnaire-card.is-expanded");
     if (activeCard && typeof activeCard.scrollIntoView === "function") {
       activeCard.scrollIntoView({ behavior: "auto", block: "nearest" });
