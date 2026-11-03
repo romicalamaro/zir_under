@@ -5775,7 +5775,7 @@
           align-content: flex-start;
           column-gap: 0;
           row-gap: calc(var(--page2-gutter) * 1.75);
-          padding-top: calc(var(--page2-gutter) * 2.5);
+          padding-top: calc(var(--page2-gutter) * 1.25);
         }
 
         #page2 .page2-footer__top::before {
@@ -6158,6 +6158,18 @@
           padding-bottom: calc(
             100vh - 100svh + 6rem + env(safe-area-inset-bottom, 0px)
           );
+        }
+
+        /* Sliders: a finger anywhere on the bar drags it (js/phoneSliderDrag.js);
+           a vertical swipe on it still scrolls the page. */
+        #page2 .questionnaire-slider-track {
+          touch-action: pan-y;
+        }
+
+        /* The finger is handled by the script on the bar itself, so the
+           native slider never jumps on its own (e.g. during a scroll). */
+        #page2 input.questionnaire-slider {
+          pointer-events: none;
         }
 
         /* Sections are changed with the numbered squares on phones; no
@@ -8949,5 +8961,6 @@
     <script defer src="js/signsPage.js?v=20261102-phone-scroll"></script>
     <script defer src="js/handkerchiefArchive.js?v=20261017-orders"></script>
     <script defer src="js/exhibitionIdleReload.js?v=20261103-no-phone"></script>
+    <script defer src="js/phoneSliderDrag.js?v=20261103"></script>
   </body>
 </html>
