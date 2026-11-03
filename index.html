@@ -6135,6 +6135,19 @@
           column-gap: 0.25rem;
           row-gap: var(--page2-gutter);
           align-items: start;
+          /* Scroll room after the last question: the questions box is 100vh
+             tall and its bottom sits behind Safari's bar, so add that hidden
+             part (100vh − 100svh) plus some air, so every question can be
+             scrolled fully into view. */
+          padding-bottom: calc(
+            100vh - 100svh + 6rem + env(safe-area-inset-bottom, 0px)
+          );
+        }
+
+        /* Sections are changed with the numbered squares on phones; no
+           "next" arrow at the end of each section. */
+        #page2 .questionnaire-card__next-footer {
+          display: none;
         }
 
         #page2 .questionnaire-card:not(.is-expanded),
