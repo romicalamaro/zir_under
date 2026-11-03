@@ -5,6 +5,12 @@
 (function () {
   "use strict";
 
+  // Phones are not exhibition screens: never reload them (a visitor reading
+  // or scrolling on a phone does not move a pointer, so it would reset them).
+  if (window.matchMedia && window.matchMedia("(max-width: 767px)").matches) {
+    return;
+  }
+
   var IDLE_MS = 2 * 60 * 1000;
   var timerId = null;
 

@@ -684,17 +684,21 @@
                     </div>
                   </div>
                   <div class="page2-footer__col">
-                    <span class="page2-footer__heading">Contact</span>
-                    <span class="page2-footer__link">zir_under.com</span>
-                    <span class="page2-footer__link">Instagram</span>
-                    <span class="page2-footer__link">Facebook</span>
-                    <span class="page2-footer__heading page2-footer__heading--fonts"
-                      >Fonts</span
-                    >
-                    <span class="page2-footer__note">Suisse Intl</span>
-                    <span class="page2-footer__note">Vazirmatn</span>
-                    <span class="page2-footer__note">DIN Condensed</span>
-                    <span class="page2-footer__note">OT2049</span>
+                    <div class="page2-footer__group page2-footer__group--contact">
+                      <span class="page2-footer__heading">Contact</span>
+                      <span class="page2-footer__link">zir_under.com</span>
+                      <span class="page2-footer__link">Instagram</span>
+                      <span class="page2-footer__link">Facebook</span>
+                    </div>
+                    <div class="page2-footer__group page2-footer__group--fonts">
+                      <span class="page2-footer__heading page2-footer__heading--fonts"
+                        >Fonts</span
+                      >
+                      <span class="page2-footer__note">Suisse Intl</span>
+                      <span class="page2-footer__note">Vazirmatn</span>
+                      <span class="page2-footer__note">DIN Condensed</span>
+                      <span class="page2-footer__note">OT2049</span>
+                    </div>
                   </div>
                   <div class="page2-footer__bezalel">
                     <img
@@ -709,7 +713,7 @@
                   role="img"
                   aria-label="zir under"
                 ></div>
-                <p class="page2-footer__copyright">&copy; Designed by Romi Calamaro 2026</p>
+                <p class="page2-footer__copyright">&copy; <span class="page2-footer__copyright-designed">Designed </span>by Romi Calamaro 2026</p>
               </footer>
             </div>
           </section>
@@ -2013,6 +2017,12 @@
         /* Footer headings (Pages / Credits / Contact / Fonts) shown in caps. */
         text-transform: uppercase;
         color: #fff;
+      }
+
+      /* Contact / Fonts wrappers (used by the phone layout) do not change the
+         desktop column: their children lay out as before. */
+      #page2 .page2-footer__group {
+        display: contents;
       }
 
       /* Fonts heading sits in the Contact column below the links, pushed down
@@ -5738,49 +5748,67 @@
           display: none;
         }
 
-        /* Credits: full width, its groups in two columns. */
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) {
-          grid-column: 1 / -1;
-          grid-row: 1;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          column-gap: var(--page2-gutter);
-          row-gap: calc(var(--page2-gutter) * 0.5);
-          align-items: start;
+        /* Two columns, each a plain stack with the same space between every
+           paragraph: left = Mentors, Models, Translate, contact; right =
+           Special Thanks, Photography, fonts. (A column-wrapping flex box; the
+           full-height ::before item forces the break between the columns.) */
+        #page2 .page2-footer__top {
+          display: flex;
+          flex-direction: column;
+          flex-wrap: wrap;
+          align-content: flex-start;
+          column-gap: 0;
+          row-gap: var(--page2-gutter);
         }
 
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(2) > .page2-footer__heading {
-          grid-column: 1 / -1;
+        #page2 .page2-footer__top::before {
+          content: "";
+          order: 2;
+          flex: 0 0 100%;
+          width: 0;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col {
+          display: contents;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col.page2-footer__nav {
+          display: none;
+        }
+
+        #page2 .page2-footer__top > .page2-footer__col > .page2-footer__heading {
+          display: none; /* "Credits" */
         }
 
         #page2 .page2-footer__credit-group,
-        #page2 .page2-footer__credit-group + .page2-footer__credit-group {
+        #page2 .page2-footer__credit-group + .page2-footer__credit-group,
+        #page2 .page2-footer__group {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          width: calc((100% - var(--page2-gutter)) / 2);
           margin: 0;
+          order: 1;
         }
 
-        /* Contact (left) | Fonts (right), side by side. */
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
-          grid-column: 1 / -1;
-          grid-row: 2;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          grid-auto-flow: row dense;
-          column-gap: var(--page2-gutter);
-          align-items: start;
+        #page2 .page2-footer__credit-group:nth-of-type(2),
+        #page2 .page2-footer__credit-group:nth-of-type(4),
+        #page2 .page2-footer__group--fonts {
+          order: 3;
+          margin-left: var(--page2-gutter);
         }
 
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__heading,
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__link {
-          grid-column: 1;
-        }
-
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__heading--fonts,
-        #page2 .page2-footer__top > .page2-footer__col:nth-child(3) > .page2-footer__note {
-          grid-column: 2;
-        }
-
-        #page2 .page2-footer__heading--fonts {
-          margin-top: 0;
+        /* Contact / Fonts titles look like the credit titles: Suisse Intl,
+           same weight, lower case. */
+        #page2 .page2-footer__top .page2-footer__heading,
+        #page2 .page2-footer__top .page2-footer__heading--fonts {
+          margin: 0;
+          font-family: "Suisse Intl", sans-serif;
+          font-size: clamp(0.8125rem, 0.95vw, 1.05rem);
+          font-weight: 500;
+          line-height: 1.25;
+          letter-spacing: 0;
+          text-transform: lowercase;
         }
 
         /* Tighter lines so everything fits above the logo. */
@@ -5790,8 +5818,8 @@
           line-height: 1.25;
         }
 
-        #page2 .page2-footer__top .page2-footer__heading {
-          margin-bottom: calc(var(--page2-gutter) * 0.25);
+        #page2 .page2-footer__copyright-designed {
+          display: none;
         }
 
         /* Short screens (e.g. iPhone SE): when the space above the logo is
@@ -5802,8 +5830,9 @@
           width: 100%;
         }
 
-        @container (max-height: 343px) {
-          #page2 .page2-footer__top > .page2-footer__col:nth-child(3) {
+        @container (max-height: 260px) {
+          #page2 .page2-footer__group--contact,
+          #page2 .page2-footer__group--fonts {
             display: none;
           }
         }
@@ -8875,6 +8904,6 @@
     <script defer src="js/familyControls.js?v=20260620-family-section"></script>
     <script defer src="js/signsPage.js?v=20261102-phone-scroll"></script>
     <script defer src="js/handkerchiefArchive.js?v=20261017-orders"></script>
-    <script defer src="js/exhibitionIdleReload.js"></script>
+    <script defer src="js/exhibitionIdleReload.js?v=20261103-no-phone"></script>
   </body>
 </html>
