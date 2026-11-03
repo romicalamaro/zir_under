@@ -1403,7 +1403,9 @@
     maskImg.setAttribute("width", String(CANVAS_W));
     maskImg.setAttribute("height", String(CANVAS_H));
     maskImg.setAttribute("preserveAspectRatio", "none");
-    maskImg.setAttribute("href", maskHref);
+    if (maskImg.getAttribute("href") !== maskHref) {
+      maskImg.setAttribute("href", maskHref);
+    }
   }
 
   function getStippleContentClipRect() {
@@ -1466,6 +1468,7 @@
         var rawUri = results[0];
         var svgText = results[1];
         if (svgText) hopeStippleSvgText = svgText;
+        prewarmPhoneHopeDotsImage();
         if (rawUri || hopeStippleSvgText) {
           hopeStippleImageReady = true;
           applyMergeReveal();
@@ -4522,6 +4525,54 @@
     }
   }
 
+  /* Phones: the Hope dots on screen are one picture (the same SVG dots,
+     drawn once and reused) instead of thousands of separate dot elements,
+     which made drawing with Hope stutter. The print file still uses the SVG
+     dots (export builds its own lines). */
+  function useHopeImageDotsOnPhone() {
+    return (
+      !!window.matchMedia &&
+      window.matchMedia("(max-width: 767px)").matches
+    );
+  }
+
+  var phoneHopeDotsImage = { key: "", url: "" };
+
+  /* Draw the dots picture ahead of time, so the first touch with the Hope
+     pen does not wait for it. */
+  function prewarmPhoneHopeDotsImage() {
+    if (!hopeStippleSvgText || !useHopeImageDotsOnPhone()) return;
+    try {
+      var img = new Image();
+      img.src = getPhoneHopeDotsImageUrl(hopeStippleSvgText, getHopeDotsColor());
+      if (typeof img.decode === "function") img.decode().catch(function () {});
+    } catch (e) {}
+  }
+
+  /* The same SVG dots (same layout and colour as on desktop), packed into one
+     SVG picture that the browser draws once and reuses. */
+  function getPhoneHopeDotsImageUrl(svgText, dotColor) {
+    var key = dotColor + "|" + CANVAS_W + "x" + CANVAS_H + "|" + svgText.length;
+    if (phoneHopeDotsImage.key === key && phoneHopeDotsImage.url) {
+      return phoneHopeDotsImage.url;
+    }
+    var prepared = prepareHopeStippleSvgContent(svgText, dotColor);
+    var markup =
+      '<svg xmlns="' + NS + '" width="' + CANVAS_W + '" height="' + CANVAS_H +
+      '" viewBox="0 0 ' + CANVAS_W + " " + CANVAS_H + '"><g transform="' +
+      prepared.transform + '">' + prepared.inner + "</g></svg>";
+    if (phoneHopeDotsImage.url) {
+      try {
+        URL.revokeObjectURL(phoneHopeDotsImage.url);
+      } catch (e) {}
+    }
+    phoneHopeDotsImage = {
+      key: key,
+      url: URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" })),
+    };
+    return phoneHopeDotsImage.url;
+  }
+
   function renderStippleDotsLayer() {
     if (!designSvg) return;
     var dom = getRevealDom();
@@ -4553,6 +4604,33 @@
     layer.setAttribute("clip-path", "url(#" + MERGE_REGIONS_CLIP_ID + ")");
     syncStippleContentClipPath(defs);
 
+    if (hopeStippleSvgText && useHopeImageDotsOnPhone()) {
+      var phoneSig =
+        "svgimg|" +
+        getHopeDotsColor() +
+        "|" +
+        CANVAS_W +
+        "x" +
+        CANVAS_H +
+        "|" +
+        hopeStippleSvgText.length;
+      if (layer.__stippleSig === phoneSig && layer.firstChild) return;
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      var dotsImage = elSvg("image");
+      dotsImage.setAttribute("x", "0");
+      dotsImage.setAttribute("y", "0");
+      dotsImage.setAttribute("width", String(CANVAS_W));
+      dotsImage.setAttribute("height", String(CANVAS_H));
+      dotsImage.setAttribute("preserveAspectRatio", "none");
+      dotsImage.setAttribute(
+        "href",
+        getPhoneHopeDotsImageUrl(hopeStippleSvgText, getHopeDotsColor())
+      );
+      layer.appendChild(dotsImage);
+      layer.__stippleSig = phoneSig;
+      return;
+    }
+
     if (hopeStippleSvgText) {
       // The dots are a constant full-canvas pattern (depends only on dot color +
       // canvas size). Between drag frames only the clip-path (set above) changes,
@@ -4580,6 +4658,14 @@
       return;
     }
 
+    var imageSig = "img|" + getHopeDotsColor() + "|" + CANVAS_W + "x" + CANVAS_H;
+    if (
+      layer.__stippleSig === imageSig &&
+      layer.firstChild &&
+      defs.querySelector("#" + HOPE_DOTS_MASK_ID)
+    ) {
+      return; // same dots already mounted; only the clip changed this frame
+    }
     while (layer.firstChild) layer.removeChild(layer.firstChild);
     layer.__stippleSig = "";
     ensureHopeDotsMaskDef(defs);
@@ -4592,6 +4678,7 @@
     rect.setAttribute("fill", getHopeDotsColor());
     rect.setAttribute("mask", "url(#" + HOPE_DOTS_MASK_ID + ")");
     layer.appendChild(rect);
+    layer.__stippleSig = imageSig;
   }
 
   /**
