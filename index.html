@@ -6443,7 +6443,13 @@
            narrower than its hint plus the ▾ arrow — the hint showed as "nam".
            Give it room for both. */
         #page2 .questionnaire-profile-madlibs .questionnaire-madlibs-name-mode.is-profile-blank-empty {
-          min-width: 3.4em;
+          min-width: 4.2em;
+        }
+
+        /* The hint itself never shrinks below its full word. */
+        #page2 .questionnaire-profile-madlibs .questionnaire-madlibs-name-mode.is-profile-blank-empty
+          .questionnaire-madlibs-name-mode__input {
+          min-width: 3.1em;
         }
 
         /* (JS sizes these to their text; the hint text needs a bit more.) */
