@@ -23825,6 +23825,37 @@
     );
   }
 
+  /* Phones, body autonomy: centre the band on the fan at the bottom end of
+     the upright scarf. */
+  function getPhoneBottomFanCenterY() {
+    // Measured from the drawn fan (its group carries the mirroring transform).
+    try {
+      var svg = document.getElementById("design-svg");
+      var g = svg && svg.querySelector("#half-circle-bottom");
+      if (g && typeof g.getBBox === "function") {
+        var b = g.getBBox();
+        var m = g.getCTM();
+        var sm = svg.getCTM();
+        if (b && b.height > 0 && m && sm) {
+          m = sm.inverse().multiply(m);
+          var y1 = m.b * b.x + m.d * b.y + m.f;
+          var y2 = m.b * (b.x + b.width) + m.d * (b.y + b.height) + m.f;
+          if (isFinite(y1) && isFinite(y2)) return (y1 + y2) / 2;
+        }
+      }
+    } catch (e) {}
+    var geo = getSharedFanGeometry();
+    return CANVAS_H - 238 - geo.outerArcRadius * 0.45;
+  }
+
+  function getPhoneFanCloseUpTop(bandH, scale, totalH) {
+    var f = (totalH - CANVAS_H) / 2;
+    var fanCenterY = getPhoneBottomFanCenterY();
+    var top = bandH / 2 - (fanCenterY + f) * scale;
+    // Never past the scarf's bottom edge.
+    return Math.max(top, bandH - PHONE_QUESTIONNAIRE_CANVAS_PAD - totalH * scale);
+  }
+
   function computeQuestionnairePhoneLayout(wrap, totalW, totalH, sectionIndex) {
     var host = wrap.closest("#questionnaire-canvas-host") || wrap;
     var w = host.clientWidth;
@@ -23839,17 +23870,35 @@
           ? window.Questionnaire.getActiveSectionIndex()
           : -1;
     }
-    if (!drawing && sectionIndex >= 0 && isQuestionnaireProfileSection(sectionIndex)) {
-      // Profile section: the scarf stands upright, as wide as the band, and
-      // the band shows its bottom end up close — the profile label band
-      // (name, age, years…) — so the details can be seen while filling in.
+    // Profile (0), community / grid (1) and body autonomy / fan (3): the scarf
+    // stands upright, as wide as the band, and the band shows the part of it
+    // those questions change up close — profile: the bottom label band;
+    // community: the pattern in the middle; fan: the fan near the bottom end
+    // (that end reads upright, like the profile band).
+    var closeUpAnchor =
+      drawing || sectionIndex < 0
+        ? ""
+        : isQuestionnaireProfileSection(sectionIndex)
+          ? "bottom"
+          : sectionIndex === 1
+            ? "center"
+            : sectionIndex === 3
+              ? "top"
+              : "";
+    if (closeUpAnchor) {
       var profileScale = (w - 2 * pad) / totalW;
       var profileSvgHeight = totalH * profileScale;
+      var closeUpTop =
+        closeUpAnchor === "bottom"
+          ? h - pad - profileSvgHeight
+          : closeUpAnchor === "top"
+            ? getPhoneFanCloseUpTop(h, profileScale, totalH)
+            : (h - profileSvgHeight) / 2;
       return {
         svgWidth: totalW * profileScale,
         svgHeight: profileSvgHeight,
         svgLeft: pad,
-        svgTop: h - pad - profileSvgHeight,
+        svgTop: closeUpTop,
         centerX: w / 2,
         centerY: h / 2,
         extendUp: 0,
