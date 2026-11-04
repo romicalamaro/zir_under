@@ -6439,6 +6439,13 @@
           min-width: 5ch;
         }
 
+        /* The empty name blank is one grid column wide, which on a phone is
+           narrower than its hint plus the ▾ arrow — the hint showed as "nam".
+           Give it room for both. */
+        #page2 .questionnaire-profile-madlibs .questionnaire-madlibs-name-mode.is-profile-blank-empty {
+          min-width: 3.4em;
+        }
+
         /* (JS sizes these to their text; the hint text needs a bit more.) */
         #page2 input.questionnaire-madlibs-blank--short {
           min-width: 2.6em;
