@@ -3550,6 +3550,10 @@
         #page2 #section-home .page2-home-signs__panel-list--frame-line {
           grid-column: 1 / -1;
           justify-content: center;
+          /* Desktop's "2 grid columns" is only ~35px on a phone, which
+             squashed the family sign; keep its desktop proportions (≈6:1). */
+          --frame-line-length: calc((100vw - 2 * var(--page2-margin-inline)) * 0.5);
+          --frame-line-thickness: calc(var(--frame-line-length) / 6.1);
         }
 
         #page2 #section-home .page2-home-signs__sign-row {
