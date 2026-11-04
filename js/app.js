@@ -23772,7 +23772,7 @@
     var totalW = CANVAS_W + 2 * f;
     var totalH = CANVAS_H + 2 * f;
     if (isPhoneQuestionnaireCanvas()) {
-      return computeQuestionnairePhoneLayout(wrap, totalW, totalH);
+      return computeQuestionnairePhoneLayout(wrap, totalW, totalH, sectionIndex);
     }
     var level = getQuestionnaireZoomLevelForSection(sectionIndex);
     var scale = getQuestionnaireScaleForLevel(level, wrap, f);
@@ -23825,13 +23825,39 @@
     );
   }
 
-  function computeQuestionnairePhoneLayout(wrap, totalW, totalH) {
+  function computeQuestionnairePhoneLayout(wrap, totalW, totalH, sectionIndex) {
     var host = wrap.closest("#questionnaire-canvas-host") || wrap;
     var w = host.clientWidth;
     var h = host.clientHeight;
     if (!w || !h) return null;
     var pad = PHONE_QUESTIONNAIRE_CANVAS_PAD;
-    var rotate = !isPhoneQuestionnaireDrawingMode();
+    var drawing = isPhoneQuestionnaireDrawingMode();
+    if (typeof sectionIndex !== "number") {
+      sectionIndex =
+        window.Questionnaire &&
+        typeof window.Questionnaire.getActiveSectionIndex === "function"
+          ? window.Questionnaire.getActiveSectionIndex()
+          : -1;
+    }
+    if (!drawing && sectionIndex >= 0 && isQuestionnaireProfileSection(sectionIndex)) {
+      // Profile section: the scarf stands upright, as wide as the band, and
+      // the band shows its bottom end up close — the profile label band
+      // (name, age, years…) — so the details can be seen while filling in.
+      var profileScale = (w - 2 * pad) / totalW;
+      var profileSvgHeight = totalH * profileScale;
+      return {
+        svgWidth: totalW * profileScale,
+        svgHeight: profileSvgHeight,
+        svgLeft: pad,
+        svgTop: h - pad - profileSvgHeight,
+        centerX: w / 2,
+        centerY: h / 2,
+        extendUp: 0,
+        focusZoom: false,
+        rotate: false,
+      };
+    }
+    var rotate = !drawing;
     // Rotated: the scarf's height runs along the band's width.
     var scale = rotate
       ? Math.min((w - 2 * pad) / totalH, (h - 2 * pad) / totalW)
